@@ -1,0 +1,264 @@
+{
+  "meta": {
+    "version": 1,
+    "status": "phase-1-in-progress",
+    "notes": "Track source, license, and integration state per scene asset slot.",
+    "lastUpdated": "2026-02-23"
+  },
+  "scenes": {
+    "lobby": {
+      "models": [
+        {
+          "slot": "lobby_planter.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false,
+          "notes": "Select planter/greenery-compatible mesh from pack."
+        },
+        {
+          "slot": "reception_setpiece.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false,
+          "notes": "Likely built from desk/counter pieces; may require simple kitbash."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_lobby_premium.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/concrete_slab_wall",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false
+        },
+        {
+          "slot": "floor_lobby_stone.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/floor_tiles_02",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_lobby_loop.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://pixabay.com/sound-effects/search/ambient/",
+          "license": "Pixabay Content License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Select subtle indoor ambience, avoid tonal leads."
+        }
+      ]
+    },
+    "backrooms": {
+      "models": [
+        {
+          "slot": "backrooms_filing_cabinet.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false
+        },
+        {
+          "slot": "backrooms_office_chair.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_backrooms_wallpaper.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://ambientcg.com/list?category=Wallpaper",
+          "license": "CC0 (ambientCG homepage/license text)",
+          "attributionRequired": false
+        },
+        {
+          "slot": "floor_backrooms_carpet.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://ambientcg.com/list?category=Carpet",
+          "license": "CC0 (ambientCG homepage/license text)",
+          "attributionRequired": false
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_backrooms_hum.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://gdc.sonniss.com/",
+          "license": "#GameAudioGDC Unlimited User License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Use non-musical fluorescent/roomtone layers."
+        }
+      ]
+    },
+    "roman": {
+      "models": [
+        {
+          "slot": "roman_statue.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/medievalvillagemegakit.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false,
+          "notes": "If no direct statue available, source alternate CC0 classical sculpture."
+        },
+        {
+          "slot": "roman_amphora.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/medievaldungeon.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false,
+          "notes": "Look for urn/potion vessel; otherwise substitute with compatible vase."
+        },
+        {
+          "slot": "roman_topiary.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/ultimatestylizednature.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false,
+          "notes": "Use hedges/potted greenery as topiary stand-ins."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_roman_fresco.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/marble_01",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false,
+          "notes": "Supplement with procedural fresco pattern already in scene config."
+        },
+        {
+          "slot": "floor_roman_mosaic.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/checkered_pavement_tiles",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_roman_atrium.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://pixabay.com/sound-effects/search/ambient/",
+          "license": "Pixabay Content License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Prefer open-air courtyard wind + distant stone reverb beds."
+        }
+      ]
+    },
+    "inferno": {
+      "models": [
+        {
+          "slot": "inferno_chain_bundle.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/medievaldungeon.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false,
+          "notes": "Can be replaced by modular metal/chain-like props if direct chain absent."
+        },
+        {
+          "slot": "inferno_skull_pile.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://kenney.nl/assets/modular-dungeon-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false,
+          "notes": "May require alternate horror prop from CC0 library."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_inferno_fire.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/concrete_slab_wall",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false,
+          "notes": "Primary fire effect remains procedural + emissive scroll."
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_inferno_rumble.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://gdc.sonniss.com/",
+          "license": "#GameAudioGDC Unlimited User License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Select low non-tonal furnace/industrial rumble."
+        }
+      ]
+    },
+    "purgatory": {
+      "models": [
+        {
+          "slot": "purgatory_obelisk.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://kenney.nl/assets/modular-dungeon-kit",
+          "license": "CC0 (Kenney asset page/support)",
+          "attributionRequired": false,
+          "notes": "Fallback: build obelisk from primitive stack if needed."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_purgatory_checker.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/checkered_pavement_tiles",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_purgatory_void.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://pixabay.com/sound-effects/search/ambient/",
+          "license": "Pixabay Content License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Select sparse metallic/spectral ambience only."
+        }
+      ]
+    },
+    "neon": {
+      "models": [
+        {
+          "slot": "neon_server_rack.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/cyberpunkgamekit.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false
+        },
+        {
+          "slot": "neon_holo_totem.glb",
+          "status": "pending-match",
+          "sourceUrl": "https://quaternius.com/packs/scifiessentialskit.html",
+          "license": "CC0 (Quaternius pack/FAQ)",
+          "attributionRequired": false,
+          "notes": "May require adaptation from terminal/panel mesh."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "wall_neon_emissive.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/checkered_pavement_tiles",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false,
+          "notes": "Primary neon effect is procedural grid + emissive lighting."
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_neon_machine.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://gdc.sonniss.com/",
+          "license": "#GameAudioGDC Unlimited User License (royalty-free, restrictions apply)",
+          "attributionRequired": false
+        }
+      ]
+    }
+  }
+}

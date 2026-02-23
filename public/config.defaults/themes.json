@@ -1,0 +1,2709 @@
+{
+  "defaultTheme": "lobby",
+  "autoThemeByMonth": {
+    "enabled": false,
+    "map": {
+      "1": "winter",
+      "12": "winter"
+    }
+  },
+  "themes": {
+    "lobby": {
+      "label": "Lobby",
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#767064",
+          "procedural": "concrete",
+          "textureRepeat": [
+            5,
+            2
+          ],
+          "roughness": 0.95,
+          "metalness": 0.02
+        },
+        "floorMaterial": {
+          "color": "#b8b1a4",
+          "procedural": "marble",
+          "textureRepeat": [
+            7,
+            7
+          ],
+          "roughness": 0.88,
+          "metalness": 0.04
+        },
+        "ceilingMaterial": {
+          "color": "#bdb7a8",
+          "roughness": 0.96
+        }
+      },
+      "fog": {
+        "color": "#4b493f",
+        "near": 9,
+        "far": 56
+      },
+      "lights": [
+        {
+          "index": 1,
+          "color": "#fff1cb",
+          "intensity": 1.12
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 1,
+        "backrooms_buzz": 0.06,
+        "roman_aura": 0.12,
+        "inferno_rumble": 0.02,
+        "purgatory_void": 0.05,
+        "neon_pulse": 0.04,
+        "winter_air": 0.1,
+        "chime_metal": 0
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 180,
+          "area": [
+            30,
+            7,
+            30
+          ],
+          "fallSpeed": 0.09,
+          "drift": 0.28,
+          "color": "#d8d2c5",
+          "size": 0.04,
+          "opacity": 0.2
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "lobby_reception",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.65,
+            -2.8
+          ],
+          "scale": [
+            4.8,
+            1.3,
+            1.2
+          ],
+          "material": {
+            "color": "#564a3e",
+            "procedural": "marble",
+            "textureRepeat": [
+              2,
+              1
+            ],
+            "roughness": 0.78,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "lobby_trim_n",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            1.05,
+            -14.8
+          ],
+          "scale": [
+            27.7,
+            0.32,
+            0.24
+          ],
+          "material": {
+            "color": "#efe8d7",
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "lobby_trim_s",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            1.05,
+            14.8
+          ],
+          "scale": [
+            27.7,
+            0.32,
+            0.24
+          ],
+          "material": {
+            "color": "#efe8d7",
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "lobby_trim_e",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            14.8,
+            1.05,
+            0
+          ],
+          "scale": [
+            0.24,
+            0.32,
+            27.7
+          ],
+          "material": {
+            "color": "#efe8d7",
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "lobby_trim_w",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -14.8,
+            1.05,
+            0
+          ],
+          "scale": [
+            0.24,
+            0.32,
+            27.7
+          ],
+          "material": {
+            "color": "#efe8d7",
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "lobby_chandelier_a",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -8,
+            4.9,
+            2
+          ],
+          "scale": [
+            0.42,
+            0.42,
+            0.42
+          ],
+          "material": {
+            "color": "#f4d3a2",
+            "emissiveColor": "#f9d9af",
+            "emissiveIntensity": 0.35,
+            "roughness": 0.45
+          }
+        },
+        {
+          "id": "lobby_chandelier_b",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            8,
+            4.9,
+            2
+          ],
+          "scale": [
+            0.42,
+            0.42,
+            0.42
+          ],
+          "material": {
+            "color": "#f4d3a2",
+            "emissiveColor": "#f9d9af",
+            "emissiveIntensity": 0.35,
+            "roughness": 0.45
+          }
+        },
+        {
+          "id": "lobby_carpet_runner",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.02,
+            3.5
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            12,
+            5,
+            1
+          ],
+          "material": {
+            "color": "#3d2f2c",
+            "roughness": 0.94,
+            "metalness": 0.01
+          }
+        },
+        {
+          "id": "lobby_planter_l",
+          "type": "model",
+          "model": "/assets/models/props/lobby_planter.glb",
+          "position": [
+            -10.6,
+            0,
+            -1.8
+          ],
+          "rotation": [
+            0,
+            35,
+            0
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ]
+        },
+        {
+          "id": "lobby_planter_r",
+          "type": "model",
+          "model": "/assets/models/props/lobby_planter.glb",
+          "position": [
+            10.6,
+            0,
+            -1.8
+          ],
+          "rotation": [
+            0,
+            -35,
+            0
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ]
+        },
+        {
+          "id": "lobby_clock_wall",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            0,
+            3.7,
+            -14.6
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            0.8,
+            0.08,
+            0.8
+          ],
+          "material": {
+            "color": "#ded6c8",
+            "metalness": 0.35,
+            "roughness": 0.38
+          }
+        }
+      ],
+      "additionalLights": [
+        {
+          "type": "point",
+          "color": "#f6deb2",
+          "intensity": 0.55,
+          "distance": 16,
+          "position": [
+            -8,
+            4.6,
+            2
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f6deb2",
+          "intensity": 0.55,
+          "distance": 16,
+          "position": [
+            8,
+            4.6,
+            2
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f2d8a8",
+          "intensity": 0.48,
+          "distance": 14,
+          "position": [
+            0,
+            4.8,
+            -6
+          ]
+        },
+        {
+          "id": "lobby_spot_reception",
+          "type": "spot",
+          "color": "#f8e7c7",
+          "intensity": 0.58,
+          "distance": 20,
+          "angle": 0.45,
+          "penumbra": 0.42,
+          "position": [
+            0,
+            6.9,
+            -2.4
+          ],
+          "target": [
+            0,
+            0.9,
+            -2.8
+          ]
+        }
+      ],
+      "portalStyle": {
+        "color": "#d6c08a",
+        "ringBaseIntensity": 0.14,
+        "ringHoverBoost": 0.52,
+        "rimBaseIntensity": 0.28,
+        "rimHoverBoost": 0.72,
+        "hazeBaseOpacity": 0.06,
+        "hazeHoverBoost": 0.1,
+        "pulseSpeed": 1.35,
+        "rotationSpeed": 0.08,
+        "hoverRotationBoost": 0.28,
+        "waveAmplitude": 0.006
+      },
+      "portalStyles": {
+        "shop": {
+          "color": "#dcb477"
+        },
+        "contact": {
+          "color": "#b9c4d8"
+        },
+        "youtube": {
+          "color": "#c9968f"
+        },
+        "discord": {
+          "color": "#9fa9d8"
+        },
+        "github": {
+          "color": "#9fc8ba"
+        }
+      }
+    },
+    "backrooms": {
+      "label": "Backrooms",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#c1b96d",
+          "procedural": "backrooms-wallpaper",
+          "textureRepeat": [
+            5,
+            2
+          ],
+          "roughness": 0.94,
+          "metalness": 0.01
+        },
+        "floorMaterial": {
+          "color": "#8e7f3d",
+          "procedural": "backrooms-carpet",
+          "textureRepeat": [
+            8,
+            8
+          ],
+          "roughness": 0.98,
+          "metalness": 0
+        },
+        "ceilingMaterial": {
+          "color": "#d9d7cc",
+          "procedural": "office-ceiling",
+          "textureRepeat": [
+            5,
+            5
+          ],
+          "roughness": 0.96
+        }
+      },
+      "fog": {
+        "color": "#9e9558",
+        "near": 6,
+        "far": 40
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#6a6540",
+          "intensity": 0.22
+        },
+        {
+          "type": "point",
+          "color": "#f6f2c8",
+          "intensity": 1.35,
+          "distance": 18,
+          "position": [
+            -10,
+            6.4,
+            -8
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f6f2c8",
+          "intensity": 1.2,
+          "distance": 17,
+          "position": [
+            0,
+            6.4,
+            -4
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f6f2c8",
+          "intensity": 1.28,
+          "distance": 18,
+          "position": [
+            10,
+            6.4,
+            0
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f6f2c8",
+          "intensity": 1.05,
+          "distance": 16,
+          "position": [
+            -6,
+            6.4,
+            8
+          ]
+        },
+        {
+          "id": "backrooms_emergency_lamp",
+          "type": "point",
+          "color": "#f2e8b0",
+          "intensity": 0.78,
+          "distance": 12,
+          "position": [
+            6,
+            6.5,
+            10
+          ]
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.03,
+        "backrooms_buzz": 1,
+        "roman_aura": 0,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.22,
+        "neon_pulse": 0,
+        "winter_air": 0.04,
+        "chime_metal": 0
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 260,
+          "area": [
+            30,
+            8,
+            30
+          ],
+          "fallSpeed": 0.12,
+          "drift": 0.44,
+          "color": "#c9c18b",
+          "size": 0.045,
+          "opacity": 0.22
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "backrooms_divider_a",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -6,
+            1.5,
+            -2
+          ],
+          "scale": [
+            0.4,
+            3,
+            8
+          ],
+          "material": {
+            "color": "#b7af66",
+            "procedural": "backrooms-wallpaper",
+            "textureRepeat": [
+              2,
+              1.8
+            ],
+            "roughness": 0.95
+          }
+        },
+        {
+          "id": "backrooms_divider_b",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            4,
+            1.5,
+            5
+          ],
+          "scale": [
+            0.4,
+            3,
+            7
+          ],
+          "material": {
+            "color": "#b3ac64",
+            "procedural": "backrooms-wallpaper",
+            "textureRepeat": [
+              2,
+              1.8
+            ],
+            "roughness": 0.95
+          }
+        },
+        {
+          "id": "backrooms_divider_c",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            10,
+            1.5,
+            -3
+          ],
+          "scale": [
+            6,
+            3,
+            0.4
+          ],
+          "material": {
+            "color": "#b7af66",
+            "procedural": "backrooms-wallpaper",
+            "textureRepeat": [
+              2,
+              1.8
+            ],
+            "roughness": 0.95
+          }
+        },
+        {
+          "id": "backrooms_divider_d",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -10,
+            1.5,
+            6
+          ],
+          "scale": [
+            5,
+            3,
+            0.4
+          ],
+          "material": {
+            "color": "#b5ad64",
+            "procedural": "backrooms-wallpaper",
+            "textureRepeat": [
+              2,
+              1.8
+            ],
+            "roughness": 0.95
+          }
+        },
+        {
+          "id": "backrooms_fixture_1",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -10,
+            6.95,
+            -8
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.6,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f5f2ca",
+            "emissiveColor": "#f5f2ca",
+            "emissiveIntensity": 0.7,
+            "roughness": 0.35
+          }
+        },
+        {
+          "id": "backrooms_fixture_2",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            6.95,
+            -4
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.6,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f5f2ca",
+            "emissiveColor": "#f5f2ca",
+            "emissiveIntensity": 0.65,
+            "roughness": 0.35
+          }
+        },
+        {
+          "id": "backrooms_fixture_3",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            10,
+            6.95,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.6,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f5f2ca",
+            "emissiveColor": "#f5f2ca",
+            "emissiveIntensity": 0.7,
+            "roughness": 0.35
+          }
+        },
+        {
+          "id": "backrooms_pipe_run_north",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            6.2,
+            -11.5
+          ],
+          "scale": [
+            20,
+            0.18,
+            0.18
+          ],
+          "material": {
+            "color": "#737167",
+            "roughness": 0.8,
+            "metalness": 0.3
+          }
+        },
+        {
+          "id": "backrooms_file_cabinet",
+          "type": "model",
+          "model": "/assets/models/props/backrooms_filing_cabinet.glb",
+          "position": [
+            -11.2,
+            0,
+            9.8
+          ],
+          "rotation": [
+            0,
+            42,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "backrooms_office_chair",
+          "type": "model",
+          "model": "/assets/models/props/backrooms_office_chair.glb",
+          "position": [
+            9.2,
+            0,
+            6.8
+          ],
+          "rotation": [
+            0,
+            -128,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "backrooms_stain_1",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -1.5,
+            0.03,
+            4.5
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            3.2,
+            2.1,
+            1
+          ],
+          "material": {
+            "color": "#6c6534",
+            "roughness": 1,
+            "metalness": 0,
+            "emissiveColor": "#221e10",
+            "emissiveIntensity": 0.02
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#d8d084",
+        "ringBaseIntensity": 0.1,
+        "ringHoverBoost": 0.46,
+        "rimBaseIntensity": 0.22,
+        "rimHoverBoost": 0.62,
+        "hazeBaseOpacity": 0.05,
+        "hazeHoverBoost": 0.09,
+        "pulseSpeed": 0.85,
+        "rotationSpeed": 0.03,
+        "hoverRotationBoost": 0.14,
+        "waveAmplitude": 0.004
+      }
+    },
+    "roman": {
+      "label": "Roman",
+      "disableBaseLights": false,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#7b2925",
+          "procedural": "pompeii-fresco",
+          "textureRepeat": [
+            5,
+            2
+          ],
+          "roughness": 0.9
+        },
+        "floorMaterial": {
+          "color": "#d5cec0",
+          "procedural": "mosaic",
+          "textureRepeat": [
+            6,
+            6
+          ],
+          "roughness": 0.84,
+          "metalness": 0.03
+        },
+        "ceilingMaterial": {
+          "color": "#f5efdf",
+          "procedural": "marble",
+          "textureRepeat": [
+            4,
+            4
+          ],
+          "roughness": 0.84
+        }
+      },
+      "fog": {
+        "color": "#a9856e",
+        "near": 20,
+        "far": 92
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#8a674f",
+          "intensity": 0.56
+        },
+        {
+          "type": "directional",
+          "color": "#fff2db",
+          "intensity": 2.15,
+          "position": [
+            -8,
+            8.4,
+            10.5
+          ],
+          "target": [
+            1.5,
+            0,
+            -8
+          ]
+        },
+        {
+          "type": "directional",
+          "color": "#ffe7c5",
+          "intensity": 1.05,
+          "position": [
+            11,
+            7.6,
+            8.5
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "type": "spot",
+          "color": "#ffecc9",
+          "intensity": 1.2,
+          "distance": 44,
+          "position": [
+            -10.8,
+            6.3,
+            -10.2
+          ],
+          "target": [
+            -8.3,
+            0,
+            -9.4
+          ],
+          "angle": 0.5,
+          "penumbra": 0.6
+        },
+        {
+          "type": "spot",
+          "color": "#ffecc9",
+          "intensity": 1.2,
+          "distance": 44,
+          "position": [
+            10.8,
+            6.3,
+            -10.2
+          ],
+          "target": [
+            8.3,
+            0,
+            -9.4
+          ],
+          "angle": 0.5,
+          "penumbra": 0.6
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.06,
+        "backrooms_buzz": 0,
+        "roman_aura": 1,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.04,
+        "neon_pulse": 0,
+        "winter_air": 0.08,
+        "chime_metal": 0.05
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 140,
+          "area": [
+            30,
+            7,
+            30
+          ],
+          "fallSpeed": 0.06,
+          "drift": 0.26,
+          "color": "#e9d8bc",
+          "size": 0.04,
+          "opacity": 0.17
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "roman_plinth",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.28,
+            0
+          ],
+          "scale": [
+            5.4,
+            0.56,
+            5.4
+          ],
+          "material": {
+            "color": "#ddd4c3",
+            "procedural": "marble",
+            "textureRepeat": [
+              2,
+              2
+            ],
+            "roughness": 0.8
+          }
+        },
+        {
+          "id": "roman_column_1",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            -10.2,
+            2.5,
+            -9.2
+          ],
+          "scale": [
+            0.72,
+            5,
+            0.72
+          ],
+          "material": {
+            "color": "#f1ebdb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              4
+            ],
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "roman_column_2",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            10.2,
+            2.5,
+            -9.2
+          ],
+          "scale": [
+            0.72,
+            5,
+            0.72
+          ],
+          "material": {
+            "color": "#f1ebdb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              4
+            ],
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "roman_column_3",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            -10.2,
+            2.5,
+            9.2
+          ],
+          "scale": [
+            0.72,
+            5,
+            0.72
+          ],
+          "material": {
+            "color": "#f1ebdb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              4
+            ],
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "roman_column_4",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            10.2,
+            2.5,
+            9.2
+          ],
+          "scale": [
+            0.72,
+            5,
+            0.72
+          ],
+          "material": {
+            "color": "#f1ebdb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              4
+            ],
+            "roughness": 0.72
+          }
+        },
+        {
+          "id": "roman_bust_pedestal_l",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -5.4,
+            0.6,
+            -10.8
+          ],
+          "scale": [
+            1.1,
+            1.2,
+            1.1
+          ],
+          "material": {
+            "color": "#e4dccb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              1
+            ],
+            "roughness": 0.7
+          }
+        },
+        {
+          "id": "roman_bust_l",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -5.4,
+            1.55,
+            -10.8
+          ],
+          "scale": [
+            0.55,
+            0.75,
+            0.55
+          ],
+          "material": {
+            "color": "#eee6d6",
+            "roughness": 0.78
+          }
+        },
+        {
+          "id": "roman_bust_pedestal_r",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            5.4,
+            0.6,
+            -10.8
+          ],
+          "scale": [
+            1.1,
+            1.2,
+            1.1
+          ],
+          "material": {
+            "color": "#e4dccb",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              1
+            ],
+            "roughness": 0.7
+          }
+        },
+        {
+          "id": "roman_bust_r",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            5.4,
+            1.55,
+            -10.8
+          ],
+          "scale": [
+            0.55,
+            0.75,
+            0.55
+          ],
+          "material": {
+            "color": "#eee6d6",
+            "roughness": 0.78
+          }
+        },
+        {
+          "id": "roman_panel_north",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            2.9,
+            -14.75
+          ],
+          "scale": [
+            24,
+            2.8,
+            0.06
+          ],
+          "material": {
+            "color": "#6f231e",
+            "procedural": "pompeii-fresco",
+            "textureRepeat": [
+              4,
+              1
+            ],
+            "roughness": 0.88
+          }
+        },
+        {
+          "id": "roman_panel_south",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            2.9,
+            14.75
+          ],
+          "scale": [
+            24,
+            2.8,
+            0.06
+          ],
+          "material": {
+            "color": "#6f231e",
+            "procedural": "pompeii-fresco",
+            "textureRepeat": [
+              4,
+              1
+            ],
+            "roughness": 0.88
+          }
+        },
+        {
+          "id": "roman_statue_center",
+          "type": "model",
+          "model": "/assets/models/props/roman_statue.glb",
+          "position": [
+            0,
+            0,
+            -0.2
+          ],
+          "rotation": [
+            0,
+            180,
+            0
+          ],
+          "scale": [
+            1.15,
+            1.15,
+            1.15
+          ]
+        },
+        {
+          "id": "roman_urn_left",
+          "type": "model",
+          "model": "/assets/models/props/roman_amphora.glb",
+          "position": [
+            -8.8,
+            0,
+            8.8
+          ],
+          "rotation": [
+            0,
+            18,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "roman_urn_right",
+          "type": "model",
+          "model": "/assets/models/props/roman_amphora.glb",
+          "position": [
+            8.8,
+            0,
+            8.8
+          ],
+          "rotation": [
+            0,
+            -18,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "roman_topiary_l",
+          "type": "model",
+          "model": "/assets/models/props/roman_topiary.glb",
+          "position": [
+            -11.8,
+            0,
+            -4.4
+          ],
+          "rotation": [
+            0,
+            30,
+            0
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ]
+        },
+        {
+          "id": "roman_topiary_r",
+          "type": "model",
+          "model": "/assets/models/props/roman_topiary.glb",
+          "position": [
+            11.8,
+            0,
+            -4.4
+          ],
+          "rotation": [
+            0,
+            -30,
+            0
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ]
+        },
+        {
+          "id": "roman_sun_patch_a",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -3.8,
+            0.03,
+            -6.2
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            4.5,
+            2.4,
+            1
+          ],
+          "material": {
+            "color": "#f5ddb0",
+            "roughness": 0.5,
+            "emissiveColor": "#f7dfb5",
+            "emissiveIntensity": 0.16
+          }
+        },
+        {
+          "id": "roman_sun_patch_b",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            4.2,
+            0.03,
+            -4.2
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            4,
+            2.1,
+            1
+          ],
+          "material": {
+            "color": "#f5ddb0",
+            "roughness": 0.5,
+            "emissiveColor": "#f7dfb5",
+            "emissiveIntensity": 0.16
+          }
+        }
+      ],
+      "lights": [
+        {
+          "index": 0,
+          "color": "#fff0d5",
+          "intensity": 0.72
+        },
+        {
+          "index": 1,
+          "color": "#ffecc7",
+          "intensity": 1.55
+        },
+        {
+          "index": 2,
+          "color": "#ffe5be",
+          "intensity": 1.15
+        }
+      ],
+      "portalStyle": {
+        "color": "#f2cb93",
+        "ringBaseIntensity": 0.16,
+        "ringHoverBoost": 0.54,
+        "rimBaseIntensity": 0.38,
+        "rimHoverBoost": 0.82,
+        "hazeBaseOpacity": 0.08,
+        "hazeHoverBoost": 0.12,
+        "pulseSpeed": 1.2,
+        "rotationSpeed": 0.1,
+        "hoverRotationBoost": 0.26,
+        "waveAmplitude": 0.006
+      }
+    },
+    "inferno": {
+      "label": "Inferno",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#391108",
+          "procedural": "flame",
+          "textureRepeat": [
+            6,
+            2
+          ],
+          "textureScroll": [
+            0,
+            0.35
+          ],
+          "emissiveMap": "$map",
+          "emissiveColor": "#ff5b1f",
+          "emissiveIntensity": 0.65,
+          "roughness": 0.9,
+          "metalness": 0.01
+        },
+        "floorMaterial": {
+          "color": "#2a211d",
+          "procedural": "concrete",
+          "textureRepeat": [
+            8,
+            8
+          ],
+          "roughness": 0.95
+        },
+        "ceilingMaterial": {
+          "color": "#1f1714"
+        }
+      },
+      "fog": {
+        "color": "#2f120c",
+        "near": 5,
+        "far": 38
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#3f170e",
+          "intensity": 0.3
+        },
+        {
+          "type": "point",
+          "color": "#ff5a21",
+          "intensity": 1.35,
+          "distance": 20,
+          "position": [
+            -12,
+            1,
+            -8
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#ff6e2d",
+          "intensity": 1.35,
+          "distance": 20,
+          "position": [
+            12,
+            1,
+            -8
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#ff4b18",
+          "intensity": 1.1,
+          "distance": 18,
+          "position": [
+            -12,
+            1,
+            8
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#ff4b18",
+          "intensity": 1.1,
+          "distance": 18,
+          "position": [
+            12,
+            1,
+            8
+          ]
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.03,
+        "backrooms_buzz": 0.05,
+        "roman_aura": 0,
+        "inferno_rumble": 1,
+        "purgatory_void": 0.15,
+        "neon_pulse": 0,
+        "winter_air": 0,
+        "chime_metal": 0
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "embers",
+          "count": 260,
+          "area": [
+            28,
+            8,
+            28
+          ],
+          "riseSpeed": 0.85,
+          "drift": 0.6,
+          "color": "#ff7e2e",
+          "size": 0.06,
+          "opacity": 0.58,
+          "additive": true
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "inferno_pillar_w",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -9,
+            2.2,
+            -3
+          ],
+          "scale": [
+            2.1,
+            4.4,
+            2.1
+          ],
+          "material": {
+            "color": "#271917",
+            "roughness": 0.92,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "inferno_pillar_e",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            9,
+            2.2,
+            -3
+          ],
+          "scale": [
+            2.1,
+            4.4,
+            2.1
+          ],
+          "material": {
+            "color": "#271917",
+            "roughness": 0.92,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "inferno_brazier_l_base",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            -5.6,
+            0.55,
+            4.8
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ],
+          "material": {
+            "color": "#3a2b22",
+            "roughness": 0.68,
+            "metalness": 0.12
+          }
+        },
+        {
+          "id": "inferno_brazier_l_fire",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -5.6,
+            1.22,
+            4.8
+          ],
+          "scale": [
+            0.7,
+            0.55,
+            0.7
+          ],
+          "material": {
+            "color": "#ff6629",
+            "procedural": "flame",
+            "textureRepeat": [
+              1,
+              1
+            ],
+            "textureScroll": [
+              0,
+              0.85
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#ff6a2f",
+            "emissiveIntensity": 0.95,
+            "roughness": 0.35,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "inferno_brazier_r_base",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            5.6,
+            0.55,
+            4.8
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ],
+          "material": {
+            "color": "#3a2b22",
+            "roughness": 0.68,
+            "metalness": 0.12
+          }
+        },
+        {
+          "id": "inferno_brazier_r_fire",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            5.6,
+            1.22,
+            4.8
+          ],
+          "scale": [
+            0.7,
+            0.55,
+            0.7
+          ],
+          "material": {
+            "color": "#ff6629",
+            "procedural": "flame",
+            "textureRepeat": [
+              1,
+              1
+            ],
+            "textureScroll": [
+              0,
+              0.85
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#ff6a2f",
+            "emissiveIntensity": 0.95,
+            "roughness": 0.35,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "inferno_fissure",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.04,
+            -1.5
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            8,
+            2.6,
+            1
+          ],
+          "material": {
+            "color": "#ff5920",
+            "procedural": "flame",
+            "textureRepeat": [
+              3,
+              1
+            ],
+            "textureScroll": [
+              0.12,
+              0
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#ff5a1f",
+            "emissiveIntensity": 0.8,
+            "roughness": 0.2
+          }
+        },
+        {
+          "id": "inferno_chain_l",
+          "type": "model",
+          "model": "/assets/models/props/inferno_chain_bundle.glb",
+          "position": [
+            -9.2,
+            0,
+            -3.4
+          ],
+          "rotation": [
+            0,
+            35,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inferno_chain_r",
+          "type": "model",
+          "model": "/assets/models/props/inferno_chain_bundle.glb",
+          "position": [
+            9.2,
+            0,
+            -3.4
+          ],
+          "rotation": [
+            0,
+            -35,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "inferno_skull_pile",
+          "type": "model",
+          "model": "/assets/models/props/inferno_skull_pile.glb",
+          "position": [
+            0,
+            0,
+            10.4
+          ],
+          "rotation": [
+            0,
+            180,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.2
+          ]
+        },
+        {
+          "id": "inferno_rune_ring",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.05,
+            -8.8
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            6.8,
+            6.8,
+            1
+          ],
+          "material": {
+            "color": "#ff6c2b",
+            "procedural": "flame",
+            "textureRepeat": [
+              1.6,
+              1.6
+            ],
+            "textureScroll": [
+              0.1,
+              0.1
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#ff6226",
+            "emissiveIntensity": 0.85,
+            "roughness": 0.25
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#ff5f24",
+        "ringBaseIntensity": 0.25,
+        "ringHoverBoost": 0.8,
+        "rimBaseIntensity": 0.5,
+        "rimHoverBoost": 1.22,
+        "hazeBaseOpacity": 0.15,
+        "hazeHoverBoost": 0.2,
+        "pulseSpeed": 3.2,
+        "rotationSpeed": 0.24,
+        "hoverRotationBoost": 0.6,
+        "waveAmplitude": 0.013
+      }
+    },
+    "purgatory": {
+      "label": "Purgatory",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#8f8f8b",
+          "procedural": "checkerboard",
+          "textureRepeat": [
+            10,
+            4
+          ],
+          "roughness": 0.92,
+          "metalness": 0.03
+        },
+        "floorMaterial": {
+          "color": "#b8b8b2",
+          "procedural": "checkerboard",
+          "textureRepeat": [
+            14,
+            14
+          ],
+          "roughness": 0.9,
+          "metalness": 0.05
+        },
+        "ceilingMaterial": {
+          "color": "#171717"
+        }
+      },
+      "fog": {
+        "color": "#8d8e87",
+        "near": 8,
+        "far": 36
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#353535",
+          "intensity": 0.08
+        },
+        {
+          "type": "spot",
+          "color": "#f3f3ee",
+          "intensity": 2.1,
+          "distance": 40,
+          "position": [
+            0,
+            7.6,
+            0
+          ],
+          "target": [
+            0,
+            0,
+            0
+          ],
+          "angle": 0.42,
+          "penumbra": 0.5
+        },
+        {
+          "type": "spot",
+          "color": "#d8d8d8",
+          "intensity": 1.1,
+          "distance": 30,
+          "position": [
+            -8,
+            6.8,
+            -8
+          ],
+          "target": [
+            -8,
+            0,
+            -8
+          ],
+          "angle": 0.32,
+          "penumbra": 0.38
+        },
+        {
+          "type": "spot",
+          "color": "#d8d8d8",
+          "intensity": 1.1,
+          "distance": 30,
+          "position": [
+            8,
+            6.8,
+            8
+          ],
+          "target": [
+            8,
+            0,
+            8
+          ],
+          "angle": 0.32,
+          "penumbra": 0.38
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.04,
+        "backrooms_buzz": 0,
+        "roman_aura": 0.06,
+        "inferno_rumble": 0,
+        "purgatory_void": 1,
+        "neon_pulse": 0,
+        "winter_air": 0,
+        "chime_metal": 0.08
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 220,
+          "area": [
+            30,
+            8,
+            30
+          ],
+          "fallSpeed": 0.1,
+          "drift": 0.38,
+          "color": "#bfc3cd",
+          "size": 0.045,
+          "opacity": 0.18
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "purgatory_monolith_a",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -8,
+            2.4,
+            -8
+          ],
+          "scale": [
+            1.8,
+            4.8,
+            1.8
+          ],
+          "material": {
+            "color": "#171717",
+            "roughness": 0.7,
+            "metalness": 0.2
+          }
+        },
+        {
+          "id": "purgatory_monolith_b",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            8,
+            2.2,
+            8
+          ],
+          "scale": [
+            1.5,
+            4.4,
+            1.5
+          ],
+          "material": {
+            "color": "#141414",
+            "roughness": 0.7,
+            "metalness": 0.18
+          }
+        },
+        {
+          "id": "purgatory_ring",
+          "type": "primitive",
+          "primitive": "torus",
+          "position": [
+            0,
+            2.8,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.3,
+            2.3,
+            0.4
+          ],
+          "material": {
+            "color": "#f4f4f1",
+            "roughness": 0.2,
+            "metalness": 0.75,
+            "emissiveColor": "#cfd0d1",
+            "emissiveIntensity": 0.15
+          }
+        },
+        {
+          "id": "purgatory_gate_l",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -3.4,
+            2.1,
+            10.8
+          ],
+          "scale": [
+            0.35,
+            4.2,
+            2.8
+          ],
+          "material": {
+            "color": "#101010",
+            "roughness": 0.4,
+            "metalness": 0.35
+          }
+        },
+        {
+          "id": "purgatory_gate_r",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            3.4,
+            2.1,
+            10.8
+          ],
+          "scale": [
+            0.35,
+            4.2,
+            2.8
+          ],
+          "material": {
+            "color": "#101010",
+            "roughness": 0.4,
+            "metalness": 0.35
+          }
+        },
+        {
+          "id": "purgatory_gate_top",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            4.2,
+            10.8
+          ],
+          "scale": [
+            7.2,
+            0.3,
+            2.8
+          ],
+          "material": {
+            "color": "#1a1a1a",
+            "roughness": 0.4,
+            "metalness": 0.35
+          }
+        },
+        {
+          "id": "purgatory_obelisk",
+          "type": "model",
+          "model": "/assets/models/props/purgatory_obelisk.glb",
+          "position": [
+            0,
+            0,
+            -10.2
+          ],
+          "rotation": [
+            0,
+            180,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        {
+          "id": "purgatory_frame_a",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -10.8,
+            2.6,
+            0
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.12,
+            2.8,
+            5.8
+          ],
+          "material": {
+            "color": "#202226",
+            "roughness": 0.42,
+            "metalness": 0.56
+          }
+        },
+        {
+          "id": "purgatory_frame_b",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            10.8,
+            2.6,
+            0
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            0.12,
+            2.8,
+            5.8
+          ],
+          "material": {
+            "color": "#202226",
+            "roughness": 0.42,
+            "metalness": 0.56
+          }
+        },
+        {
+          "id": "purgatory_shard_a",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            1.5,
+            6.6
+          ],
+          "rotation": [
+            8,
+            180,
+            0
+          ],
+          "scale": [
+            2.4,
+            1.1,
+            1
+          ],
+          "material": {
+            "color": "#dfe2ea",
+            "roughness": 0.22,
+            "metalness": 0.7,
+            "emissiveColor": "#bfc4cd",
+            "emissiveIntensity": 0.08
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#d6d8de",
+        "ringBaseIntensity": 0.14,
+        "ringHoverBoost": 0.62,
+        "rimBaseIntensity": 0.24,
+        "rimHoverBoost": 0.82,
+        "hazeBaseOpacity": 0.08,
+        "hazeHoverBoost": 0.15,
+        "pulseSpeed": 1.75,
+        "rotationSpeed": 0.1,
+        "hoverRotationBoost": 0.34,
+        "waveAmplitude": 0.007
+      }
+    },
+    "neon": {
+      "label": "Neon",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#0c1017",
+          "procedural": "neon-grid",
+          "textureRepeat": [
+            6,
+            2
+          ],
+          "textureScroll": [
+            0,
+            0.03
+          ],
+          "emissiveMap": "$map",
+          "emissiveColor": "#5ef9ff",
+          "emissiveIntensity": 0.9,
+          "roughness": 0.6,
+          "metalness": 0.2
+        },
+        "floorMaterial": {
+          "color": "#090c12",
+          "procedural": "neon-grid",
+          "textureRepeat": [
+            7,
+            7
+          ],
+          "emissiveMap": "$map",
+          "emissiveColor": "#c54dff",
+          "emissiveIntensity": 0.3,
+          "roughness": 0.7,
+          "metalness": 0.24
+        },
+        "ceilingMaterial": {
+          "color": "#0d1017"
+        }
+      },
+      "fog": {
+        "color": "#11192a",
+        "near": 8,
+        "far": 58
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#20334a",
+          "intensity": 0.2
+        },
+        {
+          "type": "point",
+          "color": "#38f5ff",
+          "intensity": 1.15,
+          "distance": 22,
+          "position": [
+            -10,
+            4.5,
+            -6
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#d84bff",
+          "intensity": 1.15,
+          "distance": 22,
+          "position": [
+            10,
+            4.5,
+            -6
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#69a2ff",
+          "intensity": 0.95,
+          "distance": 20,
+          "position": [
+            0,
+            3.5,
+            8
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#4ad3ff",
+          "intensity": 0.9,
+          "distance": 20,
+          "position": [
+            0,
+            0.9,
+            0
+          ]
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.02,
+        "backrooms_buzz": 0.14,
+        "roman_aura": 0,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.08,
+        "neon_pulse": 1,
+        "winter_air": 0,
+        "chime_metal": 0
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 210,
+          "area": [
+            30,
+            8,
+            30
+          ],
+          "fallSpeed": 0.06,
+          "drift": 0.58,
+          "color": "#69d7ff",
+          "size": 0.05,
+          "opacity": 0.22,
+          "additive": true
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "neon_pool",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            0,
+            0.2,
+            0
+          ],
+          "scale": [
+            3.4,
+            0.06,
+            3.4
+          ],
+          "material": {
+            "color": "#3ab7d8",
+            "procedural": "water",
+            "textureRepeat": [
+              4,
+              4
+            ],
+            "textureScroll": [
+              0.16,
+              0.08
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#55d4ff",
+            "emissiveIntensity": 0.35,
+            "roughness": 0.32,
+            "metalness": 0.22
+          }
+        },
+        {
+          "id": "neon_channel_west",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -6.2,
+            0.16,
+            0
+          ],
+          "scale": [
+            0.8,
+            0.06,
+            11
+          ],
+          "material": {
+            "color": "#38bee0",
+            "procedural": "water",
+            "textureRepeat": [
+              1,
+              10
+            ],
+            "textureScroll": [
+              0,
+              0.5
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#49d9ff",
+            "emissiveIntensity": 0.34,
+            "roughness": 0.24,
+            "metalness": 0.2
+          }
+        },
+        {
+          "id": "neon_channel_east",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            6.2,
+            0.16,
+            0
+          ],
+          "scale": [
+            0.8,
+            0.06,
+            11
+          ],
+          "material": {
+            "color": "#38bee0",
+            "procedural": "water",
+            "textureRepeat": [
+              1,
+              10
+            ],
+            "textureScroll": [
+              0,
+              -0.5
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#49d9ff",
+            "emissiveIntensity": 0.34,
+            "roughness": 0.24,
+            "metalness": 0.2
+          }
+        },
+        {
+          "id": "neon_pylon_w",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -10.5,
+            2.1,
+            2.5
+          ],
+          "scale": [
+            0.8,
+            4.2,
+            0.8
+          ],
+          "material": {
+            "color": "#17384a",
+            "roughness": 0.4,
+            "metalness": 0.42,
+            "emissiveColor": "#34e8ff",
+            "emissiveIntensity": 0.42
+          }
+        },
+        {
+          "id": "neon_pylon_e",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            10.5,
+            2.1,
+            2.5
+          ],
+          "scale": [
+            0.8,
+            4.2,
+            0.8
+          ],
+          "material": {
+            "color": "#301c4a",
+            "roughness": 0.4,
+            "metalness": 0.42,
+            "emissiveColor": "#d94bff",
+            "emissiveIntensity": 0.42
+          }
+        },
+        {
+          "id": "neon_orb",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            0,
+            2.4,
+            -9.5
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ],
+          "material": {
+            "color": "#66e2ff",
+            "emissiveColor": "#66e2ff",
+            "emissiveIntensity": 0.75,
+            "roughness": 0.25,
+            "metalness": 0.45
+          }
+        },
+        {
+          "id": "neon_server_rack_l",
+          "type": "model",
+          "model": "/assets/models/props/neon_server_rack.glb",
+          "position": [
+            -12.2,
+            0,
+            -8.4
+          ],
+          "rotation": [
+            0,
+            25,
+            0
+          ],
+          "scale": [
+            1.05,
+            1.05,
+            1.05
+          ]
+        },
+        {
+          "id": "neon_server_rack_r",
+          "type": "model",
+          "model": "/assets/models/props/neon_server_rack.glb",
+          "position": [
+            12.2,
+            0,
+            -8.4
+          ],
+          "rotation": [
+            0,
+            -25,
+            0
+          ],
+          "scale": [
+            1.05,
+            1.05,
+            1.05
+          ]
+        },
+        {
+          "id": "neon_holo_totem",
+          "type": "model",
+          "model": "/assets/models/props/neon_holo_totem.glb",
+          "position": [
+            0,
+            0,
+            10.6
+          ],
+          "rotation": [
+            0,
+            180,
+            0
+          ],
+          "scale": [
+            1.15,
+            1.15,
+            1.15
+          ]
+        },
+        {
+          "id": "neon_strip_l",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -14.7,
+            3.4,
+            0
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            11,
+            0.45,
+            1
+          ],
+          "material": {
+            "color": "#49eaff",
+            "emissiveColor": "#49eaff",
+            "emissiveIntensity": 0.82,
+            "roughness": 0.28
+          }
+        },
+        {
+          "id": "neon_strip_r",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            14.7,
+            3.4,
+            0
+          ],
+          "rotation": [
+            0,
+            -90,
+            0
+          ],
+          "scale": [
+            11,
+            0.45,
+            1
+          ],
+          "material": {
+            "color": "#d058ff",
+            "emissiveColor": "#d058ff",
+            "emissiveIntensity": 0.82,
+            "roughness": 0.28
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#4fe9ff",
+        "ringBaseIntensity": 0.26,
+        "ringHoverBoost": 0.95,
+        "rimBaseIntensity": 0.5,
+        "rimHoverBoost": 1.32,
+        "hazeBaseOpacity": 0.16,
+        "hazeHoverBoost": 0.2,
+        "pulseSpeed": 3.8,
+        "rotationSpeed": 0.32,
+        "hoverRotationBoost": 0.9,
+        "waveAmplitude": 0.014
+      },
+      "portalStyles": {
+        "shop": {
+          "color": "#4fe9ff"
+        },
+        "contact": {
+          "color": "#ff64e9"
+        },
+        "youtube": {
+          "color": "#ff6a72"
+        },
+        "discord": {
+          "color": "#8d7dff"
+        },
+        "github": {
+          "color": "#89ffd0"
+        }
+      }
+    },
+    "winter": {
+      "label": "Winter",
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#aab7c4",
+          "texture": "/assets/textures/wall_winter.webp",
+          "textureRepeat": [
+            6,
+            2
+          ]
+        },
+        "floorMaterial": {
+          "color": "#d4dee8",
+          "texture": "/assets/textures/floor_winter.webp",
+          "textureRepeat": [
+            7,
+            7
+          ]
+        },
+        "ceilingMaterial": {
+          "color": "#cad8e5"
+        }
+      },
+      "fog": {
+        "color": "#cedeee",
+        "near": 10,
+        "far": 60
+      },
+      "lights": [
+        {
+          "index": 1,
+          "color": "#daf4ff",
+          "intensity": 1.15
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.1,
+        "roman_aura": 0.12,
+        "purgatory_void": 0.1,
+        "neon_pulse": 0,
+        "winter_air": 1,
+        "inferno_rumble": 0,
+        "backrooms_buzz": 0,
+        "chime_metal": 0
+      },
+      "particles": {
+        "effect": {
+          "enabled": false,
+          "type": "snow"
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "winter_tree",
+          "type": "model",
+          "model": "/assets/models/props/christmas_tree.glb",
+          "position": [
+            6.3,
+            0,
+            -6.5
+          ],
+          "rotation": [
+            0,
+            -25,
+            0
+          ],
+          "scale": [
+            1.1,
+            1.1,
+            1.1
+          ]
+        },
+        {
+          "id": "winter_snow_mound_l",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -6.5,
+            0.3,
+            4.8
+          ],
+          "scale": [
+            1.6,
+            0.5,
+            1.4
+          ],
+          "material": {
+            "color": "#e8f1fb",
+            "roughness": 0.94,
+            "metalness": 0
+          }
+        },
+        {
+          "id": "winter_snow_mound_r",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            6.2,
+            0.3,
+            5.4
+          ],
+          "scale": [
+            1.5,
+            0.48,
+            1.4
+          ],
+          "material": {
+            "color": "#e8f1fb",
+            "roughness": 0.94,
+            "metalness": 0
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#b2e2ff",
+        "ringBaseIntensity": 0.15,
+        "ringHoverBoost": 0.55,
+        "rimBaseIntensity": 0.34,
+        "rimHoverBoost": 0.9,
+        "hazeBaseOpacity": 0.1,
+        "hazeHoverBoost": 0.13,
+        "pulseSpeed": 1.7,
+        "rotationSpeed": 0.11,
+        "hoverRotationBoost": 0.26,
+        "waveAmplitude": 0.006
+      }
+    }
+  }
+}

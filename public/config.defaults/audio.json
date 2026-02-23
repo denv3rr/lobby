@@ -1,0 +1,89 @@
+{
+  "ambientLayers": [
+    {
+      "id": "lobby_pad",
+      "volume": 0.22,
+      "synth": {
+        "type": "fog",
+        "frequency": 128,
+        "cutoff": 720
+      }
+    },
+    {
+      "id": "backrooms_buzz",
+      "volume": 0.21,
+      "synth": {
+        "type": "industrial",
+        "frequency": 60,
+        "hissFrequency": 2100,
+        "flutterRate": 0.36
+      }
+    },
+    {
+      "id": "roman_aura",
+      "volume": 0.18,
+      "synth": {
+        "type": "fog",
+        "frequency": 150,
+        "cutoff": 980
+      }
+    },
+    {
+      "id": "inferno_rumble",
+      "volume": 0.24,
+      "synth": {
+        "type": "rumble",
+        "frequency": 43
+      }
+    },
+    {
+      "id": "purgatory_void",
+      "volume": 0.2,
+      "synth": {
+        "type": "radio",
+        "frequency": 980,
+        "crackleMs": 2800
+      }
+    },
+    {
+      "id": "neon_pulse",
+      "volume": 0.18,
+      "synth": {
+        "type": "lowPulse",
+        "frequency": 50,
+        "lfoRate": 0.2
+      }
+    },
+    {
+      "id": "winter_air",
+      "volume": 0.16,
+      "synth": {
+        "type": "wind",
+        "frequency": 860
+      }
+    },
+    {
+      "id": "chime_metal",
+      "volume": 0.07,
+      "synth": {
+        "type": "distantMetal",
+        "baseFrequency": 210,
+        "intervalMs": 13000
+      }
+    },
+    {
+      "id": "night_woodland_wind",
+      "volume": 0.1,
+      "alwaysOn": true,
+      "synth": {
+        "type": "wind",
+        "frequency": 760
+      }
+    }
+  ],
+  "sfx": {
+    "footstepTile": "/assets/audio/footstep_tile.wav",
+    "footstepCarpet": "/assets/audio/footstep_carpet.wav"
+  },
+  "zones": []
+}

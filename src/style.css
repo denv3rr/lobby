@@ -1,0 +1,179 @@
+:root {
+  color-scheme: dark;
+  --bg-0: #181a16;
+  --bg-1: #2a2e2b;
+  --line: rgba(194, 205, 196, 0.35);
+  --text: #f0f0e4;
+  --muted: #b0b6aa;
+  --accent: #a8d7d4;
+  --panel: rgba(13, 15, 12, 0.68);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: "Trebuchet MS", "Verdana", sans-serif;
+  background: radial-gradient(circle at 30% 15%, var(--bg-1), var(--bg-0) 62%);
+  color: var(--text);
+}
+
+.lobby-root,
+.viewport {
+  width: 100%;
+  height: 100%;
+}
+
+.viewport canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.ui-layer {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+}
+
+.settings-panel {
+  pointer-events: auto;
+  position: absolute;
+  top: 0.9rem;
+  left: 0.9rem;
+  width: 18rem;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  backdrop-filter: blur(4px);
+}
+
+.settings-panel h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.settings-panel label {
+  display: block;
+  font-size: 0.78rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.72rem;
+}
+
+.settings-panel select {
+  width: 100%;
+  margin-top: 0.38rem;
+  padding: 0.44rem;
+  color: var(--text);
+  background: rgba(31, 33, 31, 0.95);
+  border: 1px solid rgba(186, 194, 186, 0.32);
+}
+
+.control-hint {
+  margin: 0.6rem 0 0;
+  font-size: 0.78rem;
+  color: #ccd3c9;
+}
+
+.portal-prompt {
+  position: absolute;
+  left: 50%;
+  bottom: 1.15rem;
+  transform: translateX(-50%);
+  min-height: 1.2rem;
+  padding: 0.25rem 0.9rem;
+  border: 1px solid rgba(179, 212, 208, 0.5);
+  background: rgba(9, 12, 10, 0.62);
+  color: var(--accent);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sound-gate {
+  pointer-events: auto;
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(7, 8, 7, 0.48);
+}
+
+.sound-card {
+  width: min(24rem, calc(100vw - 2rem));
+  border: 1px solid rgba(196, 212, 197, 0.45);
+  background: rgba(11, 13, 11, 0.92);
+  padding: 1rem;
+}
+
+.sound-card h2 {
+  margin: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 1.05rem;
+}
+
+.sound-card p {
+  margin: 0.45rem 0 1rem;
+  color: var(--muted);
+}
+
+.sound-card button {
+  background: #203235;
+  border: 1px solid rgba(169, 226, 217, 0.55);
+  color: #e2f7f2;
+  padding: 0.6rem 0.9rem;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fallback-panel {
+  pointer-events: auto;
+  position: absolute;
+  inset: 1rem;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: rgba(16, 18, 16, 0.94);
+  padding: 1rem;
+}
+
+.fallback-panel ul {
+  list-style: none;
+  padding: 0;
+}
+
+.fallback-panel li {
+  margin: 0.55rem 0;
+}
+
+.fallback-panel a {
+  color: #9bcde6;
+}
+
+.hidden {
+  display: none !important;
+}
+
+@media (max-width: 780px) {
+  .settings-panel {
+    width: calc(100vw - 1.8rem);
+    max-width: 18rem;
+  }
+
+  .portal-prompt {
+    width: calc(100vw - 2rem);
+    text-align: center;
+  }
+}

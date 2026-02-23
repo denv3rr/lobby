@@ -1,0 +1,81 @@
+{
+  "enabled": true,
+  "rooms": {
+    "shop": {
+      "label": "Gift Shop",
+      "origin": [-19.3, 0, 0],
+      "size": [8.6, 4.6, 9.6],
+      "accentColor": "#8ec8d3",
+      "titleColor": "#e8f6f8",
+      "connectorDoor": {
+        "width": 2.4,
+        "height": 3
+      },
+      "card": {
+        "width": 1.45,
+        "height": 1.9
+      },
+      "expansion": {
+        "step": [0, 0, -11.8]
+      },
+      "layout": {
+        "maxItems": 120,
+        "displayY": 2.55,
+        "horizontalGap": 0.42,
+        "wallMargin": 0.72,
+        "cardOffset": 0.08
+      }
+    },
+    "projects": {
+      "label": "Projects",
+      "origin": [19.3, 0, 0],
+      "size": [8.6, 4.6, 9.6],
+      "accentColor": "#b9a2d8",
+      "titleColor": "#f2eaff",
+      "connectorDoor": {
+        "width": 2.4,
+        "height": 3
+      },
+      "card": {
+        "width": 1.45,
+        "height": 1.9
+      },
+      "expansion": {
+        "step": [0, 0, -11.8]
+      },
+      "layout": {
+        "maxItems": 120,
+        "displayY": 2.55,
+        "horizontalGap": 0.42,
+        "wallMargin": 0.72,
+        "cardOffset": 0.08
+      }
+    }
+  },
+  "themeContent": {
+    "default": {
+      "shop": { "tagsAny": [] },
+      "projects": { "tagsAny": ["core"] }
+    },
+    "inferno": {
+      "shop": { "tagsAny": ["inferno", "neon"] },
+      "projects": { "tagsAny": ["inferno", "core"] }
+    },
+    "backrooms": {
+      "shop": { "tagsAny": ["backrooms", "purgatory"] },
+      "projects": { "tagsAny": ["backrooms", "core"] }
+    },
+    "roman": {
+      "shop": { "tagsAny": ["roman", "lobby"] },
+      "projects": { "tagsAny": ["roman", "core"] }
+    },
+    "neon": {
+      "shop": { "tagsAny": ["neon", "inferno"] },
+      "projects": { "tagsAny": ["neon", "core"] }
+    },
+    "winter": {
+      "shop": { "tagsAny": ["winter", "lobby"] },
+      "projects": { "tagsAny": ["winter", "core"] }
+    }
+  }
+}

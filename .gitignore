@@ -1,0 +1,34 @@
+node_modules/
+dist/
+.DS_Store
+Thumbs.db
+*.log
+
+# Private agent planning
+agents.md
+AGENTS.md
+_agents/
+.agents/
+planning-private/
+private-planning/
+private-notes/
+notes-private/
+scratch-private/
+*.private.md
+docs/
+
+# Local runtime config overrides (dev-only)
+public/config/*.json
+!public/config/README.md
+
+# Editor and local env
+.vscode/
+.idea/
+.codex/
+.env
+.env.*
+*.local
+*.local.json
+*.secret
+*.pem
+*.key

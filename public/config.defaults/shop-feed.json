@@ -1,0 +1,54 @@
+{
+  "meta": {
+    "source": "https://seperet.com/shop",
+    "fetchedAt": "2026-02-23T00:00:00.000Z",
+    "count": 5
+  },
+  "items": [
+    {
+      "id": "mint-reaper-hoodie",
+      "title": "Mint Reaper Hoodie",
+      "url": "https://seperet.com/shop/p/mint-reaper-hoodie",
+      "image": null,
+      "price": null,
+      "currency": "USD",
+      "tags": ["lobby", "backrooms", "purgatory"]
+    },
+    {
+      "id": "reaper-inferno-hoodie",
+      "title": "Reaper Inferno Hoodie",
+      "url": "https://seperet.com/shop/p/reaper-inferno-hoodie",
+      "image": null,
+      "price": null,
+      "currency": "USD",
+      "tags": ["inferno", "neon"]
+    },
+    {
+      "id": "sep-logo-hoodie",
+      "title": "Sep Logo Hoodie",
+      "url": "https://seperet.com/shop/p/sep-logo-hoodie",
+      "image": null,
+      "price": null,
+      "currency": "USD",
+      "tags": ["lobby", "roman"]
+    },
+    {
+      "id": "sep-logo-crewneck",
+      "title": "Sep Logo Crewneck",
+      "url": "https://seperet.com/shop/p/sep-logo-crewneck",
+      "image": null,
+      "price": null,
+      "currency": "USD",
+      "tags": ["roman", "winter"]
+    },
+    {
+      "id": "sep-logo-beanie",
+      "title": "Sep Logo Beanie",
+      "url": "https://seperet.com/shop/p/sep-logo-beanie",
+      "image": null,
+      "price": null,
+      "currency": "USD",
+      "tags": ["winter", "backrooms"]
+    }
+  ]
+}
