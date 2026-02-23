@@ -38,9 +38,6 @@ async function loadJson(path) {
 }
 
 async function loadRuntimeConfig(fileName) {
-  if (import.meta.env.PROD) {
-    return loadJson(`config.defaults/${fileName}`);
-  }
   try {
     return await loadJson(`config/${fileName}`);
   } catch {
@@ -49,13 +46,6 @@ async function loadRuntimeConfig(fileName) {
 }
 
 async function loadOptionalRuntimeConfig(fileName) {
-  if (import.meta.env.PROD) {
-    try {
-      return await loadJson(`config.defaults/${fileName}`);
-    } catch {
-      return null;
-    }
-  }
   try {
     return await loadRuntimeConfig(fileName);
   } catch {
@@ -175,7 +165,6 @@ async function boot() {
   let loadedThemesConfig = null;
   let availableThemeIds = [];
   let audioReady = false;
-  let removeAutoUnlock = null;
   let getInteractionTargets = () => [];
 
   const ui = createOverlay({
@@ -185,9 +174,10 @@ async function boot() {
     onEnableSound: async () => {
       if (audioSystem) {
         audioReady = await audioSystem.enable();
-        if (audioReady && removeAutoUnlock) {
-          removeAutoUnlock();
-          removeAutoUnlock = null;
+        if (audioReady) {
+          ui.hideSoundGate();
+        } else {
+          ui.showSoundGate();
         }
       }
     },
@@ -296,40 +286,7 @@ async function boot() {
 
   audioSystem = new AudioSystem(audioConfig);
   audioSystem.initialize();
-  audioReady = await audioSystem.autoEnable();
-
-  if (!audioReady) {
-    const unlockAudio = async () => {
-      if (audioReady) {
-        return;
-      }
-      audioReady = await audioSystem.enable();
-      if (audioReady) {
-        ui.hideSoundGate();
-        if (removeAutoUnlock) {
-          removeAutoUnlock();
-          removeAutoUnlock = null;
-        }
-      } else {
-        ui.showSoundGate();
-      }
-    };
-
-    const handlePointer = () => {
-      unlockAudio();
-    };
-    const handleKey = () => {
-      unlockAudio();
-    };
-
-    window.addEventListener("pointerdown", handlePointer, { passive: true });
-    window.addEventListener("keydown", handleKey);
-    removeAutoUnlock = () => {
-      window.removeEventListener("pointerdown", handlePointer);
-      window.removeEventListener("keydown", handleKey);
-    };
-    ui.showSoundGate();
-  }
+  ui.showSoundGate();
 
   themeSystem = new ThemeSystem({
     scene: rendererContext.scene,
@@ -460,9 +417,6 @@ async function boot() {
   });
 
   window.addEventListener("beforeunload", () => {
-    if (removeAutoUnlock) {
-      removeAutoUnlock();
-    }
     controls?.dispose?.();
     interactionSystem?.dispose?.();
     themeSystem?.dispose?.();

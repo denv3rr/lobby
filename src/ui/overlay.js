@@ -61,7 +61,6 @@ export function createOverlay({
     if (onEnableSound) {
       await onEnableSound();
     }
-    soundGate.classList.add("hidden");
   });
 
   qualitySelect.addEventListener("change", () => {
