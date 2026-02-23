@@ -26,7 +26,6 @@
     },
     "wallMaterial": {
       "color": "#7b7a6f",
-      "texture": "/assets/textures/wall_default.webp",
       "textureRepeat": [
         6,
         2
@@ -34,7 +33,6 @@
     },
     "floorMaterial": {
       "color": "#616157",
-      "texture": "/assets/textures/floor_tile_default.webp",
       "textureRepeat": [
         8,
         8

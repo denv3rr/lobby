@@ -81,9 +81,6 @@
       }
     }
   ],
-  "sfx": {
-    "footstepTile": "/assets/audio/footstep_tile.wav",
-    "footstepCarpet": "/assets/audio/footstep_carpet.wav"
-  },
+  "sfx": {},
   "zones": []
 }

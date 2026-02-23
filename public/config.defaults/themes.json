@@ -2583,7 +2583,6 @@
       "roomOverrides": {
         "wallMaterial": {
           "color": "#aab7c4",
-          "texture": "/assets/textures/wall_winter.webp",
           "textureRepeat": [
             6,
             2
@@ -2591,7 +2590,6 @@
         },
         "floorMaterial": {
           "color": "#d4dee8",
-          "texture": "/assets/textures/floor_winter.webp",
           "textureRepeat": [
             7,
             7

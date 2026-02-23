@@ -38,6 +38,9 @@ async function loadJson(path) {
 }
 
 async function loadRuntimeConfig(fileName) {
+  if (import.meta.env.PROD) {
+    return loadJson(`config.defaults/${fileName}`);
+  }
   try {
     return await loadJson(`config/${fileName}`);
   } catch {
@@ -46,6 +49,13 @@ async function loadRuntimeConfig(fileName) {
 }
 
 async function loadOptionalRuntimeConfig(fileName) {
+  if (import.meta.env.PROD) {
+    try {
+      return await loadJson(`config.defaults/${fileName}`);
+    } catch {
+      return null;
+    }
+  }
   try {
     return await loadRuntimeConfig(fileName);
   } catch {
