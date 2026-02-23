@@ -79,6 +79,25 @@
         "type": "wind",
         "frequency": 760
       }
+    },
+    {
+      "id": "fluorescent_drift",
+      "volume": 0.14,
+      "synth": {
+        "type": "industrial",
+        "frequency": 58,
+        "hissFrequency": 1900,
+        "flutterRate": 0.22
+      }
+    },
+    {
+      "id": "far_traffic",
+      "volume": 0.12,
+      "synth": {
+        "type": "hum",
+        "frequency": 42,
+        "detune": -5
+      }
     }
   ],
   "sfx": {},

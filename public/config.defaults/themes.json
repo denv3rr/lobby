@@ -1,5 +1,5 @@
 {
-  "defaultTheme": "lobby",
+  "defaultTheme": "backrooms",
   "autoThemeByMonth": {
     "enabled": false,
     "map": {
@@ -2701,6 +2701,1522 @@
         "rotationSpeed": 0.11,
         "hoverRotationBoost": 0.26,
         "waveAmplitude": 0.006
+      }
+    },
+    "deadmall": {
+      "label": "Dead Mall",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#8f887a",
+          "procedural": "concrete",
+          "textureRepeat": [
+            6,
+            2
+          ],
+          "roughness": 0.96,
+          "metalness": 0.01
+        },
+        "floorMaterial": {
+          "color": "#6a665f",
+          "procedural": "mosaic",
+          "textureRepeat": [
+            9,
+            9
+          ],
+          "roughness": 0.9,
+          "metalness": 0.03
+        },
+        "ceilingMaterial": {
+          "color": "#cac3b4",
+          "procedural": "office-ceiling",
+          "textureRepeat": [
+            5,
+            5
+          ],
+          "roughness": 0.95
+        }
+      },
+      "fog": {
+        "color": "#7d786e",
+        "near": 7,
+        "far": 43
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#6b665d",
+          "intensity": 0.16
+        },
+        {
+          "type": "point",
+          "color": "#f8f1cf",
+          "intensity": 1.18,
+          "distance": 19,
+          "position": [
+            -10.5,
+            6.8,
+            -8.5
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f7efc9",
+          "intensity": 1.1,
+          "distance": 18,
+          "position": [
+            0,
+            6.8,
+            -4
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#f8f1cf",
+          "intensity": 1.05,
+          "distance": 18,
+          "position": [
+            10.5,
+            6.8,
+            1.5
+          ]
+        },
+        {
+          "type": "spot",
+          "color": "#f4e7bc",
+          "intensity": 0.92,
+          "distance": 20,
+          "position": [
+            0,
+            7.2,
+            9.8
+          ],
+          "target": [
+            0,
+            0.4,
+            9.8
+          ],
+          "angle": 0.35,
+          "penumbra": 0.54
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.08,
+        "backrooms_buzz": 0.64,
+        "roman_aura": 0,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.12,
+        "neon_pulse": 0,
+        "winter_air": 0.03,
+        "chime_metal": 0.08,
+        "night_woodland_wind": 0.08,
+        "fluorescent_drift": 0.62,
+        "far_traffic": 0.2
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 260,
+          "area": [
+            30,
+            8,
+            30
+          ],
+          "fallSpeed": 0.1,
+          "drift": 0.35,
+          "color": "#d9d2c1",
+          "size": 0.045,
+          "opacity": 0.22
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "deadmall_tile_lane",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.03,
+            1.6
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            10.5,
+            18,
+            1
+          ],
+          "material": {
+            "color": "#7c766c",
+            "procedural": "mosaic",
+            "textureRepeat": [
+              2,
+              10
+            ],
+            "roughness": 0.92,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "deadmall_storefront_left",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -12.9,
+            2.4,
+            -3.8
+          ],
+          "scale": [
+            3.4,
+            4.8,
+            9.8
+          ],
+          "material": {
+            "color": "#4c4944",
+            "roughness": 0.9,
+            "metalness": 0.1
+          }
+        },
+        {
+          "id": "deadmall_storefront_right",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            12.9,
+            2.4,
+            -2.2
+          ],
+          "scale": [
+            3.4,
+            4.8,
+            9.4
+          ],
+          "material": {
+            "color": "#4a4742",
+            "roughness": 0.9,
+            "metalness": 0.1
+          }
+        },
+        {
+          "id": "deadmall_sign_west",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -11.3,
+            3.3,
+            -6.8
+          ],
+          "rotation": [
+            0,
+            90,
+            0
+          ],
+          "scale": [
+            2.3,
+            0.62,
+            1
+          ],
+          "material": {
+            "color": "#c7c2b6",
+            "emissiveColor": "#b8b09e",
+            "emissiveIntensity": 0.08,
+            "roughness": 0.7
+          }
+        },
+        {
+          "id": "deadmall_sign_east",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            11.3,
+            3.3,
+            -5.1
+          ],
+          "rotation": [
+            0,
+            -90,
+            0
+          ],
+          "scale": [
+            2.2,
+            0.62,
+            1
+          ],
+          "material": {
+            "color": "#cbc5b8",
+            "emissiveColor": "#bdb5a2",
+            "emissiveIntensity": 0.08,
+            "roughness": 0.7
+          }
+        },
+        {
+          "id": "deadmall_kiosk_base",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.45,
+            -0.8
+          ],
+          "scale": [
+            3.4,
+            0.9,
+            2.2
+          ],
+          "material": {
+            "color": "#555148",
+            "roughness": 0.86,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "deadmall_kiosk_glass",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            1.22,
+            -0.8
+          ],
+          "scale": [
+            3,
+            0.62,
+            1.8
+          ],
+          "material": {
+            "color": "#a5b0b4",
+            "transparent": true,
+            "opacity": 0.3,
+            "roughness": 0.18,
+            "metalness": 0.12
+          }
+        },
+        {
+          "id": "deadmall_light_panel_a",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -10.5,
+            6.96,
+            -8.5
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.7,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f4efcf",
+            "emissiveColor": "#f4efcf",
+            "emissiveIntensity": 0.72,
+            "roughness": 0.32
+          }
+        },
+        {
+          "id": "deadmall_light_panel_b",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            6.96,
+            -4
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.7,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f4efcf",
+            "emissiveColor": "#f4efcf",
+            "emissiveIntensity": 0.68,
+            "roughness": 0.32
+          }
+        },
+        {
+          "id": "deadmall_light_panel_c",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            10.5,
+            6.96,
+            1.5
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.7,
+            1.2,
+            1
+          ],
+          "material": {
+            "color": "#f4efcf",
+            "emissiveColor": "#f4efcf",
+            "emissiveIntensity": 0.64,
+            "roughness": 0.32
+          }
+        },
+        {
+          "id": "deadmall_exit_corridor",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            2,
+            10.9
+          ],
+          "scale": [
+            7.2,
+            4,
+            2.8
+          ],
+          "material": {
+            "color": "#5d5952",
+            "roughness": 0.92,
+            "metalness": 0.04
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#f0d9a4",
+        "ringBaseIntensity": 0.12,
+        "ringHoverBoost": 0.46,
+        "rimBaseIntensity": 0.24,
+        "rimHoverBoost": 0.72,
+        "hazeBaseOpacity": 0.07,
+        "hazeHoverBoost": 0.12,
+        "pulseSpeed": 1.05,
+        "rotationSpeed": 0.05,
+        "hoverRotationBoost": 0.18,
+        "waveAmplitude": 0.005
+      },
+      "floorplan": {
+        "navigationProfile": {
+          "bounds": {
+            "minX": -24,
+            "maxX": 24,
+            "minZ": -13,
+            "maxZ": 31
+          }
+        },
+        "annexes": [
+          {
+            "id": "deadmall_wing_east",
+            "size": [
+              11,
+              6.2,
+              14
+            ],
+            "position": [
+              20.5,
+              0,
+              0
+            ],
+            "openSide": "west",
+            "navigationInset": 1.2
+          },
+          {
+            "id": "deadmall_wing_west",
+            "size": [
+              11,
+              6.2,
+              14
+            ],
+            "position": [
+              -20.5,
+              0,
+              0
+            ],
+            "openSide": "east",
+            "navigationInset": 1.2
+          },
+          {
+            "id": "deadmall_south_vestibule",
+            "size": [
+              10,
+              5.6,
+              12
+            ],
+            "position": [
+              0,
+              0,
+              23
+            ],
+            "openSide": "north",
+            "navigationInset": 1.05
+          }
+        ]
+      },
+      "atmosphere": {
+        "dome": {
+          "enabled": true,
+          "color": "#2f302d",
+          "radius": 120,
+          "rotationSpeed": 0.001
+        },
+        "clouds": {
+          "enabled": true,
+          "layerCount": 2,
+          "density": 24,
+          "speed": 0.13,
+          "color": "#d9d6c8",
+          "opacity": 0.2,
+          "area": [
+            64,
+            3.5,
+            64
+          ],
+          "height": 7.2,
+          "quality": {
+            "low": {
+              "layerCount": 1,
+              "density": 12,
+              "opacity": 0.16
+            },
+            "medium": {
+              "layerCount": 2,
+              "density": 22,
+              "opacity": 0.2
+            },
+            "high": {
+              "layerCount": 3,
+              "density": 30,
+              "opacity": 0.24
+            }
+          }
+        },
+        "moon": {
+          "enabled": false
+        },
+        "rain": {
+          "enabled": false
+        }
+      }
+    },
+    "poolrooms": {
+      "label": "Poolrooms",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#8cb5c2",
+          "procedural": "concrete",
+          "textureRepeat": [
+            6,
+            2
+          ],
+          "roughness": 0.85,
+          "metalness": 0.03
+        },
+        "floorMaterial": {
+          "color": "#3d6674",
+          "procedural": "water",
+          "textureRepeat": [
+            6,
+            6
+          ],
+          "textureScroll": [
+            0.07,
+            0.03
+          ],
+          "emissiveMap": "$map",
+          "emissiveColor": "#5ab8d4",
+          "emissiveIntensity": 0.22,
+          "roughness": 0.3,
+          "metalness": 0.08
+        },
+        "ceilingMaterial": {
+          "color": "#b9d3da",
+          "roughness": 0.9
+        }
+      },
+      "fog": {
+        "color": "#6f97a7",
+        "near": 8,
+        "far": 46
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#4b6f7d",
+          "intensity": 0.22
+        },
+        {
+          "type": "point",
+          "color": "#7de1ff",
+          "intensity": 0.9,
+          "distance": 26,
+          "position": [
+            -9,
+            4.1,
+            -6
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#94f4ff",
+          "intensity": 1,
+          "distance": 26,
+          "position": [
+            9,
+            4.1,
+            -6
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#81cde9",
+          "intensity": 0.76,
+          "distance": 24,
+          "position": [
+            0,
+            2.6,
+            8.5
+          ]
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.28,
+        "backrooms_buzz": 0.12,
+        "roman_aura": 0,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.1,
+        "neon_pulse": 0,
+        "winter_air": 0.24,
+        "chime_metal": 0.04,
+        "night_woodland_wind": 0.16,
+        "fluorescent_drift": 0.12,
+        "far_traffic": 0.08
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 180,
+          "area": [
+            30,
+            7,
+            30
+          ],
+          "fallSpeed": 0.05,
+          "drift": 0.26,
+          "color": "#cdeeff",
+          "size": 0.048,
+          "opacity": 0.16,
+          "additive": true
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "poolrooms_deep_pool",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.2,
+            -4.2
+          ],
+          "scale": [
+            14.5,
+            0.35,
+            9.8
+          ],
+          "material": {
+            "color": "#3a8198",
+            "procedural": "water",
+            "textureRepeat": [
+              5,
+              3
+            ],
+            "textureScroll": [
+              0.14,
+              0.05
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#75dbff",
+            "emissiveIntensity": 0.28,
+            "roughness": 0.24,
+            "metalness": 0.1
+          }
+        },
+        {
+          "id": "poolrooms_walkway",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.035,
+            7.2
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            8,
+            12,
+            1
+          ],
+          "material": {
+            "color": "#9bb2b8",
+            "procedural": "checkerboard",
+            "textureRepeat": [
+              6,
+              8
+            ],
+            "roughness": 0.88,
+            "metalness": 0.04
+          }
+        },
+        {
+          "id": "poolrooms_column_a",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -11.2,
+            2.05,
+            -6.5
+          ],
+          "scale": [
+            1.2,
+            4.1,
+            1.2
+          ],
+          "material": {
+            "color": "#afc6cf",
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "poolrooms_column_b",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            11.2,
+            2.05,
+            -6.5
+          ],
+          "scale": [
+            1.2,
+            4.1,
+            1.2
+          ],
+          "material": {
+            "color": "#afc6cf",
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "poolrooms_column_c",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -11.2,
+            2.05,
+            6.8
+          ],
+          "scale": [
+            1.2,
+            4.1,
+            1.2
+          ],
+          "material": {
+            "color": "#afc6cf",
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "poolrooms_column_d",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            11.2,
+            2.05,
+            6.8
+          ],
+          "scale": [
+            1.2,
+            4.1,
+            1.2
+          ],
+          "material": {
+            "color": "#afc6cf",
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "poolrooms_skylight_a",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -6.5,
+            6.96,
+            -2
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            3.2,
+            1.6,
+            1
+          ],
+          "material": {
+            "color": "#c6f3ff",
+            "emissiveColor": "#c6f3ff",
+            "emissiveIntensity": 0.58,
+            "roughness": 0.28
+          }
+        },
+        {
+          "id": "poolrooms_skylight_b",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            6.5,
+            6.96,
+            -2
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            3.2,
+            1.6,
+            1
+          ],
+          "material": {
+            "color": "#c6f3ff",
+            "emissiveColor": "#c6f3ff",
+            "emissiveIntensity": 0.58,
+            "roughness": 0.28
+          }
+        },
+        {
+          "id": "poolrooms_tile_border_n",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.14,
+            -9.2
+          ],
+          "scale": [
+            16,
+            0.18,
+            0.4
+          ],
+          "material": {
+            "color": "#bac6ca",
+            "roughness": 0.8,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "poolrooms_tile_border_s",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.14,
+            0.8
+          ],
+          "scale": [
+            16,
+            0.18,
+            0.4
+          ],
+          "material": {
+            "color": "#bac6ca",
+            "roughness": 0.8,
+            "metalness": 0.05
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#88e4ff",
+        "ringBaseIntensity": 0.16,
+        "ringHoverBoost": 0.58,
+        "rimBaseIntensity": 0.32,
+        "rimHoverBoost": 0.96,
+        "hazeBaseOpacity": 0.1,
+        "hazeHoverBoost": 0.15,
+        "pulseSpeed": 1.9,
+        "rotationSpeed": 0.14,
+        "hoverRotationBoost": 0.35,
+        "waveAmplitude": 0.008
+      },
+      "floorplan": {
+        "navigationProfile": {
+          "bounds": {
+            "minX": -22,
+            "maxX": 22,
+            "minZ": -31,
+            "maxZ": 14
+          }
+        },
+        "annexes": [
+          {
+            "id": "poolrooms_north_hall",
+            "size": [
+              14,
+              6.8,
+              16
+            ],
+            "position": [
+              0,
+              0,
+              -22
+            ],
+            "openSide": "south",
+            "navigationInset": 1.2
+          },
+          {
+            "id": "poolrooms_east_chamber",
+            "size": [
+              10,
+              6.1,
+              12
+            ],
+            "position": [
+              20,
+              0,
+              -6
+            ],
+            "openSide": "west",
+            "navigationInset": 1.1
+          }
+        ]
+      },
+      "atmosphere": {
+        "dome": {
+          "enabled": true,
+          "color": "#2f5d6b",
+          "radius": 130,
+          "rotationSpeed": 0.0016
+        },
+        "moon": {
+          "enabled": true,
+          "color": "#e3f7ff",
+          "radius": 1.9,
+          "orbitRadius": 70,
+          "height": 21,
+          "phase": 0.22,
+          "orbitSpeed": 0.02
+        },
+        "clouds": {
+          "enabled": true,
+          "layerCount": 2,
+          "density": 20,
+          "speed": 0.18,
+          "color": "#d9f2ff",
+          "opacity": 0.2,
+          "area": [
+            70,
+            4.2,
+            70
+          ],
+          "height": 10,
+          "quality": {
+            "low": {
+              "layerCount": 1,
+              "density": 10
+            },
+            "medium": {
+              "layerCount": 2,
+              "density": 18
+            },
+            "high": {
+              "layerCount": 3,
+              "density": 24
+            }
+          }
+        },
+        "rain": {
+          "enabled": false
+        }
+      }
+    },
+    "stormyard": {
+      "label": "Stormyard",
+      "disableBaseLights": true,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#4f545c",
+          "procedural": "concrete",
+          "textureRepeat": [
+            6,
+            2
+          ],
+          "roughness": 0.96,
+          "metalness": 0.04
+        },
+        "floorMaterial": {
+          "color": "#2f343b",
+          "procedural": "concrete",
+          "textureRepeat": [
+            9,
+            9
+          ],
+          "roughness": 0.92,
+          "metalness": 0.12
+        },
+        "ceilingMaterial": {
+          "color": "#3d434b",
+          "roughness": 0.95,
+          "metalness": 0.02
+        }
+      },
+      "fog": {
+        "color": "#2f3742",
+        "near": 7,
+        "far": 50
+      },
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#22303c",
+          "intensity": 0.22
+        },
+        {
+          "type": "directional",
+          "color": "#93b2d9",
+          "intensity": 0.95,
+          "position": [
+            8,
+            18,
+            50
+          ],
+          "target": [
+            0,
+            0,
+            24
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#78a5d9",
+          "intensity": 0.72,
+          "distance": 24,
+          "position": [
+            0,
+            4.5,
+            24
+          ]
+        },
+        {
+          "type": "spot",
+          "color": "#b9d3f4",
+          "intensity": 0.82,
+          "distance": 18,
+          "position": [
+            -11,
+            5.2,
+            27
+          ],
+          "target": [
+            -11,
+            0,
+            31
+          ],
+          "angle": 0.36,
+          "penumbra": 0.52
+        },
+        {
+          "type": "spot",
+          "color": "#b9d3f4",
+          "intensity": 0.82,
+          "distance": 18,
+          "position": [
+            11,
+            5.2,
+            27
+          ],
+          "target": [
+            11,
+            0,
+            31
+          ],
+          "angle": 0.36,
+          "penumbra": 0.52
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.08,
+        "backrooms_buzz": 0.14,
+        "roman_aura": 0,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.12,
+        "neon_pulse": 0,
+        "winter_air": 0.46,
+        "chime_metal": 0.03,
+        "night_woodland_wind": 1,
+        "fluorescent_drift": 0.1,
+        "far_traffic": 0.34
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 220,
+          "area": [
+            30,
+            9,
+            30
+          ],
+          "fallSpeed": 0.18,
+          "drift": 0.52,
+          "color": "#9fb5cb",
+          "size": 0.035,
+          "opacity": 0.2,
+          "additive": true
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "stormyard_wet_plaza",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.02,
+            33
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            42,
+            32,
+            1
+          ],
+          "material": {
+            "color": "#26303a",
+            "procedural": "concrete",
+            "textureRepeat": [
+              14,
+              10
+            ],
+            "roughness": 0.88,
+            "metalness": 0.2,
+            "emissiveColor": "#1d2c3f",
+            "emissiveIntensity": 0.04
+          }
+        },
+        {
+          "id": "stormyard_reflection_pool_a",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -8.8,
+            0.035,
+            31.5
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            6.8,
+            4.4,
+            1
+          ],
+          "material": {
+            "color": "#34566e",
+            "procedural": "water",
+            "textureRepeat": [
+              3,
+              2
+            ],
+            "textureScroll": [
+              0.08,
+              0.02
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#4f87b5",
+            "emissiveIntensity": 0.15,
+            "roughness": 0.28,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "stormyard_reflection_pool_b",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            9.2,
+            0.035,
+            34.2
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            7.4,
+            5,
+            1
+          ],
+          "material": {
+            "color": "#34566e",
+            "procedural": "water",
+            "textureRepeat": [
+              3.2,
+              2.2
+            ],
+            "textureScroll": [
+              0.07,
+              0.03
+            ],
+            "emissiveMap": "$map",
+            "emissiveColor": "#4f87b5",
+            "emissiveIntensity": 0.15,
+            "roughness": 0.28,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "stormyard_path_marking",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.036,
+            24
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            6,
+            18,
+            1
+          ],
+          "material": {
+            "color": "#4d5e6f",
+            "roughness": 0.9,
+            "metalness": 0.09
+          }
+        },
+        {
+          "id": "stormyard_lamp_post_l",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            -11,
+            3.2,
+            30.5
+          ],
+          "scale": [
+            0.18,
+            6.4,
+            0.18
+          ],
+          "material": {
+            "color": "#2a323a",
+            "roughness": 0.52,
+            "metalness": 0.62
+          }
+        },
+        {
+          "id": "stormyard_lamp_post_r",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            11,
+            3.2,
+            30.5
+          ],
+          "scale": [
+            0.18,
+            6.4,
+            0.18
+          ],
+          "material": {
+            "color": "#2a323a",
+            "roughness": 0.52,
+            "metalness": 0.62
+          }
+        },
+        {
+          "id": "stormyard_lamp_head_l",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -11,
+            6.6,
+            30.5
+          ],
+          "scale": [
+            0.34,
+            0.34,
+            0.34
+          ],
+          "material": {
+            "color": "#b9d3f4",
+            "emissiveColor": "#b9d3f4",
+            "emissiveIntensity": 0.74,
+            "roughness": 0.3,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "stormyard_lamp_head_r",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            11,
+            6.6,
+            30.5
+          ],
+          "scale": [
+            0.34,
+            0.34,
+            0.34
+          ],
+          "material": {
+            "color": "#b9d3f4",
+            "emissiveColor": "#b9d3f4",
+            "emissiveIntensity": 0.74,
+            "roughness": 0.3,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "stormyard_fence_n",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            1.2,
+            55.5
+          ],
+          "scale": [
+            38,
+            2.4,
+            0.2
+          ],
+          "collider": false,
+          "material": {
+            "color": "#1c2228",
+            "roughness": 0.82,
+            "metalness": 0.28
+          }
+        },
+        {
+          "id": "stormyard_fence_w",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -20,
+            1.2,
+            39
+          ],
+          "scale": [
+            0.2,
+            2.4,
+            33
+          ],
+          "collider": false,
+          "material": {
+            "color": "#1c2228",
+            "roughness": 0.82,
+            "metalness": 0.28
+          }
+        },
+        {
+          "id": "stormyard_fence_e",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            20,
+            1.2,
+            39
+          ],
+          "scale": [
+            0.2,
+            2.4,
+            33
+          ],
+          "collider": false,
+          "material": {
+            "color": "#1c2228",
+            "roughness": 0.82,
+            "metalness": 0.28
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#8db5e8",
+        "ringBaseIntensity": 0.14,
+        "ringHoverBoost": 0.52,
+        "rimBaseIntensity": 0.3,
+        "rimHoverBoost": 0.9,
+        "hazeBaseOpacity": 0.11,
+        "hazeHoverBoost": 0.16,
+        "pulseSpeed": 1.6,
+        "rotationSpeed": 0.09,
+        "hoverRotationBoost": 0.3,
+        "waveAmplitude": 0.007
+      },
+      "floorplan": {
+        "navigationProfile": {
+          "bounds": {
+            "minX": -25,
+            "maxX": 25,
+            "minZ": -14,
+            "maxZ": 50
+          }
+        },
+        "annexes": [
+          {
+            "id": "stormyard_front_court",
+            "size": [
+              18,
+              6.2,
+              20
+            ],
+            "position": [
+              0,
+              0,
+              24
+            ],
+            "openSide": "north",
+            "navigationInset": 1.3
+          },
+          {
+            "id": "stormyard_southeast_lane",
+            "size": [
+              12,
+              5.6,
+              16
+            ],
+            "position": [
+              16,
+              0,
+              36
+            ],
+            "openSide": "west",
+            "navigationInset": 1.1
+          }
+        ]
+      },
+      "atmosphere": {
+        "dome": {
+          "enabled": true,
+          "color": "#1b2430",
+          "radius": 140,
+          "rotationSpeed": 0.0024
+        },
+        "moon": {
+          "enabled": true,
+          "color": "#d8e2f7",
+          "radius": 2.4,
+          "orbitRadius": 78,
+          "height": 27,
+          "phase": 0.67,
+          "orbitSpeed": 0.028,
+          "quality": {
+            "low": {
+              "radius": 1.9
+            },
+            "high": {
+              "radius": 2.7
+            }
+          }
+        },
+        "clouds": {
+          "enabled": true,
+          "layerCount": 3,
+          "density": 28,
+          "speed": 0.28,
+          "color": "#a8b7cb",
+          "opacity": 0.26,
+          "area": [
+            88,
+            6,
+            88
+          ],
+          "height": 12,
+          "quality": {
+            "low": {
+              "layerCount": 1,
+              "density": 12,
+              "opacity": 0.18
+            },
+            "medium": {
+              "layerCount": 2,
+              "density": 20,
+              "opacity": 0.24
+            },
+            "high": {
+              "layerCount": 4,
+              "density": 34,
+              "opacity": 0.3
+            }
+          }
+        },
+        "rain": {
+          "enabled": true,
+          "count": 520,
+          "area": [
+            78,
+            16,
+            78
+          ],
+          "fallSpeed": 9.2,
+          "color": "#89a7c9",
+          "opacity": 0.52,
+          "size": 0.025,
+          "quality": {
+            "low": {
+              "count": 190,
+              "opacity": 0.34,
+              "size": 0.022
+            },
+            "medium": {
+              "count": 360,
+              "opacity": 0.44,
+              "size": 0.024
+            },
+            "high": {
+              "count": 580,
+              "opacity": 0.58,
+              "size": 0.028
+            }
+          }
+        }
       }
     }
   }

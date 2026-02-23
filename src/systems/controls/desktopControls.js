@@ -49,10 +49,16 @@ export class DesktopControls {
   }
 
   onKeyDown(event) {
+    if (event.target?.closest?.("[data-ui]")) {
+      return;
+    }
     this.keys.add(event.code);
   }
 
   onKeyUp(event) {
+    if (event.target?.closest?.("[data-ui]")) {
+      return;
+    }
     this.keys.delete(event.code);
   }
 

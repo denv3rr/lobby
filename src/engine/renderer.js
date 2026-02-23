@@ -83,7 +83,13 @@ export function createRenderer({ mount, quality = "medium" }) {
     scene,
     camera,
     renderer,
-    getQualityProfile: (name) => QUALITY_PROFILES[name] || QUALITY_PROFILES.medium,
+    getQualityProfile: (name) => {
+      const resolved = QUALITY_PROFILES[name] ? name : "medium";
+      return {
+        quality: resolved,
+        ...QUALITY_PROFILES[resolved]
+      };
+    },
     setQuality,
     dispose() {
       window.removeEventListener("resize", onResize);

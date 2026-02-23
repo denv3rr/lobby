@@ -1,54 +1,37 @@
 {
   "meta": {
     "source": "https://seperet.com/shop",
-    "fetchedAt": "2026-02-23T00:00:00.000Z",
-    "count": 5
+    "fetchedAt": "2026-02-23T19:21:32.438Z",
+    "count": 3,
+    "errors": []
   },
   "items": [
     {
-      "id": "mint-reaper-hoodie",
-      "title": "Mint Reaper Hoodie",
-      "url": "https://seperet.com/shop/p/mint-reaper-hoodie",
-      "image": null,
-      "price": null,
+      "id": "columbia-soft-shell-slam-jacket-1",
+      "title": "Columbia Soft Shell Slam Jacket #1 - Seperet",
+      "url": "https://seperet.com/shop/p/columbia-soft-shell-slam-jacket-1",
+      "image": "https://static1.squarespace.com/static/612e9679ca3ada2f6398ebb3/612e97efedd01f365cb0fe04/6711ecec339bc009b0537094/1729228015182/unisex-columbia-soft-shell-jacket-black-front-6711ece631ff3.jpg?format=1500w",
+      "price": 120,
       "currency": "USD",
-      "tags": ["lobby", "backrooms", "purgatory"]
+      "tags": []
     },
     {
-      "id": "reaper-inferno-hoodie",
-      "title": "Reaper Inferno Hoodie",
-      "url": "https://seperet.com/shop/p/reaper-inferno-hoodie",
-      "image": null,
-      "price": null,
+      "id": "adidas-slam-hoodie-1",
+      "title": "adidas Slam Hoodie #1 - Seperet",
+      "url": "https://seperet.com/shop/p/adidas-slam-hoodie-1",
+      "image": "https://static1.squarespace.com/static/612e9679ca3ada2f6398ebb3/612e97efedd01f365cb0fe04/670ee6472d169f7c6ae501f0/1729029705850/adidas-fleece-hoodie-black-front-670ee63b9b80a.jpg?format=1500w",
+      "price": 70,
       "currency": "USD",
-      "tags": ["inferno", "neon"]
+      "tags": []
     },
     {
-      "id": "sep-logo-hoodie",
-      "title": "Sep Logo Hoodie",
-      "url": "https://seperet.com/shop/p/sep-logo-hoodie",
-      "image": null,
-      "price": null,
+      "id": "partner-jacket-white",
+      "title": "Partner Jacket (White) - Seperet",
+      "url": "https://seperet.com/shop/p/partner-jacket-white",
+      "image": "https://static1.squarespace.com/static/612e9679ca3ada2f6398ebb3/612e97efedd01f365cb0fe04/670ee55e3ee9f7071374952e/1729029473292/unisex-columbia-fleece-jacket-black-front-670ee556598eb.jpg?format=1500w",
+      "price": 80,
       "currency": "USD",
-      "tags": ["lobby", "roman"]
-    },
-    {
-      "id": "sep-logo-crewneck",
-      "title": "Sep Logo Crewneck",
-      "url": "https://seperet.com/shop/p/sep-logo-crewneck",
-      "image": null,
-      "price": null,
-      "currency": "USD",
-      "tags": ["roman", "winter"]
-    },
-    {
-      "id": "sep-logo-beanie",
-      "title": "Sep Logo Beanie",
-      "url": "https://seperet.com/shop/p/sep-logo-beanie",
-      "image": null,
-      "price": null,
-      "currency": "USD",
-      "tags": ["winter", "backrooms"]
+      "tags": []
     }
   ]
 }

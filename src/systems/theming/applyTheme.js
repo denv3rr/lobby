@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createProceduralTexture } from "../../engine/proceduralTextures.js";
 import { ParticleSystem } from "./particles.js";
+import { AtmosphereSystem } from "./atmosphere.js";
 
 function cloneRoomConfig(roomConfig) {
   return JSON.parse(JSON.stringify(roomConfig));
@@ -152,7 +153,12 @@ async function resolveTexture(config, cache) {
   }
 
   if (config.procedural) {
-    return createProceduralTexture(config.procedural);
+    const texture = createProceduralTexture(config.procedural);
+    if (texture) {
+      texture.userData = texture.userData || {};
+      texture.userData.disposeWithMaterial = true;
+    }
+    return texture;
   }
 
   if (config.texture) {
@@ -163,6 +169,12 @@ async function resolveTexture(config, cache) {
   return null;
 }
 
+function disposeOwnedTexture(texture) {
+  if (texture?.userData?.disposeWithMaterial) {
+    texture.dispose();
+  }
+}
+
 function applyTextureRepeat(texture, repeat) {
   if (!texture || !Array.isArray(repeat)) {
     return;
@@ -171,6 +183,8 @@ function applyTextureRepeat(texture, repeat) {
 }
 
 async function applyMaterialFromConfig(material, config, cache, animatedTextures) {
+  disposeOwnedTexture(material.map);
+  disposeOwnedTexture(material.emissiveMap);
   material.color.set(config.color || "#777777");
   material.map = null;
   material.emissiveMap = null;
@@ -303,6 +317,13 @@ export class ThemeSystem {
     this.audioSystem = audioSystem;
     this.qualityProfile = qualityProfile;
     this.particles = new ParticleSystem(scene, sceneContext.floorY);
+    this.atmosphere = new AtmosphereSystem({
+      scene,
+      cache,
+      floorY: sceneContext.floorY,
+      roomSize: sceneContext.roomConfig?.size,
+      qualityProfile
+    });
     this.currentThemeName = null;
     this.themeLights = [];
     this.animatedTextures = [];
@@ -337,6 +358,8 @@ export class ThemeSystem {
     this.qualityProfile = profile;
     if (this.currentThemeName) {
       this.applyTheme(this.currentThemeName).catch(() => {});
+    } else {
+      this.atmosphere.setQualityProfile(profile);
     }
   }
 
@@ -352,8 +375,10 @@ export class ThemeSystem {
 
   resetToBaseState() {
     this.clearThemeLights();
+    this.sceneContext.resetThemeFloorplan?.();
     this.sceneContext.removePropsByTag("theme-extra");
     this.animatedTextures = [];
+    this.atmosphere.clear();
 
     this.sceneContext.lights.forEach((light, index) => {
       const base = this.sceneContext.baseLightState[index];
@@ -429,6 +454,11 @@ export class ThemeSystem {
         return false;
       }
 
+      this.sceneContext.applyThemeFloorplan?.(theme.floorplan || null);
+      if (token !== this.applyToken) {
+        return false;
+      }
+
       const fog = theme.fog;
       if (fog && this.scene.fog) {
         this.scene.fog.color = new THREE.Color(fog.color || "#444444");
@@ -493,8 +523,12 @@ export class ThemeSystem {
         theme.additionalProps || [],
         this.sceneContext.roomConfig || {}
       );
-      await this.sceneContext.addProps(doorwaySafeProps, { tag: "theme-extra" });
+      await this.sceneContext.addProps(doorwaySafeProps, {
+        tag: "theme-extra",
+        shouldCancel: () => token !== this.applyToken
+      });
       if (token !== this.applyToken) {
+        this.sceneContext.removePropsByTag("theme-extra");
         return false;
       }
 
@@ -522,6 +556,10 @@ export class ThemeSystem {
         this.qualityProfile?.particleMultiplier || 1,
         this.sceneContext.roomConfig.size
       );
+      await this.atmosphere.apply(theme.atmosphere || null);
+      if (token !== this.applyToken) {
+        return false;
+      }
       this.currentThemeName = themeName;
       return true;
     } catch (error) {
@@ -533,6 +571,7 @@ export class ThemeSystem {
 
   update(deltaTime) {
     this.particles.update(deltaTime);
+    this.atmosphere.update(deltaTime);
     const allAnimated = [
       ...(this.sceneContext.animatedTextures || []),
       ...this.animatedTextures
@@ -552,6 +591,7 @@ export class ThemeSystem {
 
   dispose() {
     this.particles.dispose();
+    this.atmosphere.dispose();
     this.clearThemeLights();
   }
 }

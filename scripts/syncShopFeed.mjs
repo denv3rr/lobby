@@ -13,7 +13,8 @@ function parseArgs(argv = process.argv.slice(2)) {
   const options = {
     limit: DEFAULT_LIMIT,
     writeDefaults: false,
-    writeLocal: true
+    writeLocal: true,
+    strict: false
   };
 
   for (const arg of argv) {
@@ -27,6 +28,8 @@ function parseArgs(argv = process.argv.slice(2)) {
       if (Number.isFinite(parsed) && parsed > 0) {
         options.limit = parsed;
       }
+    } else if (arg === "--strict") {
+      options.strict = true;
     }
   }
 
@@ -180,6 +183,21 @@ function parsePrice(value) {
   return numeric;
 }
 
+function normalizeImageUrl(value) {
+  if (!value) {
+    return null;
+  }
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol === "http:") {
+      parsed.protocol = "https:";
+    }
+    return parsed.toString();
+  } catch {
+    return null;
+  }
+}
+
 async function fetchText(url) {
   const response = await fetch(url, {
     headers: {
@@ -227,7 +245,7 @@ async function parseProduct(url) {
     id,
     title,
     url,
-    image: image || null,
+    image: normalizeImageUrl(image),
     price,
     currency,
     tags: []
@@ -256,10 +274,25 @@ async function main() {
   const options = parseArgs();
   const errors = [];
 
-  const shopHtml = await fetchText(SHOP_URL);
-  const productUrls = extractProductUrls(shopHtml, SHOP_URL, options.limit);
+  let productUrls = [];
+  try {
+    const shopHtml = await fetchText(SHOP_URL);
+    productUrls = extractProductUrls(shopHtml, SHOP_URL, options.limit);
+  } catch (error) {
+    errors.push({ url: SHOP_URL, message: error.message });
+    if (!options.strict) {
+      throw error;
+    }
+    console.warn(`Shop fetch failed in strict mode: ${error.message}`);
+  }
+
   if (!productUrls.length) {
-    throw new Error("No product URLs found on shop page.");
+    const message = "No product URLs found on shop page.";
+    errors.push({ url: SHOP_URL, message });
+    if (!options.strict) {
+      throw new Error(message);
+    }
+    console.warn(`${message} Writing empty strict feed.`);
   }
 
   const items = [];
@@ -277,10 +310,13 @@ async function main() {
   const fallback =
     (await readExistingFeed(OUTPUT_LOCAL)) ||
     (await readExistingFeed(OUTPUT_DEFAULTS));
-
-  const finalItems = items.length ? items : fallback?.items || [];
+  const useFallback = items.length === 0 && !options.strict;
+  const finalItems = items.length ? items : useFallback ? fallback?.items || [] : [];
   if (!finalItems.length) {
-    throw new Error("Failed to build shop feed and no fallback feed was available.");
+    if (!options.strict) {
+      throw new Error("Failed to build shop feed and no fallback feed was available.");
+    }
+    console.warn("Strict mode: writing empty feed with no fallback items.");
   }
 
   const payload = {

@@ -13,6 +13,8 @@ import { resolveInitialThemeName, ThemeSystem } from "./systems/theming/applyThe
 import { createOverlay } from "./ui/overlay.js";
 import { resolvePublicPath } from "./utils/path.js";
 
+const BUILD_ID = import.meta.env.VITE_BUILD_ID || "";
+
 function supportsWebGL() {
   try {
     const canvas = document.createElement("canvas");
@@ -29,8 +31,19 @@ function isMobileDevice() {
   );
 }
 
+function withBuildId(path) {
+  if (!BUILD_ID) {
+    return path;
+  }
+
+  const separator = path.includes("?") ? "&" : "?";
+  return `${path}${separator}v=${encodeURIComponent(BUILD_ID)}`;
+}
+
 async function loadJson(path) {
-  const response = await fetch(resolvePublicPath(path));
+  const response = await fetch(withBuildId(resolvePublicPath(path)), {
+    cache: "no-cache"
+  });
   if (!response.ok) {
     throw new Error(`Failed loading ${path}: ${response.status}`);
   }
@@ -48,6 +61,14 @@ async function loadRuntimeConfig(fileName) {
 async function loadOptionalRuntimeConfig(fileName) {
   try {
     return await loadRuntimeConfig(fileName);
+  } catch {
+    return null;
+  }
+}
+
+async function loadOptionalJson(path) {
+  try {
+    return await loadJson(path);
   } catch {
     return null;
   }
@@ -80,6 +101,41 @@ function hasThemeMap(value) {
       typeof value.themes === "object" &&
       Object.keys(value.themes).length > 0
   );
+}
+
+function mergeThemesConfig(defaultsConfig, overrideConfig) {
+  const defaults = hasThemeMap(defaultsConfig) ? defaultsConfig : { themes: {} };
+  const overrides = hasThemeMap(overrideConfig) ? overrideConfig : { themes: {} };
+
+  const mergedThemes = {
+    ...(defaults.themes || {})
+  };
+
+  for (const [themeId, themeValue] of Object.entries(overrides.themes || {})) {
+    mergedThemes[themeId] = {
+      ...(defaults.themes?.[themeId] || {}),
+      ...(themeValue || {})
+    };
+  }
+
+  return {
+    ...defaults,
+    ...overrides,
+    autoThemeByMonth: {
+      ...(defaults.autoThemeByMonth || {}),
+      ...(overrides.autoThemeByMonth || {}),
+      map: {
+        ...(defaults.autoThemeByMonth?.map || {}),
+        ...(overrides.autoThemeByMonth?.map || {})
+      }
+    },
+    themes: mergedThemes,
+    defaultTheme:
+      overrides.defaultTheme ||
+      defaults.defaultTheme ||
+      Object.keys(mergedThemes)[0] ||
+      "lobby"
+  };
 }
 
 function formatThemeLabel(id) {
@@ -154,6 +210,7 @@ async function boot() {
   const params = new URLSearchParams(window.location.search);
   const hasThemeQuery = params.has("theme");
   const debugUiParam = params.get("debugui") === "1";
+  const sceneUiEnabled = params.get("sceneui") !== "0";
 
   let rendererContext = null;
   let controls = null;
@@ -171,6 +228,7 @@ async function boot() {
     mount: app,
     isMobile: mobile,
     showDevPanel: isDev || debugUiParam,
+    showThemePanel: sceneUiEnabled,
     onEnableSound: async () => {
       if (audioSystem) {
         audioReady = await audioSystem.enable();
@@ -223,10 +281,19 @@ async function boot() {
     }
   });
 
-  const [sceneConfig, themesConfig, audioConfig, catalogConfig, shopFeed, projectsFeed] =
+  const [
+    sceneConfig,
+    localThemesConfig,
+    defaultThemesConfig,
+    audioConfig,
+    catalogConfig,
+    shopFeed,
+    projectsFeed
+  ] =
     await Promise.all([
     loadRuntimeConfig("scene.json"),
-    loadRuntimeConfig("themes.json"),
+    loadOptionalJson("config/themes.json"),
+      loadOptionalJson("config.defaults/themes.json"),
       loadRuntimeConfig("audio.json"),
       loadOptionalRuntimeConfig("catalog.json"),
       loadOptionalRuntimeConfig("shop-feed.json"),
@@ -240,8 +307,10 @@ async function boot() {
       }
     }
   };
-  if (hasThemeMap(themesConfig)) {
-    loadedThemesConfig = themesConfig;
+
+  const mergedThemesConfig = mergeThemesConfig(defaultThemesConfig, localThemesConfig);
+  if (hasThemeMap(mergedThemesConfig)) {
+    loadedThemesConfig = mergedThemesConfig;
   } else {
     try {
       const defaults = await loadJson("config.defaults/themes.json");

@@ -68,6 +68,7 @@ function makeLabelPlane(lines, scale = [2.8, 0.9], options = {}) {
   }
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
+  texture.userData.disposeWithMaterial = true;
   const material = new THREE.MeshBasicMaterial({
     map: texture,
     transparent: true,
@@ -83,6 +84,49 @@ function makeLabelPlane(lines, scale = [2.8, 0.9], options = {}) {
     material
   );
   return mesh;
+}
+
+function disposeMaterial(material) {
+  if (!material) {
+    return;
+  }
+
+  const maps = [
+    material.map,
+    material.alphaMap,
+    material.aoMap,
+    material.bumpMap,
+    material.emissiveMap,
+    material.lightMap,
+    material.metalnessMap,
+    material.normalMap,
+    material.roughnessMap
+  ];
+
+  for (const texture of maps) {
+    if (texture?.userData?.disposeWithMaterial) {
+      texture.dispose();
+    }
+  }
+
+  material.dispose?.();
+}
+
+function disposeObjectResources(root) {
+  if (!root) {
+    return;
+  }
+
+  root.traverse((node) => {
+    node.geometry?.dispose?.();
+    if (Array.isArray(node.material)) {
+      for (const material of node.material) {
+        disposeMaterial(material);
+      }
+    } else {
+      disposeMaterial(node.material);
+    }
+  });
 }
 
 function normalizeFilter(filter = {}) {
@@ -153,6 +197,7 @@ export class CatalogRoomSystem {
 
   clearRoomCards(roomId) {
     for (const roomNode of this.getRoomNodes(roomId)) {
+      disposeObjectResources(roomNode.cardsGroup);
       roomNode.cardsGroup.clear();
     }
 
@@ -171,6 +216,7 @@ export class CatalogRoomSystem {
         kept.push(node);
         continue;
       }
+      disposeObjectResources(node.group);
       this.root.remove(node.group);
       node.group.clear();
     }
@@ -545,6 +591,7 @@ export class CatalogRoomSystem {
     // Rebuild connectors if room count changed.
     const finalNodes = this.getRoomNodes(roomId);
     for (const node of finalNodes) {
+      disposeObjectResources(node.group);
       this.root.remove(node.group);
       node.group.clear();
     }
@@ -554,7 +601,7 @@ export class CatalogRoomSystem {
     }
   }
 
-  async createCard(roomId, roomNode, item, placement, index) {
+  async createCard(roomId, roomNode, item, placement, index, token) {
     const roomConfig = roomNode.config;
     const cardWidth = roomConfig.card?.width || 1.45;
     const cardHeight = roomConfig.card?.height || 1.9;
@@ -568,6 +615,12 @@ export class CatalogRoomSystem {
     const baseRotationY = placement.rotationY || 0;
     group.rotation.y = baseRotationY;
     roomNode.cardsGroup.add(group);
+
+    const cleanupCard = () => {
+      roomNode.cardsGroup.remove(group);
+      disposeObjectResources(group);
+      group.clear();
+    };
 
     const accent = toColor(roomConfig.accentColor, roomId === "shop" ? "#8ec8d3" : "#ba9de2");
     const frameMaterial = new THREE.MeshStandardMaterial({
@@ -620,6 +673,10 @@ export class CatalogRoomSystem {
 
     if (item.image) {
       const texture = await this.cache.loadTexture(item.image);
+      if (token !== this.applyToken) {
+        cleanupCard();
+        return false;
+      }
       if (texture) {
         imageMaterial.map = texture;
         imageMaterial.color.set("#ffffff");
@@ -692,6 +749,7 @@ export class CatalogRoomSystem {
       phase: Math.random() * Math.PI * 2,
       isHovered: () => hovered
     });
+    return true;
   }
 
   getThemeSpec(themeName) {
@@ -707,18 +765,13 @@ export class CatalogRoomSystem {
     const roomConfig = this.catalogConfig.rooms?.[roomId] || {};
     const maxItems = roomConfig.layout?.maxItems || sourceItems.length || 1;
     const filtered = filterItems(sourceItems, roomFilter, maxItems);
-    const items = filtered.length
-      ? filtered
-      : [
-          {
-            id: `${roomId}-placeholder`,
-            title: roomId === "shop" ? "Shop Feed Pending" : "Projects Coming Soon",
-            url: roomId === "shop" ? SHOP_LINK : PROJECTS_LINK,
-            image: null,
-            price: null,
-            currency: null
-          }
-        ];
+    const items = filtered;
+
+    if (!items.length) {
+      // Keep a single room shell, but render no fallback cards when feed is empty.
+      this.reconcileRoomCount(roomId, roomConfig, 1);
+      return;
+    }
 
     const capacity = this.computeRoomCapacity(roomId, roomConfig);
     const safeCapacity = Math.max(1, capacity);
@@ -746,7 +799,10 @@ export class CatalogRoomSystem {
         break;
       }
       // Sequential creation avoids burst texture requests on first load.
-      await this.createCard(roomId, slot.roomNode, items[index], slot, index);
+      const created = await this.createCard(roomId, slot.roomNode, items[index], slot, index, token);
+      if (!created && token !== this.applyToken) {
+        return;
+      }
     }
   }
 
@@ -786,6 +842,7 @@ export class CatalogRoomSystem {
   }
 
   dispose() {
+    disposeObjectResources(this.root);
     this.root.clear();
     this.scene.remove(this.root);
     this.targets.length = 0;

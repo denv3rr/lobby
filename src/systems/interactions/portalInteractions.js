@@ -20,6 +20,7 @@ export class PortalInteractionSystem {
     this.pointer = new THREE.Vector2(0, 0);
     this.hoveredTarget = null;
     this.hitboxToTarget = new Map();
+    this.hitboxes = [];
     this.setTargets(targets || []);
 
     this.boundPointerMove = (event) => this.onPointerMove(event);
@@ -51,8 +52,10 @@ export class PortalInteractionSystem {
   setTargets(targets = []) {
     this.targets = Array.isArray(targets) ? targets.filter((item) => item?.hitbox) : [];
     this.hitboxToTarget.clear();
+    this.hitboxes = [];
     for (const target of this.targets) {
       this.hitboxToTarget.set(target.hitbox, target);
+      this.hitboxes.push(target.hitbox);
     }
     if (this.hoveredTarget && !this.targets.includes(this.hoveredTarget)) {
       this.setHovered(null);
@@ -80,11 +83,15 @@ export class PortalInteractionSystem {
   }
 
   update() {
+    if (!this.hitboxes.length) {
+      this.setHovered(null);
+      return;
+    }
+
     const sample = this.isPointerLocked() ? { x: 0, y: 0 } : this.pointer;
     this.raycaster.setFromCamera(sample, this.camera);
 
-    const hitboxes = this.targets.map((target) => target.hitbox);
-    const hits = this.raycaster.intersectObjects(hitboxes, false);
+    const hits = this.raycaster.intersectObjects(this.hitboxes, false);
     if (!hits.length) {
       this.setHovered(null);
       return;

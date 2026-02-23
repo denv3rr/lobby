@@ -21,6 +21,52 @@ function cloneConfig(config = {}) {
   return JSON.parse(JSON.stringify(config || {}));
 }
 
+function disposeManagedMaterial(material) {
+  if (!material) {
+    return;
+  }
+
+  const maps = [
+    material.map,
+    material.alphaMap,
+    material.aoMap,
+    material.bumpMap,
+    material.emissiveMap,
+    material.lightMap,
+    material.metalnessMap,
+    material.normalMap,
+    material.roughnessMap
+  ];
+
+  for (const texture of maps) {
+    if (texture?.userData?.disposeWithMaterial) {
+      texture.dispose();
+    }
+  }
+
+  material.dispose?.();
+}
+
+function disposeManagedObjectResources(object) {
+  if (!object) {
+    return;
+  }
+
+  object.traverse((child) => {
+    if (!child?.userData?.disposeManagedResources) {
+      return;
+    }
+    child.geometry?.dispose?.();
+    if (Array.isArray(child.material)) {
+      for (const material of child.material) {
+        disposeManagedMaterial(material);
+      }
+    } else {
+      disposeManagedMaterial(child.material);
+    }
+  });
+}
+
 async function applyMaterialConfig(material, config = {}, cache) {
   const color = config.color || "#777777";
   material.color.set(color);
@@ -40,7 +86,12 @@ async function applyMaterialConfig(material, config = {}, cache) {
 
 async function resolveTexture(config = {}, cache) {
   if (config.procedural) {
-    return createProceduralTexture(config.procedural);
+    const texture = createProceduralTexture(config.procedural);
+    if (texture) {
+      texture.userData = texture.userData || {};
+      texture.userData.disposeWithMaterial = true;
+    }
+    return texture;
   }
   if (config.texture) {
     return cache.loadTexture(config.texture);
@@ -165,6 +216,7 @@ async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
     metalness: 0.05
   });
   const mesh = new THREE.Mesh(geometry, material);
+  mesh.userData.disposeManagedResources = true;
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   await applyPrimitiveMaterial(material, prop.material, cache, animatedTextures, owner);
@@ -430,6 +482,110 @@ function getRoomBounds(size = [30, 8, 30], margin = 1.4, overrideBounds = null) 
   };
 }
 
+function mergeBounds(into, next) {
+  if (!into || !next) {
+    return into;
+  }
+  into.minX = Math.min(into.minX, next.minX);
+  into.maxX = Math.max(into.maxX, next.maxX);
+  into.minZ = Math.min(into.minZ, next.minZ);
+  into.maxZ = Math.max(into.maxZ, next.maxZ);
+  return into;
+}
+
+function boundsOverlap2D(a, b) {
+  return a.minX <= b.maxX && a.maxX >= b.minX && a.minZ <= b.maxZ && a.maxZ >= b.minZ;
+}
+
+function createProtectedFloorplanZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneConfig = {} }) {
+  const zones = [];
+  const width = roomSize[0] || 30;
+  const depth = roomSize[2] || 30;
+  const floorplanSafety = roomConfig.floorplan?.safety || {};
+
+  const sideDoorways = roomConfig.sideDoorways || {};
+  if (sideDoorways.enabled !== false) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      sideDoorways.width ?? 3.8,
+      1.5,
+      Math.max(1.5, depth - 1)
+    );
+    const centerZ = sideDoorways.centerZ ?? 0;
+    const zHalf = doorwayWidth * 0.5 + 1.15;
+    const outwardDepth = Math.max(3.5, floorplanSafety.sideDoorDepth ?? 6.5);
+
+    zones.push({
+      id: "east-doorway-clearance",
+      minX: width * 0.5 - 0.8,
+      maxX: width * 0.5 + outwardDepth,
+      minZ: centerZ - zHalf,
+      maxZ: centerZ + zHalf
+    });
+    zones.push({
+      id: "west-doorway-clearance",
+      minX: -width * 0.5 - outwardDepth,
+      maxX: -width * 0.5 + 0.8,
+      minZ: centerZ - zHalf,
+      maxZ: centerZ + zHalf
+    });
+  }
+
+  const frontEntrance = roomConfig.frontEntrance || {};
+  if (frontEntrance.enabled) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      frontEntrance.width ?? 4.2,
+      1.6,
+      Math.max(1.6, width - 1.6)
+    );
+    const centerX = THREE.MathUtils.clamp(
+      frontEntrance.centerX ?? 0,
+      -width * 0.5 + doorwayWidth * 0.5 + 0.4,
+      width * 0.5 - doorwayWidth * 0.5 - 0.4
+    );
+    const pathHalfWidth = Math.max(doorwayWidth * 0.5 + 1.2, floorplanSafety.frontPathHalfWidth ?? 3.3);
+    const pathStartZ = depth * 0.5 - 0.8;
+    const pathDepth = Math.max(12, floorplanSafety.frontPathDepth ?? 24);
+
+    zones.push({
+      id: "front-courtyard-path-clearance",
+      minX: centerX - pathHalfWidth,
+      maxX: centerX + pathHalfWidth,
+      minZ: pathStartZ,
+      maxZ: pathStartZ + pathDepth
+    });
+  }
+
+  const protectedZonePattern = /(outdoor|courtyard|front[_-]?yard|plaza)/i;
+  const sceneZones = Array.isArray(sceneConfig?.zones) ? sceneConfig.zones : [];
+  for (const zone of sceneZones) {
+    if (zone?.shape !== "box" || !protectedZonePattern.test(String(zone.id || ""))) {
+      continue;
+    }
+    const [sx, sy, sz] = zone.size || [0, 0, 0];
+    const [px, py, pz] = zone.position || [0, 0, 0];
+    if (!sx || !sz) {
+      continue;
+    }
+    zones.push({
+      id: `zone-${zone.id}`,
+      minX: (px || 0) - sx * 0.5,
+      maxX: (px || 0) + sx * 0.5,
+      minZ: (pz || 0) - sz * 0.5,
+      maxZ: (pz || 0) + sz * 0.5
+    });
+  }
+
+  return zones.filter(
+    (zone) =>
+      Number.isFinite(zone.minX) &&
+      Number.isFinite(zone.maxX) &&
+      Number.isFinite(zone.minZ) &&
+      Number.isFinite(zone.maxZ) &&
+      zone.minX < zone.maxX &&
+      zone.minZ < zone.maxZ
+  );
+}
+
 export async function loadScene({
   scene,
   camera,
@@ -440,12 +596,20 @@ export async function loadScene({
   const roomConfig = sceneConfig.room || {};
   const roomSize = roomConfig.size || [30, 8, 30];
   const floorY = roomConfig.floorY || 0;
+  const baseRoomBounds = getRoomBounds(roomSize, 1.4, roomConfig.navigationBounds);
+  const roomBounds = { ...baseRoomBounds };
 
   const roomGroup = new THREE.Group();
   roomGroup.name = "RoomGroup";
   scene.add(roomGroup);
   const wallThickness = roomConfig.collisionWallThickness ?? 0.5;
   const colliders = [];
+  const floorplanRecords = [];
+  const floorplanBaseConfig = cloneConfig(roomConfig.floorplan || {});
+  const FLOORPLAN_BASE_TAG = "floorplan-base";
+  const FLOORPLAN_THEME_TAG = "floorplan-theme";
+  let baseFloorplanBounds = [];
+  let themeFloorplanBounds = [];
 
   function addColliderRect({
     centerX,
@@ -480,6 +644,14 @@ export async function loadScene({
     }
   }
 
+  function setRoomBounds(nextBounds = null) {
+    const resolved = getRoomBounds(roomSize, 1.4, nextBounds);
+    roomBounds.minX = resolved.minX;
+    roomBounds.maxX = resolved.maxX;
+    roomBounds.minZ = resolved.minZ;
+    roomBounds.maxZ = resolved.maxZ;
+  }
+
   const wallMaterial = new THREE.MeshStandardMaterial({
     color: roomConfig.wallMaterial?.color || "#7a7a70",
     roughness: 0.92,
@@ -504,6 +676,21 @@ export async function loadScene({
   ]);
 
   const [width, height, depth] = roomSize;
+  const floorplanProtectedZones = createProtectedFloorplanZones({
+    roomConfig,
+    roomSize,
+    sceneConfig
+  });
+
+  function wallBlockedByProtectedZone(bounds) {
+    for (const zone of floorplanProtectedZones) {
+      if (boundsOverlap2D(bounds, zone)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(width, depth), floorMaterial);
   floor.rotation.x = -Math.PI * 0.5;
   floor.position.y = floorY;
@@ -731,6 +918,284 @@ export async function loadScene({
   addSideWallWithDoor("east");
   addSideWallWithDoor("west");
 
+  function normalizeOpenSide(value) {
+    const side = String(value || "")
+      .trim()
+      .toLowerCase();
+    if (side === "north" || side === "south" || side === "east" || side === "west") {
+      return side;
+    }
+    return "";
+  }
+
+  function removeFloorplanByTag(tag) {
+    removeCollidersByTag(tag);
+    for (let i = floorplanRecords.length - 1; i >= 0; i -= 1) {
+      const item = floorplanRecords[i];
+      if (item.userData?.floorplanTag !== tag) {
+        continue;
+      }
+      scene.remove(item);
+      item.traverse((child) => {
+        if (child.geometry?.dispose) {
+          child.geometry.dispose();
+        }
+        if (Array.isArray(child.material)) {
+          for (const material of child.material) {
+            if (material?.userData?.floorplanOwned) {
+              material.dispose();
+            }
+          }
+        } else if (child.material?.userData?.floorplanOwned) {
+          child.material.dispose();
+        }
+      });
+      floorplanRecords.splice(i, 1);
+    }
+  }
+
+  function createFloorplanMaterial(baseMaterial, override = null) {
+    if (!override || typeof override !== "object") {
+      return baseMaterial;
+    }
+
+    const material = baseMaterial.clone();
+    material.userData.floorplanOwned = true;
+    if (override.color) {
+      material.color.set(override.color);
+    }
+    if (override.roughness != null) {
+      material.roughness = override.roughness;
+    }
+    if (override.metalness != null) {
+      material.metalness = override.metalness;
+    }
+    if (override.emissiveColor) {
+      material.emissive.set(override.emissiveColor);
+    }
+    if (override.emissiveIntensity != null) {
+      material.emissiveIntensity = override.emissiveIntensity;
+    }
+    if (override.opacity != null) {
+      material.opacity = override.opacity;
+      material.transparent = override.opacity < 1;
+    }
+    return material;
+  }
+
+  function createAnnex(annexConfig, index, tag) {
+    const size = Array.isArray(annexConfig?.size) ? annexConfig.size : [8, 6, 8];
+    const widthValue = Math.max(2.2, Number(size[0]) || 8);
+    const heightValue = Math.max(2.2, Number(size[1]) || 6);
+    const depthValue = Math.max(2.2, Number(size[2]) || 8);
+    const position = Array.isArray(annexConfig?.position) ? annexConfig.position : [0, 0, 0];
+    const centerX = Number(position[0]) || 0;
+    const baseY = floorY + (Number(position[1]) || 0);
+    const centerZ = Number(position[2]) || 0;
+    const openSide = normalizeOpenSide(annexConfig?.openSide);
+    const navigationInset = THREE.MathUtils.clamp(
+      annexConfig?.navigationInset ?? 1.05,
+      0.35,
+      Math.max(0.35, Math.min(widthValue, depthValue) * 0.45)
+    );
+
+    const floorMat = createFloorplanMaterial(floorMaterial, annexConfig?.floorMaterial);
+    const wallMat = createFloorplanMaterial(wallMaterial, annexConfig?.wallMaterial);
+    const ceilingMat = createFloorplanMaterial(ceilingMaterial, annexConfig?.ceilingMaterial);
+
+    const group = new THREE.Group();
+    group.name = annexConfig?.id || `annex-${index + 1}`;
+    group.userData.floorplanTag = tag;
+    group.position.set(centerX, baseY, centerZ);
+
+    const floor = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, depthValue), floorMat);
+    floor.rotation.x = -Math.PI * 0.5;
+    floor.receiveShadow = true;
+    group.add(floor);
+
+    const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, depthValue), ceilingMat);
+    ceiling.rotation.x = Math.PI * 0.5;
+    ceiling.position.y = heightValue;
+    group.add(ceiling);
+
+    function addWall(side) {
+      if (side === openSide) {
+        return;
+      }
+
+      let mesh = null;
+      let wallBounds = null;
+      if (side === "north") {
+        wallBounds = {
+          minX: centerX - widthValue * 0.5,
+          maxX: centerX + widthValue * 0.5,
+          minZ: centerZ - depthValue * 0.5 - wallThickness * 0.5,
+          maxZ: centerZ - depthValue * 0.5 + wallThickness * 0.5
+        };
+        if (wallBlockedByProtectedZone(wallBounds)) {
+          return;
+        }
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, heightValue), wallMat);
+        mesh.position.set(0, heightValue * 0.5, -depthValue * 0.5);
+        addColliderRect({
+          centerX,
+          centerZ: centerZ - depthValue * 0.5,
+          sizeX: widthValue,
+          sizeZ: wallThickness,
+          minY: baseY + 0.02,
+          maxY: baseY + heightValue - 0.04,
+          tag,
+          id: `${group.name}_north`
+        });
+      } else if (side === "south") {
+        wallBounds = {
+          minX: centerX - widthValue * 0.5,
+          maxX: centerX + widthValue * 0.5,
+          minZ: centerZ + depthValue * 0.5 - wallThickness * 0.5,
+          maxZ: centerZ + depthValue * 0.5 + wallThickness * 0.5
+        };
+        if (wallBlockedByProtectedZone(wallBounds)) {
+          return;
+        }
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, heightValue), wallMat);
+        mesh.rotation.y = Math.PI;
+        mesh.position.set(0, heightValue * 0.5, depthValue * 0.5);
+        addColliderRect({
+          centerX,
+          centerZ: centerZ + depthValue * 0.5,
+          sizeX: widthValue,
+          sizeZ: wallThickness,
+          minY: baseY + 0.02,
+          maxY: baseY + heightValue - 0.04,
+          tag,
+          id: `${group.name}_south`
+        });
+      } else if (side === "east") {
+        wallBounds = {
+          minX: centerX + widthValue * 0.5 - wallThickness * 0.5,
+          maxX: centerX + widthValue * 0.5 + wallThickness * 0.5,
+          minZ: centerZ - depthValue * 0.5,
+          maxZ: centerZ + depthValue * 0.5
+        };
+        if (wallBlockedByProtectedZone(wallBounds)) {
+          return;
+        }
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(depthValue, heightValue), wallMat);
+        mesh.rotation.y = -Math.PI * 0.5;
+        mesh.position.set(widthValue * 0.5, heightValue * 0.5, 0);
+        addColliderRect({
+          centerX: centerX + widthValue * 0.5,
+          centerZ,
+          sizeX: wallThickness,
+          sizeZ: depthValue,
+          minY: baseY + 0.02,
+          maxY: baseY + heightValue - 0.04,
+          tag,
+          id: `${group.name}_east`
+        });
+      } else if (side === "west") {
+        wallBounds = {
+          minX: centerX - widthValue * 0.5 - wallThickness * 0.5,
+          maxX: centerX - widthValue * 0.5 + wallThickness * 0.5,
+          minZ: centerZ - depthValue * 0.5,
+          maxZ: centerZ + depthValue * 0.5
+        };
+        if (wallBlockedByProtectedZone(wallBounds)) {
+          return;
+        }
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(depthValue, heightValue), wallMat);
+        mesh.rotation.y = Math.PI * 0.5;
+        mesh.position.set(-widthValue * 0.5, heightValue * 0.5, 0);
+        addColliderRect({
+          centerX: centerX - widthValue * 0.5,
+          centerZ,
+          sizeX: wallThickness,
+          sizeZ: depthValue,
+          minY: baseY + 0.02,
+          maxY: baseY + heightValue - 0.04,
+          tag,
+          id: `${group.name}_west`
+        });
+      }
+
+      if (mesh) {
+        group.add(mesh);
+      }
+    }
+
+    addWall("north");
+    addWall("south");
+    addWall("east");
+    addWall("west");
+
+    scene.add(group);
+    floorplanRecords.push(group);
+
+    return {
+      minX: centerX - widthValue * 0.5 + navigationInset,
+      maxX: centerX + widthValue * 0.5 - navigationInset,
+      minZ: centerZ - depthValue * 0.5 + navigationInset,
+      maxZ: centerZ + depthValue * 0.5 - navigationInset
+    };
+  }
+
+  function buildFloorplanAnnexes(annexes, tag) {
+    const bounds = [];
+    const source = Array.isArray(annexes) ? annexes : [];
+    for (let index = 0; index < source.length; index += 1) {
+      const annex = source[index];
+      if (!annex || annex.enabled === false) {
+        continue;
+      }
+      const annexBounds = createAnnex(annex, index, tag);
+      if (annexBounds && annexBounds.minX < annexBounds.maxX && annexBounds.minZ < annexBounds.maxZ) {
+        bounds.push(annexBounds);
+      }
+    }
+    return bounds;
+  }
+
+  function applyFloorplanBounds(themeFloorplan = null) {
+    const explicitBounds =
+      themeFloorplan?.navigationProfile?.bounds || themeFloorplan?.navigationBounds || null;
+    if (explicitBounds) {
+      setRoomBounds(explicitBounds);
+      return;
+    }
+
+    const merged = { ...baseRoomBounds };
+    for (const bounds of baseFloorplanBounds) {
+      mergeBounds(merged, bounds);
+    }
+    if (themeFloorplan?.extendNavigation !== false) {
+      for (const bounds of themeFloorplanBounds) {
+        mergeBounds(merged, bounds);
+      }
+    }
+    setRoomBounds(merged);
+  }
+
+  function applyThemeFloorplan(themeFloorplan = null) {
+    removeFloorplanByTag(FLOORPLAN_THEME_TAG);
+    themeFloorplanBounds = [];
+
+    const config =
+      themeFloorplan && typeof themeFloorplan === "object"
+        ? cloneConfig(themeFloorplan)
+        : null;
+    if (config?.annexes) {
+      themeFloorplanBounds = buildFloorplanAnnexes(config.annexes, FLOORPLAN_THEME_TAG);
+    }
+    applyFloorplanBounds(config);
+  }
+
+  function resetThemeFloorplan() {
+    applyThemeFloorplan(null);
+  }
+
+  baseFloorplanBounds = buildFloorplanAnnexes(floorplanBaseConfig?.annexes, FLOORPLAN_BASE_TAG);
+  applyFloorplanBounds(null);
+
   const fogConfig = sceneConfig.fog || {};
   scene.fog = new THREE.Fog(
     fogConfig.color || "#44443f",
@@ -939,7 +1404,13 @@ export async function loadScene({
     glowLightCount += 1;
   }
 
-  async function instantiateProp(prop, tag = "base") {
+  async function instantiateProp(prop, tag = "base", options = {}) {
+    const shouldCancel =
+      typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
+    if (shouldCancel()) {
+      return null;
+    }
+
     const wrapper = new THREE.Group();
     wrapper.name = prop.id || "prop";
     wrapper.userData.themeTag = tag;
@@ -954,6 +1425,9 @@ export async function loadScene({
 
     if (prop.type === "model" && prop.model) {
       const gltf = await cache.loadModel(prop.model);
+      if (shouldCancel()) {
+        return null;
+      }
       if (gltf?.scene) {
         const model = gltf.scene.clone(true);
         model.traverse((child) => {
@@ -978,6 +1452,11 @@ export async function loadScene({
       }
     } else {
       wrapper.add(await createPrimitiveMesh(prop, cache, animatedTextures, wrapper));
+    }
+
+    if (shouldCancel()) {
+      disposeManagedObjectResources(wrapper);
+      return null;
     }
 
     const scale = prop.scale || [1, 1, 1];
@@ -1005,10 +1484,20 @@ export async function loadScene({
     return wrapper;
   }
 
-  async function addProps(props = [], { tag = "base" } = {}) {
+  async function addProps(props = [], { tag = "base", shouldCancel } = {}) {
+    const cancel = typeof shouldCancel === "function" ? shouldCancel : () => false;
     const created = [];
     for (const prop of props) {
-      const item = await instantiateProp(prop, tag);
+      if (cancel()) {
+        break;
+      }
+      const item = await instantiateProp(prop, tag, { shouldCancel: cancel });
+      if (cancel()) {
+        break;
+      }
+      if (!item) {
+        continue;
+      }
       created.push(item);
     }
     return created;
@@ -1024,7 +1513,9 @@ export async function loadScene({
             glowLightCount = Math.max(0, glowLightCount - 1);
           }
         });
+        disposeManagedObjectResources(item);
         scene.remove(item);
+        item.clear();
         propRecords.splice(i, 1);
         for (let j = animatedTextures.length - 1; j >= 0; j -= 1) {
           if (animatedTextures[j].owner === item) {
@@ -1106,6 +1597,8 @@ export async function loadScene({
     roomConfig: {
       size: roomSize,
       floorY,
+      navigationBounds: cloneConfig(roomConfig.navigationBounds || {}),
+      floorplan: cloneConfig(floorplanBaseConfig || {}),
       sideDoorways: cloneConfig(roomConfig.sideDoorways || {}),
       frontEntrance: cloneConfig(roomConfig.frontEntrance || {}),
       wallMaterial: cloneMaterialConfig(roomConfig.wallMaterial || {}),
@@ -1117,7 +1610,7 @@ export async function loadScene({
       floor: floorMaterial,
       ceiling: ceilingMaterial
     },
-    roomBounds: getRoomBounds(roomSize, 1.4, roomConfig.navigationBounds),
+    roomBounds,
     floorY,
     player,
     pitch,
@@ -1128,6 +1621,10 @@ export async function loadScene({
     zones: sceneConfig.zones || [],
     animatedTextures,
     getColliders: () => colliders,
+    setRoomBounds,
+    getRoomBounds: () => ({ ...roomBounds }),
+    applyThemeFloorplan,
+    resetThemeFloorplan,
     addProps,
     removePropsByTag,
     updateDynamicProps

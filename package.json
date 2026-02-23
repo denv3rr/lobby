@@ -8,7 +8,7 @@
     "build": "vite build && node scripts/syncConfigAliases.mjs",
     "preview": "vite preview",
     "sync:shop": "node scripts/syncShopFeed.mjs",
-    "sync:shop:defaults": "node scripts/syncShopFeed.mjs --write-defaults",
+    "sync:shop:defaults": "node scripts/syncShopFeed.mjs --write-defaults --strict",
     "sync:projects": "node scripts/syncProjectsFeed.mjs",
     "sync:projects:defaults": "node scripts/syncProjectsFeed.mjs --write-defaults"
   },

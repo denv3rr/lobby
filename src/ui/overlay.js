@@ -2,21 +2,26 @@ export function createOverlay({
   mount,
   isMobile,
   showDevPanel,
+  showThemePanel = showDevPanel,
   onEnableSound,
   onThemeChange,
   onQualityChange
 }) {
+  const settingsVisible = showDevPanel || showThemePanel;
+  const qualityHiddenClass = showDevPanel ? "" : "hidden";
+  const hintHiddenClass = showDevPanel ? "" : "hidden";
+
   mount.innerHTML = `
     <div class="lobby-root">
       <div id="viewport" class="viewport"></div>
 
       <div class="ui-layer">
-        <div class="settings-panel ${showDevPanel ? "" : "hidden"}" data-ui>
+        <div class="settings-panel ${settingsVisible ? "" : "hidden"}" data-ui>
           <h1>Lobby</h1>
           <label>
             <select id="theme-select" data-ui></select>
           </label>
-          <label>
+          <label class="${qualityHiddenClass}">
             Quality
             <select id="quality-select" data-ui>
               <option value="low">Low</option>
@@ -24,7 +29,7 @@ export function createOverlay({
               <option value="high">High</option>
             </select>
           </label>
-          <p id="control-hint" class="control-hint"></p>
+          <p id="control-hint" class="control-hint ${hintHiddenClass}"></p>
         </div>
 
         <div id="portal-prompt" class="portal-prompt"></div>
