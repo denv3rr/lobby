@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && node scripts/syncConfigAliases.mjs",
     "preview": "vite preview",
     "sync:shop": "node scripts/syncShopFeed.mjs",
     "sync:shop:defaults": "node scripts/syncShopFeed.mjs --write-defaults",
