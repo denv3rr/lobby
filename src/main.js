@@ -368,7 +368,16 @@ async function boot() {
     projectsFeed: projectsFeed || { items: [] },
     domElement: rendererContext.renderer.domElement
   });
-  await catalogSystem.initialize(appliedTheme || themeName);
+  let catalogReady = false;
+  const catalogInitPromise = catalogSystem
+    .initialize(appliedTheme || themeName)
+    .then(() => {
+      catalogReady = true;
+      interactionSystem?.setTargets(getInteractionTargets());
+    })
+    .catch((error) => {
+      console.error("Catalog failed to initialize", error);
+    });
 
   getInteractionTargets = () => [
     ...(sceneContext?.portals || []),
@@ -416,6 +425,9 @@ async function boot() {
       }
     }
   });
+  if (catalogReady) {
+    interactionSystem.setTargets(getInteractionTargets());
+  }
 
   const clock = new THREE.Clock();
   rendererContext.renderer.setAnimationLoop(() => {
@@ -448,6 +460,8 @@ async function boot() {
     audioSystem?.dispose?.();
     rendererContext?.dispose?.();
   });
+
+  catalogInitPromise.catch(() => {});
 }
 
 boot().catch((error) => {
