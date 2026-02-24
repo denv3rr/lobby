@@ -101,6 +101,49 @@ export class PortalInteractionSystem {
     this.setHovered(target);
   }
 
+  debugPickAtNdc(x = 0, y = 0) {
+    if (!this.hitboxes.length) {
+      return null;
+    }
+
+    this.raycaster.setFromCamera({ x, y }, this.camera);
+    const hits = this.raycaster.intersectObjects(this.hitboxes, false);
+    if (!hits.length) {
+      return null;
+    }
+
+    return this.hitboxToTarget.get(hits[0].object) || null;
+  }
+
+  debugFindAnyTargetHit() {
+    if (!this.hitboxes.length) {
+      return null;
+    }
+
+    const xs = [-0.85, -0.5, -0.2, 0, 0.2, 0.5, 0.85];
+    const ys = [-0.6, -0.3, 0, 0.3, 0.6];
+    for (const y of ys) {
+      for (const x of xs) {
+        const hit = this.debugPickAtNdc(x, y);
+        if (hit) {
+          return hit;
+        }
+      }
+    }
+    return null;
+  }
+
+  debugActivateHoveredOrAnyTarget() {
+    const target =
+      this.hoveredTarget || this.debugPickAtNdc(0, 0) || this.debugFindAnyTargetHit() || null;
+    if (!target || !this.onActivate) {
+      return false;
+    }
+    this.setHovered(target);
+    this.onActivate(target);
+    return true;
+  }
+
   dispose() {
     this.domElement.removeEventListener("pointermove", this.boundPointerMove);
     this.domElement.removeEventListener("click", this.boundClick);

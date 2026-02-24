@@ -6,7 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/syncConfigAliases.mjs",
+    "validate:configs": "node scripts/validateConfigs.mjs",
+    "validate:model-assets": "node scripts/validateModelAssets.mjs",
+    "validate:model-assets:strict": "node scripts/validateModelAssets.mjs --strict",
     "preview": "vite preview",
+    "test:e2e": "npx --yes playwright test --config=playwright.config.mjs",
+    "test:e2e:headed": "npx --yes playwright test --config=playwright.config.mjs --headed",
     "sync:shop": "node scripts/syncShopFeed.mjs",
     "sync:shop:defaults": "node scripts/syncShopFeed.mjs --write-defaults --strict",
     "sync:projects": "node scripts/syncProjectsFeed.mjs",

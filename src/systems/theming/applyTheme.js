@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { createProceduralTexture } from "../../engine/proceduralTextures.js";
 import { ParticleSystem } from "./particles.js";
-import { AtmosphereSystem } from "./atmosphere.js";
 
 function cloneRoomConfig(roomConfig) {
   return JSON.parse(JSON.stringify(roomConfig));
@@ -274,6 +273,29 @@ function createThemeLight(lightConfig, qualityProfile) {
   return light;
 }
 
+class NoopAtmosphereSystem {
+  async apply() {
+    return true;
+  }
+
+  update() {}
+
+  clear() {}
+
+  setQualityProfile() {}
+
+  dispose() {}
+}
+
+let atmosphereModulePromise = null;
+
+async function loadAtmosphereModule() {
+  if (!atmosphereModulePromise) {
+    atmosphereModulePromise = import("./atmosphere.js");
+  }
+  return atmosphereModulePromise;
+}
+
 export function resolveInitialThemeName(themesConfig) {
   const themeNames = Object.keys(themesConfig.themes || {});
   if (!themeNames.length) {
@@ -317,17 +339,46 @@ export class ThemeSystem {
     this.audioSystem = audioSystem;
     this.qualityProfile = qualityProfile;
     this.particles = new ParticleSystem(scene, sceneContext.floorY);
-    this.atmosphere = new AtmosphereSystem({
+    this.atmosphere = new NoopAtmosphereSystem();
+    this.atmosphereReady = false;
+    this.atmosphereLoadPromise = null;
+    this.atmosphereOptions = {
       scene,
       cache,
       floorY: sceneContext.floorY,
       roomSize: sceneContext.roomConfig?.size,
       qualityProfile
-    });
+    };
     this.currentThemeName = null;
     this.themeLights = [];
     this.animatedTextures = [];
     this.applyToken = 0;
+  }
+
+  async ensureAtmosphereSystem() {
+    if (this.atmosphereReady) {
+      return true;
+    }
+
+    if (!this.atmosphereLoadPromise) {
+      this.atmosphereLoadPromise = loadAtmosphereModule()
+        .then((module) => {
+          const AtmosphereSystemCtor = module?.AtmosphereSystem;
+          if (!AtmosphereSystemCtor) {
+            return false;
+          }
+          this.atmosphere = new AtmosphereSystemCtor(this.atmosphereOptions);
+          this.atmosphereReady = true;
+          this.atmosphere.setQualityProfile(this.qualityProfile);
+          return true;
+        })
+        .catch((error) => {
+          console.error("Failed to load atmosphere system", error);
+          return false;
+        });
+    }
+
+    return this.atmosphereLoadPromise;
   }
 
   listThemes() {
@@ -556,6 +607,7 @@ export class ThemeSystem {
         this.qualityProfile?.particleMultiplier || 1,
         this.sceneContext.roomConfig.size
       );
+      await this.ensureAtmosphereSystem();
       await this.atmosphere.apply(theme.atmosphere || null);
       if (token !== this.applyToken) {
         return false;

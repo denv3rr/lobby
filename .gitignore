@@ -16,6 +16,8 @@ notes-private/
 scratch-private/
 *.private.md
 docs/
+FEATURE-PASS-NOTES.md
+DESIGN-REFERENCE-LIBRARY.md
 
 # Local runtime config overrides (dev-only)
 public/config/*.json
@@ -32,3 +34,8 @@ public/config/*.json
 *.secret
 *.pem
 *.key
+
+# E2E artifacts
+test-results/
+playwright-report/
+.playwright/

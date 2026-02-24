@@ -1,0 +1,55 @@
+{
+  "enabled": true,
+  "stability": {
+    "initial": 0.86,
+    "min": 0,
+    "max": 1,
+    "drainPerSecond": 0.0045,
+    "recoverPerSecond": 0.0072,
+    "recoverDelaySeconds": 2.2,
+    "lowThreshold": 0.45,
+    "criticalThreshold": 0.24
+  },
+  "ui": {
+    "showStabilityMeter": true,
+    "showObjectivesPanel": true,
+    "stabilityLabel": "Liminal Stability",
+    "title": "Liminal Objectives",
+    "subtitle": "Keep the lobby coherent while you navigate.",
+    "labels": {
+      "stable": "Coherent",
+      "low": "Fraying",
+      "critical": "Near Collapse"
+    }
+  },
+  "allRequiredCompletedStabilityDelta": 0.05,
+  "objectives": [
+    {
+      "id": "orient_portals",
+      "label": "Orient To The Portals",
+      "detail": "Sweep view across three primary links.",
+      "target": 3,
+      "progress": 0,
+      "optional": false,
+      "stabilityDeltaOnComplete": 0.03
+    },
+    {
+      "id": "hold_coherence",
+      "label": "Hold Coherence",
+      "detail": "Maintain a calm position for one cycle.",
+      "target": 8,
+      "progress": 0,
+      "optional": false,
+      "stabilityDeltaOnComplete": 0.04
+    },
+    {
+      "id": "verify_annex",
+      "label": "Verify Annex Signal",
+      "detail": "Approach an annex entry and confirm response.",
+      "target": 1,
+      "progress": 0,
+      "optional": true,
+      "stabilityDeltaOnComplete": 0.02
+    }
+  ]
+}

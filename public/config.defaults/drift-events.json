@@ -1,0 +1,79 @@
+{
+  "enabled": true,
+  "seed": "seperet-drift-v1",
+  "baseIntervalSeconds": {
+    "min": 20,
+    "max": 40
+  },
+  "maxConcurrentEvents": 2,
+  "eventWeights": {
+    "fogPulse": 0.42,
+    "ambientMix": 0.36,
+    "stabilityDelta": 0.22
+  },
+  "events": {
+    "fogPulse": {
+      "enabled": true,
+      "chance": 1,
+      "durationSeconds": {
+        "min": 3,
+        "max": 7
+      },
+      "peakIntensity": {
+        "min": 0.08,
+        "max": 0.22
+      },
+      "nearScale": {
+        "min": 0.9,
+        "max": 1.02
+      },
+      "farScale": {
+        "min": 0.82,
+        "max": 0.98
+      },
+      "colorLerp": {
+        "min": 0.02,
+        "max": 0.12
+      }
+    },
+    "ambientMix": {
+      "enabled": true,
+      "chance": 1,
+      "durationSeconds": {
+        "min": 5,
+        "max": 12
+      },
+      "layers": [
+        "lobby_pad",
+        "backrooms_buzz",
+        "roman_aura",
+        "inferno_rumble",
+        "purgatory_void",
+        "neon_pulse",
+        "winter_air",
+        "chime_metal",
+        "night_woodland_wind",
+        "fluorescent_drift",
+        "far_traffic"
+      ],
+      "maxLayerCount": 2,
+      "delta": {
+        "min": -0.2,
+        "max": 0.2
+      },
+      "minMagnitude": 0.04
+    },
+    "stabilityDelta": {
+      "enabled": true,
+      "chance": 1,
+      "durationSeconds": {
+        "min": 4,
+        "max": 10
+      },
+      "delta": {
+        "min": -0.16,
+        "max": 0.16
+      }
+    }
+  }
+}

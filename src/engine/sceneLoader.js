@@ -223,6 +223,29 @@ async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
   return mesh;
 }
 
+function normalizeModelFallbackConfig(prop = {}) {
+  const fallback = prop?.modelFallback;
+  if (!fallback || fallback === false) {
+    return null;
+  }
+
+  if (typeof fallback === "string") {
+    return {
+      type: "primitive",
+      primitive: fallback
+    };
+  }
+
+  if (typeof fallback === "object") {
+    return {
+      type: "primitive",
+      ...fallback
+    };
+  }
+
+  return null;
+}
+
 function createPortal(portalConfig) {
   const group = new THREE.Group();
   const size = portalConfig.size || [2.2, 2.8, 0.45];
@@ -1438,16 +1461,15 @@ export async function loadScene({
         });
         wrapper.add(model);
       } else {
-        const fallback = await createPrimitiveMesh(
-          {
-            primitive: "box",
-            scale: [1, 2, 1],
-            material: { color: "#7f3957" }
-          },
-          cache,
-          animatedTextures,
-          wrapper
-        );
+        const fallbackConfig = normalizeModelFallbackConfig(prop);
+        if (!fallbackConfig) {
+          console.warn(
+            `[sceneLoader] Missing model asset "${prop.model}" for prop "${prop.id || "unnamed"}".`
+          );
+          return null;
+        }
+
+        const fallback = await createPrimitiveMesh(fallbackConfig, cache, animatedTextures, wrapper);
         wrapper.add(fallback);
       }
     } else {
@@ -1575,6 +1597,19 @@ export async function loadScene({
     }
   }
 
+  function getPropStats() {
+    const byTag = {};
+    for (const item of propRecords) {
+      const tag = item?.userData?.themeTag || "unknown";
+      byTag[tag] = (byTag[tag] || 0) + 1;
+    }
+
+    return {
+      total: propRecords.length,
+      byTag
+    };
+  }
+
   await addProps(sceneConfig.props || [], { tag: "base" });
 
   const spawn = sceneConfig.spawn || {};
@@ -1627,6 +1662,7 @@ export async function loadScene({
     resetThemeFloorplan,
     addProps,
     removePropsByTag,
-    updateDynamicProps
+    updateDynamicProps,
+    getPropStats
   };
 }

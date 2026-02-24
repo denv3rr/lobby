@@ -24,8 +24,8 @@ export class DesktopControls {
     this.speed = 5.2;
     this.sprintMultiplier = 1.4;
     this.mouseSensitivity = 0.0022;
-    this.pitchMin = -Math.PI * 0.42;
-    this.pitchMax = Math.PI * 0.42;
+    this.pitchMin = -Math.PI * 0.5 + 0.01;
+    this.pitchMax = Math.PI * 0.5 - 0.01;
     this.keys = new Set();
     this.pointerLocked = false;
     this.forward = new THREE.Vector3();
@@ -40,33 +40,61 @@ export class DesktopControls {
     this.boundMouseMove = (event) => this.onMouseMove(event);
     this.boundPointerLock = () => this.onPointerLockChanged();
     this.boundCanvasClick = () => this.requestPointerLock();
+    this.boundWindowBlur = () => this.clearKeys();
+    this.boundVisibilityChange = () => {
+      if (document.visibilityState !== "visible") {
+        this.clearKeys();
+      }
+    };
 
     window.addEventListener("keydown", this.boundKeyDown);
     window.addEventListener("keyup", this.boundKeyUp);
+    window.addEventListener("blur", this.boundWindowBlur);
+    document.addEventListener("visibilitychange", this.boundVisibilityChange);
     document.addEventListener("pointerlockchange", this.boundPointerLock);
     document.addEventListener("mousemove", this.boundMouseMove);
     this.domElement.addEventListener("click", this.boundCanvasClick);
   }
 
   onKeyDown(event) {
-    if (event.target?.closest?.("[data-ui]")) {
+    const target = event.target;
+    const isEditableTarget =
+      target?.tagName === "INPUT" ||
+      target?.tagName === "TEXTAREA" ||
+      target?.tagName === "SELECT" ||
+      target?.isContentEditable;
+    if (!this.pointerLocked && isEditableTarget) {
       return;
     }
     this.keys.add(event.code);
+    if (
+      event.code === "KeyW" ||
+      event.code === "KeyA" ||
+      event.code === "KeyS" ||
+      event.code === "KeyD" ||
+      event.code === "ShiftLeft" ||
+      event.code === "ShiftRight"
+    ) {
+      event.preventDefault();
+    }
   }
 
   onKeyUp(event) {
-    if (event.target?.closest?.("[data-ui]")) {
-      return;
-    }
     this.keys.delete(event.code);
   }
 
   onPointerLockChanged() {
     this.pointerLocked = document.pointerLockElement === this.domElement;
+    if (!this.pointerLocked) {
+      this.clearKeys();
+    }
     if (this.onPointerLockChange) {
       this.onPointerLockChange(this.pointerLocked);
     }
+  }
+
+  clearKeys() {
+    this.keys.clear();
   }
 
   onMouseMove(event) {
@@ -74,9 +102,13 @@ export class DesktopControls {
       return;
     }
 
-    this.player.rotation.y -= event.movementX * this.mouseSensitivity;
+    const deltaX = Number.isFinite(event.movementX) ? event.movementX : 0;
+    const deltaY = Number.isFinite(event.movementY) ? event.movementY : 0;
+    const nextYaw = this.player.rotation.y - deltaX * this.mouseSensitivity;
+    const nextPitch = this.pitch.rotation.x - deltaY * this.mouseSensitivity;
+    this.player.rotation.y = Number.isFinite(nextYaw) ? nextYaw : this.player.rotation.y;
     this.pitch.rotation.x = THREE.MathUtils.clamp(
-      this.pitch.rotation.x - event.movementY * this.mouseSensitivity,
+      Number.isFinite(nextPitch) ? nextPitch : this.pitch.rotation.x,
       this.pitchMin,
       this.pitchMax
     );
@@ -105,14 +137,11 @@ export class DesktopControls {
       return 0;
     }
 
-    this.camera.getWorldDirection(this.forward);
-    this.forward.y = 0;
-    if (this.forward.lengthSq() < 1e-5) {
-      this.forward.set(0, 0, -1);
-    } else {
-      this.forward.normalize();
+    const yaw = Number.isFinite(this.player.rotation.y) ? this.player.rotation.y : 0;
+    if (!Number.isFinite(this.player.rotation.y)) {
+      this.player.rotation.y = yaw;
     }
-
+    this.forward.set(-Math.sin(yaw), 0, -Math.cos(yaw));
     this.right.crossVectors(this.forward, this.worldUp).normalize();
     this.moveVector
       .set(0, 0, 0)
@@ -162,6 +191,8 @@ export class DesktopControls {
   dispose() {
     window.removeEventListener("keydown", this.boundKeyDown);
     window.removeEventListener("keyup", this.boundKeyUp);
+    window.removeEventListener("blur", this.boundWindowBlur);
+    document.removeEventListener("visibilitychange", this.boundVisibilityChange);
     document.removeEventListener("pointerlockchange", this.boundPointerLock);
     document.removeEventListener("mousemove", this.boundMouseMove);
     this.domElement.removeEventListener("click", this.boundCanvasClick);
