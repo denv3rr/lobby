@@ -1,4 +1,4 @@
-import { expect, test } from "playwright/test";
+import { expect, test } from "@playwright/test";
 
 test("shows fallback link hub when WebGL is unavailable", async ({ page }) => {
   await page.addInitScript(() => {

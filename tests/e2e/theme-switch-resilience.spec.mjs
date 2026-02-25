@@ -1,4 +1,4 @@
-import { expect, test } from "playwright/test";
+import { expect, test } from "@playwright/test";
 
 const DEBUG_HOOK_NAMES = [
   "__LOBBY_DEBUG",
