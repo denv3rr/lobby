@@ -127,6 +127,60 @@ async function readThemeExtraCount(page) {
   return typeof count === "number" ? count : null;
 }
 
+async function readPlayerPosition(page) {
+  const { stats } = await readDebugStats(page);
+  const player = stats?.player;
+  if (!player) {
+    return null;
+  }
+  return {
+    x: Number(player.x || 0),
+    z: Number(player.z || 0)
+  };
+}
+
+function planarDistance(from, to) {
+  if (!from || !to) {
+    return 0;
+  }
+  const dx = to.x - from.x;
+  const dz = to.z - from.z;
+  return Math.hypot(dx, dz);
+}
+
+async function moveProbeDistance(page, minDistance = 0.05) {
+  const start = await readPlayerPosition(page);
+  if (!start) {
+    return 0;
+  }
+
+  const sequence = [
+    { key: "w", holdMs: 650, lookX: 140 },
+    { key: "a", holdMs: 520, lookX: -120 },
+    { key: "d", holdMs: 520, lookX: 100 },
+    { key: "s", holdMs: 650, lookX: -140 }
+  ];
+
+  let bestDistance = 0;
+  for (const step of sequence) {
+    await page.keyboard.down(step.key);
+    await page.waitForTimeout(step.holdMs);
+    await page.keyboard.up(step.key);
+    await page.waitForTimeout(140);
+
+    const current = await readPlayerPosition(page);
+    bestDistance = Math.max(bestDistance, planarDistance(start, current));
+    if (bestDistance > minDistance) {
+      return bestDistance;
+    }
+
+    await dispatchMouseLook(page, step.lookX, 0);
+    await page.waitForTimeout(60);
+  }
+
+  return bestDistance;
+}
+
 async function waitForThemeExtraCount(page, timeoutMs = 10_000) {
   const startedAt = Date.now();
   while (Date.now() - startedAt < timeoutMs) {
@@ -256,11 +310,8 @@ test("rapid theme switching leaves no stale props and controls/portals still res
   const soundButton = page.locator("#enable-sound-btn");
   if (await soundButton.isVisible()) {
     await soundButton.click({ force: true });
-    await page.waitForTimeout(150);
   }
-  await page.evaluate(() => {
-    document.querySelector("#sound-gate")?.classList.add("hidden");
-  });
+  await expect(page.locator("#sound-gate")).toHaveClass(/hidden/);
 
   await page.evaluate(() => {
     window.__pwOpenedUrls = [];
@@ -289,21 +340,6 @@ test("rapid theme switching leaves no stale props and controls/portals still res
   const openedUrl = await page.evaluate(() => window.__pwOpenedUrls[0] || "");
   expect(openedUrl).toMatch(/^https?:\/\//);
 
-  const beforeMove = await readDebugStats(page);
-  const beforePlayer = beforeMove.stats?.player || null;
-  expect(beforePlayer).not.toBeNull();
-
-  await page.keyboard.down("KeyW");
-  await page.waitForTimeout(850);
-  await page.keyboard.up("KeyW");
-  await page.waitForTimeout(150);
-
-  const afterMove = await readDebugStats(page);
-  const afterPlayer = afterMove.stats?.player || null;
-  expect(afterPlayer).not.toBeNull();
-
-  const dx = (afterPlayer?.x || 0) - (beforePlayer?.x || 0);
-  const dz = (afterPlayer?.z || 0) - (beforePlayer?.z || 0);
-  const movedDistance = Math.hypot(dx, dz);
+  const movedDistance = await moveProbeDistance(page);
   expect(movedDistance).toBeGreaterThan(0.05);
 });

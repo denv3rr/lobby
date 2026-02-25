@@ -194,6 +194,14 @@ function toColor(value, fallback) {
   }
 }
 
+function readText(value, fallback = "") {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
 async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
   const primitive = prop.primitive || "box";
   let geometry = null;
@@ -1323,6 +1331,7 @@ export async function loadScene({
   }
 
   const propRecords = [];
+  const propInteractionTargets = [];
   const animatedTextures = [];
   const dynamicProps = [];
   let glowLightCount = 0;
@@ -1333,6 +1342,7 @@ export async function loadScene({
   const tempPropBox = new THREE.Box3();
   const tempPropSize = new THREE.Vector3();
   const tempPropCenter = new THREE.Vector3();
+  const tempLocalCenter = new THREE.Vector3();
 
   function addObjectCollider(object, { tag = "base", id = "" } = {}) {
     tempPropBox.setFromObject(object);
@@ -1427,6 +1437,105 @@ export async function loadScene({
     glowLightCount += 1;
   }
 
+  function createPropInteractionTarget(wrapper, prop, tag) {
+    if (!prop?.interactable || typeof prop.interactable !== "object") {
+      return null;
+    }
+    if (prop.interactable.enabled === false) {
+      return null;
+    }
+
+    const interactable = prop.interactable;
+    const title = readText(interactable.title, readText(prop.id, "Exhibit"));
+    const description = readText(interactable.description, "");
+    const label = readText(interactable.label, title);
+    const tags = Array.isArray(interactable.tags)
+      ? interactable.tags
+          .map((entry) => readText(entry, ""))
+          .filter(Boolean)
+          .slice(0, 10)
+      : [];
+    const actions = Array.isArray(interactable.actions)
+      ? interactable.actions
+          .map((entry) => ({
+            label: readText(entry?.label, "Open"),
+            url: readText(entry?.url, "")
+          }))
+          .filter((entry) => entry.url)
+          .slice(0, 4)
+      : [];
+
+    tempPropBox.setFromObject(wrapper);
+    if (tempPropBox.isEmpty()) {
+      return null;
+    }
+
+    tempPropBox.getSize(tempPropSize);
+    tempPropBox.getCenter(tempPropCenter);
+    tempLocalCenter.copy(tempPropCenter);
+    wrapper.worldToLocal(tempLocalCenter);
+
+    const hitbox = new THREE.Mesh(
+      new THREE.BoxGeometry(
+        Math.max(0.6, tempPropSize.x * 1.08),
+        Math.max(0.8, tempPropSize.y * 1.08),
+        Math.max(0.6, tempPropSize.z * 1.08)
+      ),
+      new THREE.MeshBasicMaterial({
+        transparent: true,
+        opacity: 0,
+        depthWrite: false
+      })
+    );
+    hitbox.userData.disposeManagedResources = true;
+    hitbox.position.copy(tempLocalCenter);
+    wrapper.add(hitbox);
+
+    const emissiveMaterials = [];
+    wrapper.traverse((child) => {
+      if (!child?.isMesh) {
+        return;
+      }
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material || material.emissiveIntensity == null) {
+          continue;
+        }
+        material.userData = material.userData || {};
+        if (!Number.isFinite(material.userData.baseInteractableEmissiveIntensity)) {
+          material.userData.baseInteractableEmissiveIntensity = material.emissiveIntensity || 0;
+        }
+        emissiveMaterials.push(material);
+      }
+    });
+
+    const baseScale = wrapper.scale.clone();
+    return {
+      id: `prop:${readText(prop.id, wrapper.name || "item")}`,
+      label,
+      type: "prop",
+      hitbox,
+      inspectData: {
+        title,
+        description,
+        tags,
+        actions
+      },
+      userData: {
+        themeTag: tag,
+        owner: wrapper
+      },
+      setHovered: (hovered) => {
+        const hoverStrength = hovered ? 1 : 0;
+        wrapper.scale.copy(baseScale).multiplyScalar(1 + hoverStrength * 0.03);
+        for (const material of emissiveMaterials) {
+          const base = material.userData?.baseInteractableEmissiveIntensity ?? 0;
+          material.emissiveIntensity = base + hoverStrength * 0.22;
+        }
+      }
+    };
+  }
+
   async function instantiateProp(prop, tag = "base", options = {}) {
     const shouldCancel =
       typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
@@ -1485,8 +1594,14 @@ export async function loadScene({
     wrapper.scale.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
     attachGlowLight(wrapper, prop);
     scene.add(wrapper);
+    wrapper.updateMatrixWorld(true);
     propRecords.push(wrapper);
     registerPropCollider(wrapper, prop, tag);
+    const interactionTarget = createPropInteractionTarget(wrapper, prop, tag);
+    if (interactionTarget) {
+      propInteractionTargets.push(interactionTarget);
+      wrapper.userData.interactionTarget = interactionTarget;
+    }
 
     const hover = prop.hoverMotion;
     if (wrapper.userData.billboard || hover) {
@@ -1547,6 +1662,11 @@ export async function loadScene({
         for (let j = dynamicProps.length - 1; j >= 0; j -= 1) {
           if (dynamicProps[j].object === item) {
             dynamicProps.splice(j, 1);
+          }
+        }
+        for (let j = propInteractionTargets.length - 1; j >= 0; j -= 1) {
+          if (propInteractionTargets[j].userData?.owner === item) {
+            propInteractionTargets.splice(j, 1);
           }
         }
       }
@@ -1655,6 +1775,7 @@ export async function loadScene({
     baseFogState,
     zones: sceneConfig.zones || [],
     animatedTextures,
+    getInteractionTargets: () => propInteractionTargets,
     getColliders: () => colliders,
     setRoomBounds,
     getRoomBounds: () => ({ ...roomBounds }),

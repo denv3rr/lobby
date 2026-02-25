@@ -288,6 +288,26 @@
         1,
         1.3
       ],
+      "interactable": {
+        "label": "About This Lobby",
+        "title": "Seperet Lobby",
+        "description": "A modular Three.js portfolio lobby with theme-driven visuals, portals, and seasonal updates.",
+        "tags": [
+          "Three.js",
+          "Vite",
+          "Config Driven"
+        ],
+        "actions": [
+          {
+            "label": "Open Lobby Repo",
+            "url": "https://github.com/denv3rr/lobby"
+          },
+          {
+            "label": "Visit Seperet",
+            "url": "https://seperet.com"
+          }
+        ]
+      },
       "material": {
         "color": "#575043"
       }
@@ -317,6 +337,22 @@
         "axis": "y",
         "amplitude": 0.2,
         "speed": 1.35
+      },
+      "interactable": {
+        "label": "Featured Reel",
+        "title": "Seperet Build Reel",
+        "description": "A floating preview panel in the center of the lobby. Swap this texture or model to spotlight your latest project.",
+        "tags": [
+          "Showcase",
+          "Billboard",
+          "Animated Texture"
+        ],
+        "actions": [
+          {
+            "label": "Open YouTube",
+            "url": "https://youtube.com/@seperet"
+          }
+        ]
       },
       "material": {
         "color": "#ffffff",
@@ -349,6 +385,15 @@
         0.7,
         1
       ],
+      "interactable": {
+        "label": "Design Note",
+        "title": "Intentional Negative Space",
+        "description": "The lobby uses calm open zones so props and portals feel curated rather than cluttered.",
+        "tags": [
+          "Art Direction",
+          "Minimalism"
+        ]
+      },
       "material": {
         "color": "#4a453a"
       }
@@ -761,7 +806,64 @@
       }
     }
   ],
+  "secretUnlocks": [
+    {
+      "id": "east_archive_annex",
+      "zoneId": "secret_shadow_corner",
+      "requiredEntries": 1,
+      "cooldownSeconds": 0.5,
+      "message": "Secret unlocked: East Archive Area",
+      "floorplan": {
+        "annexes": [
+          {
+            "id": "east_archive_annex_room",
+            "size": [
+              7.8,
+              4.4,
+              8.4
+            ],
+            "position": [
+              20.2,
+              0,
+              -8.6
+            ],
+            "openSide": "west",
+            "navigationInset": 0.85,
+            "floorMaterial": {
+              "color": "#20252d",
+              "roughness": 0.9,
+              "metalness": 0.06
+            },
+            "wallMaterial": {
+              "color": "#2a3038",
+              "roughness": 0.88,
+              "metalness": 0.08
+            },
+            "ceilingMaterial": {
+              "color": "#3a414b",
+              "roughness": 0.9,
+              "metalness": 0.05
+            }
+          }
+        ]
+      }
+    }
+  ],
   "zones": [
+    {
+      "id": "secret_shadow_corner",
+      "shape": "box",
+      "position": [
+        -12,
+        1.4,
+        -11.8
+      ],
+      "size": [
+        6,
+        3,
+        6
+      ]
+    },
     {
       "id": "carpet_zone",
       "surface": "carpet",

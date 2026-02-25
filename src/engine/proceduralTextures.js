@@ -39,6 +39,26 @@ function createCheckerboard() {
   return canvas;
 }
 
+function createCheckerboardBw() {
+  const size = 512;
+  const cells = 16;
+  const cellSize = size / cells;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  ctx.fillStyle = "#000000";
+  ctx.fillRect(0, 0, size, size);
+  for (let y = 0; y < cells; y += 1) {
+    for (let x = 0; x < cells; x += 1) {
+      const isLight = (x + y) % 2 === 0;
+      ctx.fillStyle = isLight ? "#ffffff" : "#000000";
+      ctx.fillRect(x * cellSize, y * cellSize, cellSize, cellSize);
+    }
+  }
+
+  return canvas;
+}
+
 function createNeonGrid() {
   const size = 512;
   const canvas = createCanvas(size);
@@ -373,6 +393,8 @@ export function createProceduralTexture(name) {
   let canvas = null;
   if (name === "checkerboard") {
     canvas = createCheckerboard();
+  } else if (name === "checkerboard-bw") {
+    canvas = createCheckerboardBw();
   } else if (name === "pompeii-fresco") {
     canvas = createPompeiiFresco();
   } else if (name === "mosaic") {

@@ -1,7 +1,32 @@
+import * as THREE from "three";
 import { resolvePublicPath } from "../../utils/path.js";
 
 function clamp01(value) {
   return Math.max(0, Math.min(1, value));
+}
+
+function isObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function hashString(value = "") {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function setAudioParamValue(param, value, contextTime) {
+  if (!param || !Number.isFinite(value)) {
+    return;
+  }
+  try {
+    param.setValueAtTime(value, contextTime);
+  } catch {
+    // AudioParam writes can fail on disposed contexts; ignore safely.
+  }
 }
 
 function createWhiteNoiseBuffer(context, durationSeconds = 2) {
@@ -39,13 +64,25 @@ export class AudioSystem {
     this.ambientLayers = new Map();
     this.sfxMap = audioConfig.sfx || {};
     this.zoneState = new Map();
+    this.portalAudioConfig = isObject(audioConfig.portalAudio) ? audioConfig.portalAudio : {};
+    this.themeStingers = isObject(audioConfig.themeStingers) ? audioConfig.themeStingers : {};
     this.enabled = false;
     this.stepAccumulator = 0;
     this.currentSurface = "tile";
     this.currentMix = {};
+    this.currentThemeName = "lobby";
+    this.portalTargets = [];
+    this.portalSources = new Map();
+    this.portalMasterGain = null;
+    this.lastThemeStingerAtMs = 0;
 
     this.audioContext = null;
     this.noiseBuffer = null;
+    this.listenerPosition = new THREE.Vector3();
+    this.listenerForward = new THREE.Vector3(0, 0, -1);
+    this.listenerUp = new THREE.Vector3(0, 1, 0);
+    this.listenerQuaternion = new THREE.Quaternion();
+    this.portalWorldPosition = new THREE.Vector3();
   }
 
   initialize() {
@@ -84,6 +121,368 @@ export class AudioSystem {
       this.noiseBuffer = createWhiteNoiseBuffer(this.audioContext);
     }
     return this.audioContext;
+  }
+
+  isPortalAudioEnabled() {
+    return this.portalAudioConfig.enabled !== false;
+  }
+
+  ensurePortalMasterGain() {
+    const context = this.ensureAudioContext();
+    if (!this.portalMasterGain) {
+      this.portalMasterGain = context.createGain();
+      this.portalMasterGain.gain.value = 0;
+      this.portalMasterGain.connect(context.destination);
+    }
+    return this.portalMasterGain;
+  }
+
+  resolvePortalProfile(themeName = this.currentThemeName) {
+    const config = this.portalAudioConfig;
+    const baseProfile = isObject(config.profile) ? config.profile : {};
+    const themeProfiles = isObject(config.themeProfiles) ? config.themeProfiles : {};
+    const defaultThemeProfile = isObject(themeProfiles.default) ? themeProfiles.default : {};
+    const themeProfile = isObject(themeProfiles[themeName]) ? themeProfiles[themeName] : {};
+    return {
+      ...baseProfile,
+      ...defaultThemeProfile,
+      ...themeProfile
+    };
+  }
+
+  setPortalTargets(portals = []) {
+    const nextTargets = [];
+    for (const portal of portals) {
+      if (!portal?.group?.isObject3D) {
+        continue;
+      }
+      nextTargets.push({
+        id: String(portal.id || `portal-${nextTargets.length + 1}`),
+        group: portal.group
+      });
+    }
+    this.portalTargets = nextTargets;
+    if (this.enabled) {
+      this.rebuildPortalSources();
+    }
+  }
+
+  disposePortalSources() {
+    for (const sourceState of this.portalSources.values()) {
+      try {
+        sourceState.oscA?.stop?.();
+      } catch {}
+      try {
+        sourceState.oscB?.stop?.();
+      } catch {}
+      try {
+        sourceState.lfo?.stop?.();
+      } catch {}
+      sourceState.oscA?.disconnect?.();
+      sourceState.oscB?.disconnect?.();
+      sourceState.lfo?.disconnect?.();
+      sourceState.mix?.disconnect?.();
+      sourceState.filter?.disconnect?.();
+      sourceState.lfoGain?.disconnect?.();
+      sourceState.outputGain?.disconnect?.();
+      sourceState.panner?.disconnect?.();
+    }
+    this.portalSources.clear();
+  }
+
+  createPortalSource(target, profile) {
+    const context = this.ensureAudioContext();
+    const portalMaster = this.ensurePortalMasterGain();
+    const sourceId = String(target?.id || "portal");
+    const spread = Math.max(0, Number(profile.frequencySpread) || 0);
+    const hashUnit = (hashString(sourceId) % 1000) / 1000;
+    const spreadOffset = (hashUnit - 0.5) * spread;
+    const baseFrequency = Math.max(28, (Number(profile.baseFrequency) || 70) + spreadOffset);
+    const harmonicRatio = Math.max(1.05, Number(profile.harmonicRatio) || 1.62);
+    const detune = Number(profile.detuneCents) || 4;
+    const filterFrequency = Math.max(60, Number(profile.filterFrequency) || 620);
+
+    const outputGain = context.createGain();
+    outputGain.gain.value = 0;
+    const filter = context.createBiquadFilter();
+    filter.type = "bandpass";
+    filter.frequency.value = filterFrequency;
+    filter.Q.value = Math.max(0.1, Number(profile.filterQ) || 0.8);
+    const mix = context.createGain();
+    mix.gain.value = clamp01(Number(profile.mixGain) || 0.22);
+    const oscA = createOscillator(context, profile.waveA || "sine", baseFrequency);
+    const oscB = createOscillator(
+      context,
+      profile.waveB || "triangle",
+      baseFrequency * harmonicRatio,
+      detune
+    );
+    const lfo = createOscillator(
+      context,
+      "sine",
+      Math.max(0.01, Number(profile.lfoRate) || 0.16)
+    );
+    const lfoGain = context.createGain();
+    lfoGain.gain.value = clamp01(Number(profile.lfoDepth) || 0.14);
+    const panner = context.createPanner();
+    panner.panningModel = this.portalAudioConfig.panningModel || "HRTF";
+    panner.distanceModel = this.portalAudioConfig.distanceModel || "inverse";
+    panner.refDistance = Math.max(0.1, Number(this.portalAudioConfig.refDistance) || 2.4);
+    panner.maxDistance = Math.max(
+      panner.refDistance + 0.1,
+      Number(this.portalAudioConfig.maxDistance) || 24
+    );
+    panner.rolloffFactor = Math.max(0, Number(this.portalAudioConfig.rolloffFactor) || 1.45);
+    panner.coneInnerAngle = Number(this.portalAudioConfig.coneInnerAngle) || 300;
+    panner.coneOuterAngle = Number(this.portalAudioConfig.coneOuterAngle) || 360;
+    panner.coneOuterGain = clamp01(
+      this.portalAudioConfig.coneOuterGain == null ? 0.55 : this.portalAudioConfig.coneOuterGain
+    );
+
+    oscA.connect(mix);
+    oscB.connect(mix);
+    mix.connect(filter).connect(outputGain).connect(panner).connect(portalMaster);
+    lfo.connect(lfoGain).connect(outputGain.gain);
+
+    oscA.start();
+    oscB.start();
+    lfo.start();
+
+    return {
+      id: sourceId,
+      target,
+      oscA,
+      oscB,
+      lfo,
+      mix,
+      filter,
+      lfoGain,
+      outputGain,
+      panner,
+      sourceGain: clamp01(Number(profile.sourceGain) || 0.07)
+    };
+  }
+
+  updatePortalSourcePose(sourceState) {
+    if (!sourceState?.target?.group?.getWorldPosition || !sourceState?.panner || !this.audioContext) {
+      return;
+    }
+    sourceState.target.group.getWorldPosition(this.portalWorldPosition);
+    const now = this.audioContext.currentTime;
+    if (sourceState.panner.positionX) {
+      setAudioParamValue(sourceState.panner.positionX, this.portalWorldPosition.x, now);
+      setAudioParamValue(sourceState.panner.positionY, this.portalWorldPosition.y, now);
+      setAudioParamValue(sourceState.panner.positionZ, this.portalWorldPosition.z, now);
+    } else {
+      sourceState.panner.setPosition(
+        this.portalWorldPosition.x,
+        this.portalWorldPosition.y,
+        this.portalWorldPosition.z
+      );
+    }
+  }
+
+  rebuildPortalSources() {
+    this.disposePortalSources();
+
+    if (!this.enabled || !this.isPortalAudioEnabled()) {
+      if (this.portalMasterGain && this.audioContext) {
+        this.portalMasterGain.gain.setTargetAtTime(0, this.audioContext.currentTime, 0.12);
+      }
+      return;
+    }
+
+    const context = this.ensureAudioContext();
+    const profile = this.resolvePortalProfile(this.currentThemeName);
+    const portalMaster = this.ensurePortalMasterGain();
+    const masterGain = clamp01(Number(profile.masterGain) || 0.36);
+    portalMaster.gain.setTargetAtTime(masterGain, context.currentTime, 0.2);
+
+    for (const target of this.portalTargets) {
+      const sourceState = this.createPortalSource(target, profile);
+      sourceState.outputGain.gain.setTargetAtTime(
+        sourceState.sourceGain,
+        context.currentTime,
+        0.32
+      );
+      this.updatePortalSourcePose(sourceState);
+      this.portalSources.set(sourceState.id, sourceState);
+    }
+  }
+
+  resolveThemeStinger(themeName = this.currentThemeName) {
+    if (!isObject(this.themeStingers)) {
+      return null;
+    }
+
+    const base = isObject(this.themeStingers.default) ? this.themeStingers.default : {};
+    const override = isObject(this.themeStingers[themeName]) ? this.themeStingers[themeName] : {};
+    const resolved = {
+      ...base,
+      ...override
+    };
+
+    if (!Object.keys(resolved).length || resolved.enabled === false) {
+      return null;
+    }
+
+    return resolved;
+  }
+
+  setTheme(themeName, { playStinger = false } = {}) {
+    const normalizedTheme = typeof themeName === "string" ? themeName.trim() : "";
+    const nextThemeName = normalizedTheme || this.currentThemeName || "lobby";
+    const changed = nextThemeName !== this.currentThemeName;
+    this.currentThemeName = nextThemeName;
+
+    if (this.enabled) {
+      this.rebuildPortalSources();
+      if (playStinger && changed) {
+        this.playThemeStinger(nextThemeName);
+      }
+    }
+  }
+
+  playThemeStinger(themeName = this.currentThemeName) {
+    if (!this.enabled) {
+      return false;
+    }
+
+    const context = this.ensureAudioContext();
+    if (context.state !== "running") {
+      return false;
+    }
+
+    const stinger = this.resolveThemeStinger(themeName);
+    if (!stinger) {
+      return false;
+    }
+
+    const nowMs = performance.now();
+    const cooldownMs = Math.max(0, Number(stinger.cooldownMs) || 520);
+    if (nowMs - this.lastThemeStingerAtMs < cooldownMs) {
+      return false;
+    }
+    this.lastThemeStingerAtMs = nowMs;
+
+    const now = context.currentTime;
+    const duration = Math.max(0.12, (Number(stinger.durationMs) || 720) / 1000);
+    const fromHz = Math.max(24, Number(stinger.fromHz) || 180);
+    const toHz = Math.max(24, Number(stinger.toHz) || 430);
+    const harmonic = Math.max(1.05, Number(stinger.harmonicRatio) || 1.6);
+    const detune = Number(stinger.detuneCents) || 0;
+    const volume = clamp01(Number(stinger.volume) || 0.18);
+
+    const output = context.createGain();
+    output.gain.setValueAtTime(0.0001, now);
+    output.gain.exponentialRampToValueAtTime(Math.max(0.0001, volume), now + duration * 0.18);
+    output.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+    output.connect(context.destination);
+
+    const filter = context.createBiquadFilter();
+    filter.type = stinger.filterType || "lowpass";
+    const filterFromHz = Math.max(80, Number(stinger.filterFromHz) || 820);
+    const filterToHz = Math.max(80, Number(stinger.filterToHz) || 2400);
+    filter.frequency.setValueAtTime(filterFromHz, now);
+    filter.frequency.exponentialRampToValueAtTime(filterToHz, now + duration);
+
+    const oscA = createOscillator(context, stinger.waveA || "triangle", fromHz);
+    const oscB = createOscillator(
+      context,
+      stinger.waveB || "sine",
+      fromHz * harmonic,
+      detune
+    );
+    oscA.frequency.exponentialRampToValueAtTime(toHz, now + duration);
+    oscB.frequency.exponentialRampToValueAtTime(toHz * harmonic, now + duration);
+
+    const mix = context.createGain();
+    mix.gain.value = 0.5;
+    oscA.connect(mix);
+    oscB.connect(mix);
+    mix.connect(filter).connect(output);
+
+    const noiseAmount = clamp01(Number(stinger.noiseAmount) || 0);
+    let noiseSource = null;
+    let noiseBand = null;
+    let noiseGain = null;
+    if (noiseAmount > 0 && this.noiseBuffer) {
+      noiseSource = context.createBufferSource();
+      noiseSource.buffer = this.noiseBuffer;
+      const noiseFilterType = stinger.noiseFilterType || "bandpass";
+      noiseBand = context.createBiquadFilter();
+      noiseBand.type = noiseFilterType;
+      noiseBand.frequency.value = Math.max(80, Number(stinger.noiseFrequency) || 1200);
+      noiseGain = context.createGain();
+      noiseGain.gain.setValueAtTime(0.0001, now);
+      noiseGain.gain.exponentialRampToValueAtTime(
+        Math.max(0.0001, noiseAmount * volume),
+        now + duration * 0.22
+      );
+      noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+      noiseSource.connect(noiseBand).connect(noiseGain).connect(output);
+      noiseSource.start(now);
+      noiseSource.stop(now + duration + 0.04);
+    }
+
+    oscA.start(now);
+    oscB.start(now);
+    oscA.stop(now + duration + 0.03);
+    oscB.stop(now + duration + 0.03);
+
+    window.setTimeout(() => {
+      oscA.disconnect();
+      oscB.disconnect();
+      mix.disconnect();
+      filter.disconnect();
+      noiseSource?.disconnect?.();
+      noiseBand?.disconnect?.();
+      noiseGain?.disconnect?.();
+      output.disconnect();
+    }, Math.ceil((duration + 0.2) * 1000));
+
+    return true;
+  }
+
+  updateSpatialAudio(camera) {
+    if (!this.enabled || !this.audioContext || this.audioContext.state !== "running") {
+      return;
+    }
+
+    const listener = this.audioContext.listener;
+    const now = this.audioContext.currentTime;
+    if (camera?.getWorldPosition && camera?.getWorldDirection && camera?.getWorldQuaternion) {
+      camera.getWorldPosition(this.listenerPosition);
+      camera.getWorldDirection(this.listenerForward).normalize();
+      camera.getWorldQuaternion(this.listenerQuaternion);
+      this.listenerUp.set(0, 1, 0).applyQuaternion(this.listenerQuaternion).normalize();
+    }
+
+    if (listener.positionX) {
+      setAudioParamValue(listener.positionX, this.listenerPosition.x, now);
+      setAudioParamValue(listener.positionY, this.listenerPosition.y, now);
+      setAudioParamValue(listener.positionZ, this.listenerPosition.z, now);
+      setAudioParamValue(listener.forwardX, this.listenerForward.x, now);
+      setAudioParamValue(listener.forwardY, this.listenerForward.y, now);
+      setAudioParamValue(listener.forwardZ, this.listenerForward.z, now);
+      setAudioParamValue(listener.upX, this.listenerUp.x, now);
+      setAudioParamValue(listener.upY, this.listenerUp.y, now);
+      setAudioParamValue(listener.upZ, this.listenerUp.z, now);
+    } else {
+      listener.setPosition(this.listenerPosition.x, this.listenerPosition.y, this.listenerPosition.z);
+      listener.setOrientation(
+        this.listenerForward.x,
+        this.listenerForward.y,
+        this.listenerForward.z,
+        this.listenerUp.x,
+        this.listenerUp.y,
+        this.listenerUp.z
+      );
+    }
+
+    for (const sourceState of this.portalSources.values()) {
+      this.updatePortalSourcePose(sourceState);
+    }
   }
 
   applyLayerVolume(state) {
@@ -515,6 +914,7 @@ export class AudioSystem {
       for (const state of this.ambientLayers.values()) {
         this.startLayer(state);
       }
+      this.rebuildPortalSources();
       return true;
     } catch {
       this.enabled = false;
@@ -595,6 +995,12 @@ export class AudioSystem {
   }
 
   dispose() {
+    this.disposePortalSources();
+    if (this.portalMasterGain) {
+      this.portalMasterGain.disconnect();
+      this.portalMasterGain = null;
+    }
+
     for (const state of this.ambientLayers.values()) {
       state.htmlAudio?.pause();
       if (state.htmlAudio) {

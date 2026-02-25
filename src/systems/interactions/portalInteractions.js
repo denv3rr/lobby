@@ -1,5 +1,10 @@
 import * as THREE from "three";
 
+function hasUrlTarget(target) {
+  const url = typeof target?.url === "string" ? target.url.trim() : "";
+  return Boolean(url);
+}
+
 export class PortalInteractionSystem {
   constructor({
     domElement,
@@ -133,9 +138,37 @@ export class PortalInteractionSystem {
     return null;
   }
 
+  debugFindAnyUrlTargetHit() {
+    if (!this.hitboxes.length) {
+      return null;
+    }
+
+    const xs = [-0.85, -0.5, -0.2, 0, 0.2, 0.5, 0.85];
+    const ys = [-0.6, -0.3, 0, 0.3, 0.6];
+    for (const y of ys) {
+      for (const x of xs) {
+        const hit = this.debugPickAtNdc(x, y);
+        if (hasUrlTarget(hit)) {
+          return hit;
+        }
+      }
+    }
+    return null;
+  }
+
   debugActivateHoveredOrAnyTarget() {
+    const hoveredUrlTarget = hasUrlTarget(this.hoveredTarget) ? this.hoveredTarget : null;
+    const centerTarget = this.debugPickAtNdc(0, 0);
+    const centerUrlTarget = hasUrlTarget(centerTarget) ? centerTarget : null;
+    const anyUrlTarget = this.debugFindAnyUrlTargetHit();
     const target =
-      this.hoveredTarget || this.debugPickAtNdc(0, 0) || this.debugFindAnyTargetHit() || null;
+      hoveredUrlTarget ||
+      centerUrlTarget ||
+      anyUrlTarget ||
+      this.hoveredTarget ||
+      centerTarget ||
+      this.debugFindAnyTargetHit() ||
+      null;
     if (!target || !this.onActivate) {
       return false;
     }

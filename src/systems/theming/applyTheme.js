@@ -2,8 +2,20 @@ import * as THREE from "three";
 import { createProceduralTexture } from "../../engine/proceduralTextures.js";
 import { ParticleSystem } from "./particles.js";
 
+function isObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneConfig(config = {}) {
+  try {
+    return JSON.parse(JSON.stringify(config ?? {}));
+  } catch {
+    return {};
+  }
+}
+
 function cloneRoomConfig(roomConfig) {
-  return JSON.parse(JSON.stringify(roomConfig));
+  return cloneConfig(roomConfig);
 }
 
 function formatThemeLabel(id) {
@@ -22,6 +34,41 @@ function mergeRoomConfig(baseConfig, roomOverrides = {}) {
       ...(roomOverrides[key] || {})
     };
   }
+  return merged;
+}
+
+function mergeFloorplanConfig(baseFloorplan, runtimeFloorplan) {
+  const hasBase = isObject(baseFloorplan);
+  const hasRuntime = isObject(runtimeFloorplan);
+  if (!hasBase && !hasRuntime) {
+    return null;
+  }
+
+  const merged = {
+    ...(hasBase ? baseFloorplan : {}),
+    ...(hasRuntime ? runtimeFloorplan : {})
+  };
+
+  const baseAnnexes = Array.isArray(baseFloorplan?.annexes) ? baseFloorplan.annexes : [];
+  const runtimeAnnexes = Array.isArray(runtimeFloorplan?.annexes) ? runtimeFloorplan.annexes : [];
+  if (baseAnnexes.length || runtimeAnnexes.length) {
+    merged.annexes = [...baseAnnexes, ...runtimeAnnexes];
+  }
+
+  if (isObject(baseFloorplan?.navigationProfile) || isObject(runtimeFloorplan?.navigationProfile)) {
+    merged.navigationProfile = {
+      ...(baseFloorplan?.navigationProfile || {}),
+      ...(runtimeFloorplan?.navigationProfile || {})
+    };
+  }
+
+  if (isObject(baseFloorplan?.navigationBounds) || isObject(runtimeFloorplan?.navigationBounds)) {
+    merged.navigationBounds = {
+      ...(baseFloorplan?.navigationBounds || {}),
+      ...(runtimeFloorplan?.navigationBounds || {})
+    };
+  }
+
   return merged;
 }
 
@@ -352,6 +399,7 @@ export class ThemeSystem {
     this.currentThemeName = null;
     this.themeLights = [];
     this.animatedTextures = [];
+    this.runtimeFloorplanOverrides = [];
     this.applyToken = 0;
   }
 
@@ -405,6 +453,36 @@ export class ThemeSystem {
       .filter(Boolean);
   }
 
+  getRuntimeFloorplanOverride() {
+    if (!this.runtimeFloorplanOverrides.length) {
+      return null;
+    }
+
+    let merged = null;
+    for (const floorplan of this.runtimeFloorplanOverrides) {
+      merged = mergeFloorplanConfig(merged, floorplan);
+    }
+    return merged;
+  }
+
+  setRuntimeFloorplanOverrides(overrides, options = {}) {
+    const source = Array.isArray(overrides) ? overrides : [];
+    const normalized = [];
+    for (const entry of source) {
+      if (!isObject(entry)) {
+        continue;
+      }
+      normalized.push(cloneConfig(entry));
+    }
+
+    this.runtimeFloorplanOverrides = normalized;
+
+    const shouldReapply = options.reapply !== false;
+    if (shouldReapply && this.currentThemeName) {
+      this.applyTheme(this.currentThemeName).catch(() => {});
+    }
+  }
+
   setQualityProfile(profile) {
     this.qualityProfile = profile;
     if (this.currentThemeName) {
@@ -426,7 +504,12 @@ export class ThemeSystem {
 
   resetToBaseState() {
     this.clearThemeLights();
-    this.sceneContext.resetThemeFloorplan?.();
+    const runtimeFloorplan = this.getRuntimeFloorplanOverride();
+    if (runtimeFloorplan) {
+      this.sceneContext.applyThemeFloorplan?.(runtimeFloorplan);
+    } else {
+      this.sceneContext.resetThemeFloorplan?.();
+    }
     this.sceneContext.removePropsByTag("theme-extra");
     this.animatedTextures = [];
     this.atmosphere.clear();
@@ -505,7 +588,11 @@ export class ThemeSystem {
         return false;
       }
 
-      this.sceneContext.applyThemeFloorplan?.(theme.floorplan || null);
+      const mergedFloorplan = mergeFloorplanConfig(
+        theme.floorplan || null,
+        this.getRuntimeFloorplanOverride()
+      );
+      this.sceneContext.applyThemeFloorplan?.(mergedFloorplan);
       if (token !== this.applyToken) {
         return false;
       }

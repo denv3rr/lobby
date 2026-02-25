@@ -30,6 +30,7 @@ export function createOverlay({
   const settingsVisible = showDevPanel || showThemePanel;
   const qualityHiddenClass = showDevPanel ? "" : "hidden";
   const hintHiddenClass = showDevPanel ? "" : "hidden";
+  const themeHiddenClass = showThemePanel ? "" : "hidden";
 
   mount.innerHTML = `
     <div class="lobby-root">
@@ -38,7 +39,7 @@ export function createOverlay({
       <div class="ui-layer">
         <div class="settings-panel ${settingsVisible ? "" : "hidden"}" data-ui>
           <h1>Lobby</h1>
-          <label>
+          <label class="${themeHiddenClass}">
             <select id="theme-select" data-ui></select>
           </label>
           <label class="${qualityHiddenClass}">
@@ -53,6 +54,18 @@ export function createOverlay({
         </div>
 
         <div id="portal-prompt" class="portal-prompt"></div>
+
+        <div id="inspect-panel" class="inspect-panel hidden" data-ui>
+          <article class="inspect-card" data-ui>
+            <button id="inspect-close-btn" class="inspect-close" type="button" data-ui>
+              Close
+            </button>
+            <h2 id="inspect-title" class="inspect-title"></h2>
+            <p id="inspect-description" class="inspect-description hidden"></p>
+            <div id="inspect-tags" class="inspect-tags hidden"></div>
+            <div id="inspect-actions" class="inspect-actions hidden"></div>
+          </article>
+        </div>
 
         <div id="diegetic-hud" class="diegetic-hud" aria-live="polite">
           <section id="stability-meter" class="stability-meter hidden">
@@ -114,6 +127,12 @@ export function createOverlay({
   const themeSelect = mount.querySelector("#theme-select");
   const qualitySelect = mount.querySelector("#quality-select");
   const portalPrompt = mount.querySelector("#portal-prompt");
+  const inspectPanel = mount.querySelector("#inspect-panel");
+  const inspectCloseButton = mount.querySelector("#inspect-close-btn");
+  const inspectTitle = mount.querySelector("#inspect-title");
+  const inspectDescription = mount.querySelector("#inspect-description");
+  const inspectTags = mount.querySelector("#inspect-tags");
+  const inspectActions = mount.querySelector("#inspect-actions");
   const soundGate = mount.querySelector("#sound-gate");
   const enableSoundButton = mount.querySelector("#enable-sound-btn");
   const loadingPanel = mount.querySelector("#loading-panel");
@@ -447,6 +466,87 @@ export function createOverlay({
     fallbackPanel.innerHTML = "";
   }
 
+  function normalizeInspectData(data) {
+    if (!data || typeof data !== "object") {
+      return null;
+    }
+
+    const title = readText(data.title, "");
+    if (!title) {
+      return null;
+    }
+
+    const description = readText(data.description, "");
+    const tags = Array.isArray(data.tags)
+      ? data.tags.map((entry) => readText(entry, "")).filter(Boolean).slice(0, 12)
+      : [];
+    const actions = Array.isArray(data.actions)
+      ? data.actions
+          .map((entry) => ({
+            label: readText(entry?.label, "Open"),
+            url: readText(entry?.url, "")
+          }))
+          .filter((entry) => entry.url)
+          .slice(0, 4)
+      : [];
+
+    return {
+      title,
+      description,
+      tags,
+      actions
+    };
+  }
+
+  function hideInspectPanel() {
+    inspectPanel.classList.add("hidden");
+    inspectTitle.textContent = "";
+    inspectDescription.textContent = "";
+    inspectDescription.classList.add("hidden");
+    inspectTags.innerHTML = "";
+    inspectTags.classList.add("hidden");
+    inspectActions.innerHTML = "";
+    inspectActions.classList.add("hidden");
+  }
+
+  function showInspectPanel(data) {
+    const normalized = normalizeInspectData(data);
+    if (!normalized) {
+      hideInspectPanel();
+      return false;
+    }
+
+    inspectTitle.textContent = normalized.title;
+
+    inspectDescription.textContent = normalized.description;
+    inspectDescription.classList.toggle("hidden", !normalized.description);
+
+    inspectTags.innerHTML = "";
+    for (const tag of normalized.tags) {
+      const chip = document.createElement("span");
+      chip.className = "inspect-tag";
+      chip.textContent = tag;
+      inspectTags.appendChild(chip);
+    }
+    inspectTags.classList.toggle("hidden", !normalized.tags.length);
+
+    inspectActions.innerHTML = "";
+    for (const action of normalized.actions) {
+      const link = document.createElement("a");
+      link.className = "inspect-action";
+      link.href = action.url;
+      link.target = "_blank";
+      link.rel = "noreferrer";
+      link.textContent = action.label;
+      link.dataset.ui = "true";
+      inspectActions.appendChild(link);
+    }
+    inspectActions.classList.toggle("hidden", !normalized.actions.length);
+
+    inspectPanel.classList.remove("hidden");
+    return true;
+  }
+
   enableSoundButton.addEventListener("click", async () => {
     if (onEnableSound) {
       await onEnableSound();
@@ -463,6 +563,10 @@ export function createOverlay({
     if (onThemeChange) {
       onThemeChange(themeSelect.value);
     }
+  });
+
+  inspectCloseButton.addEventListener("click", () => {
+    hideInspectPanel();
   });
 
   return {
@@ -511,7 +615,13 @@ export function createOverlay({
         portalPrompt.textContent = "";
         return;
       }
-      portalPrompt.textContent = portal.label;
+      portalPrompt.textContent = readText(portal.label, "");
+    },
+    showInspectPanel(data) {
+      return showInspectPanel(data);
+    },
+    hideInspectPanel() {
+      hideInspectPanel();
     },
     setPointerLockState(locked) {
       if (isMobile || !showDevPanel) {

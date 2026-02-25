@@ -9,6 +9,7 @@
     "validate:configs": "node scripts/validateConfigs.mjs",
     "validate:model-assets": "node scripts/validateModelAssets.mjs",
     "validate:model-assets:strict": "node scripts/validateModelAssets.mjs --strict",
+    "test:unit": "node --test tests/unit/*.test.mjs",
     "preview": "vite preview",
     "test:e2e": "npx --yes playwright test --config=playwright.config.mjs",
     "test:e2e:headed": "npx --yes playwright test --config=playwright.config.mjs --headed",

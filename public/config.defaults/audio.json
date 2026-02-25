@@ -101,5 +101,163 @@
     }
   ],
   "sfx": {},
-  "zones": []
+  "zones": [],
+  "portalAudio": {
+    "enabled": true,
+    "panningModel": "HRTF",
+    "distanceModel": "inverse",
+    "refDistance": 2.4,
+    "maxDistance": 24,
+    "rolloffFactor": 1.45,
+    "coneInnerAngle": 300,
+    "coneOuterAngle": 360,
+    "coneOuterGain": 0.55,
+    "profile": {
+      "masterGain": 0.36,
+      "sourceGain": 0.07,
+      "baseFrequency": 70,
+      "frequencySpread": 22,
+      "harmonicRatio": 1.62,
+      "detuneCents": 6,
+      "mixGain": 0.22,
+      "filterFrequency": 620,
+      "filterQ": 0.8,
+      "lfoRate": 0.16,
+      "lfoDepth": 0.14,
+      "waveA": "sine",
+      "waveB": "triangle"
+    },
+    "themeProfiles": {
+      "backrooms": {
+        "masterGain": 0.4,
+        "sourceGain": 0.08,
+        "baseFrequency": 58,
+        "filterFrequency": 510,
+        "lfoRate": 0.09,
+        "lfoDepth": 0.11
+      },
+      "inferno": {
+        "masterGain": 0.46,
+        "sourceGain": 0.1,
+        "baseFrequency": 48,
+        "frequencySpread": 18,
+        "filterFrequency": 420,
+        "lfoRate": 0.13,
+        "lfoDepth": 0.2,
+        "waveB": "sawtooth"
+      },
+      "roman": {
+        "masterGain": 0.32,
+        "sourceGain": 0.06,
+        "baseFrequency": 95,
+        "filterFrequency": 780,
+        "lfoRate": 0.22,
+        "lfoDepth": 0.09
+      },
+      "purgatory": {
+        "masterGain": 0.42,
+        "sourceGain": 0.085,
+        "baseFrequency": 66,
+        "frequencySpread": 30,
+        "filterFrequency": 540,
+        "lfoRate": 0.11,
+        "lfoDepth": 0.19
+      },
+      "neon": {
+        "masterGain": 0.45,
+        "sourceGain": 0.09,
+        "baseFrequency": 82,
+        "frequencySpread": 26,
+        "filterFrequency": 860,
+        "lfoRate": 0.25,
+        "lfoDepth": 0.21,
+        "waveA": "triangle",
+        "waveB": "sawtooth"
+      },
+      "winter": {
+        "masterGain": 0.31,
+        "sourceGain": 0.055,
+        "baseFrequency": 104,
+        "frequencySpread": 14,
+        "filterFrequency": 990,
+        "lfoRate": 0.19,
+        "lfoDepth": 0.08
+      }
+    }
+  },
+  "themeStingers": {
+    "default": {
+      "enabled": true,
+      "durationMs": 720,
+      "fromHz": 180,
+      "toHz": 430,
+      "harmonicRatio": 1.6,
+      "detuneCents": 4,
+      "volume": 0.16,
+      "cooldownMs": 520,
+      "filterType": "lowpass",
+      "filterFromHz": 860,
+      "filterToHz": 2400,
+      "waveA": "triangle",
+      "waveB": "sine",
+      "noiseAmount": 0.08,
+      "noiseFilterType": "bandpass",
+      "noiseFrequency": 1500
+    },
+    "backrooms": {
+      "durationMs": 980,
+      "fromHz": 140,
+      "toHz": 95,
+      "harmonicRatio": 1.18,
+      "detuneCents": -9,
+      "volume": 0.15,
+      "filterFromHz": 640,
+      "filterToHz": 340,
+      "waveA": "sawtooth",
+      "waveB": "triangle",
+      "noiseAmount": 0.16,
+      "noiseFrequency": 980
+    },
+    "inferno": {
+      "durationMs": 860,
+      "fromHz": 120,
+      "toHz": 280,
+      "harmonicRatio": 1.28,
+      "volume": 0.19,
+      "filterFromHz": 520,
+      "filterToHz": 1900,
+      "waveA": "square",
+      "waveB": "triangle",
+      "noiseAmount": 0.12,
+      "noiseFrequency": 720
+    },
+    "neon": {
+      "durationMs": 640,
+      "fromHz": 240,
+      "toHz": 620,
+      "harmonicRatio": 2,
+      "detuneCents": 12,
+      "volume": 0.17,
+      "filterFromHz": 1500,
+      "filterToHz": 4200,
+      "waveA": "triangle",
+      "waveB": "sawtooth",
+      "noiseAmount": 0.05,
+      "noiseFrequency": 2100
+    },
+    "winter": {
+      "durationMs": 740,
+      "fromHz": 360,
+      "toHz": 520,
+      "harmonicRatio": 1.42,
+      "detuneCents": 2,
+      "volume": 0.14,
+      "filterFromHz": 1800,
+      "filterToHz": 3600,
+      "waveA": "sine",
+      "waveB": "triangle",
+      "noiseAmount": 0.03,
+      "noiseFrequency": 2600
+    }
+  }
 }

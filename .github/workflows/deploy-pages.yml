@@ -38,11 +38,24 @@ jobs:
       - name: Validate config defaults
         run: npm run validate:configs
 
-      - name: Audit model assets (warn mode)
-        run: npm run validate:model-assets
+      - name: Audit model assets (strict mode)
+        run: npm run validate:model-assets:strict
+
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Install Playwright browser
+        run: npx --yes playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run test:e2e
 
       - name: Build
         run: npm run build
+
+      - name: Verify dist base path
+        run: |
+          node -e "const fs=require('node:fs'); const html=fs.readFileSync('dist/index.html','utf8'); const base=(process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'); if (!html.includes(base)) { console.error('Expected base path not found in dist/index.html:', base); process.exit(1); } console.log('Base path verified:', base);"
 
       - name: Upload artifact
         if: github.event_name != 'pull_request'

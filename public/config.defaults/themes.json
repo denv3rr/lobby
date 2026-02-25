@@ -272,7 +272,8 @@
             1.1,
             1.1,
             1.1
-          ]
+          ],
+          "modelFallback": "cylinder"
         },
         {
           "id": "lobby_planter_r",
@@ -292,7 +293,8 @@
             1.1,
             1.1,
             1.1
-          ]
+          ],
+          "modelFallback": "cylinder"
         },
         {
           "id": "lobby_clock_wall",
@@ -440,20 +442,26 @@
         }
       },
       "fog": {
-        "color": "#9e9558",
+        "color": "#aaa468",
         "near": 6,
-        "far": 40
+        "far": 48
+      },
+      "postProcessing": {
+        "bloomStrength": 0.38,
+        "bloomThreshold": 0.36,
+        "vignetteDarkness": 0.95,
+        "vignetteOffset": 1.08
       },
       "additionalLights": [
         {
           "type": "ambient",
           "color": "#6a6540",
-          "intensity": 0.22
+          "intensity": 0.32
         },
         {
           "type": "point",
           "color": "#f6f2c8",
-          "intensity": 1.35,
+          "intensity": 1.52,
           "distance": 18,
           "position": [
             -10,
@@ -464,7 +472,7 @@
         {
           "type": "point",
           "color": "#f6f2c8",
-          "intensity": 1.2,
+          "intensity": 1.38,
           "distance": 17,
           "position": [
             0,
@@ -475,7 +483,7 @@
         {
           "type": "point",
           "color": "#f6f2c8",
-          "intensity": 1.28,
+          "intensity": 1.45,
           "distance": 18,
           "position": [
             10,
@@ -486,7 +494,7 @@
         {
           "type": "point",
           "color": "#f6f2c8",
-          "intensity": 1.05,
+          "intensity": 1.2,
           "distance": 16,
           "position": [
             -6,
@@ -498,7 +506,7 @@
           "id": "backrooms_emergency_lamp",
           "type": "point",
           "color": "#f2e8b0",
-          "intensity": 0.78,
+          "intensity": 0.92,
           "distance": 12,
           "position": [
             6,
@@ -747,7 +755,8 @@
             1,
             1,
             1
-          ]
+          ],
+          "modelFallback": "box"
         },
         {
           "id": "backrooms_office_chair",
@@ -767,7 +776,8 @@
             1,
             1,
             1
-          ]
+          ],
+          "modelFallback": "box"
         },
         {
           "id": "backrooms_stain_1",
@@ -1745,7 +1755,8 @@
             1,
             1,
             1
-          ]
+          ],
+          "modelFallback": "cylinder"
         },
         {
           "id": "inferno_chain_r",
@@ -1765,7 +1776,8 @@
             1,
             1,
             1
-          ]
+          ],
+          "modelFallback": "cylinder"
         },
         {
           "id": "inferno_skull_pile",
@@ -1785,7 +1797,8 @@
             1.2,
             1.2,
             1.2
-          ]
+          ],
+          "modelFallback": "sphere"
         },
         {
           "id": "inferno_rune_ring",
@@ -2510,7 +2523,8 @@
             1.05,
             1.05,
             1.05
-          ]
+          ],
+          "modelFallback": "box"
         },
         {
           "id": "neon_server_rack_r",
@@ -2530,7 +2544,8 @@
             1.05,
             1.05,
             1.05
-          ]
+          ],
+          "modelFallback": "box"
         },
         {
           "id": "neon_holo_totem",
@@ -2691,8 +2706,19 @@
       },
       "particles": {
         "effect": {
-          "enabled": false,
-          "type": "snow"
+          "enabled": true,
+          "type": "snow",
+          "count": 360,
+          "area": [
+            30,
+            9,
+            30
+          ],
+          "fallSpeed": 0.62,
+          "drift": 0.42,
+          "color": "#f3f7ff",
+          "size": 0.075,
+          "opacity": 0.84
         }
       },
       "additionalProps": [
@@ -2714,7 +2740,8 @@
             1.1,
             1.1,
             1.1
-          ]
+          ],
+          "modelFallback": "cylinder"
         },
         {
           "id": "winter_snow_mound_l",
@@ -4284,6 +4311,522 @@
               "size": 0.028
             }
           }
+        }
+      }
+    },
+    "lodge": {
+      "label": "Lodge",
+      "disableBaseLights": false,
+      "roomOverrides": {
+        "wallMaterial": {
+          "color": "#e9e3d6",
+          "procedural": "mosaic",
+          "textureRepeat": [
+            4,
+            2
+          ],
+          "roughness": 0.9,
+          "metalness": 0.02
+        },
+        "floorMaterial": {
+          "color": "#ffffff",
+          "procedural": "checkerboard-bw",
+          "textureRepeat": [
+            8,
+            8
+          ],
+          "roughness": 0.86,
+          "metalness": 0.03
+        },
+        "ceilingMaterial": {
+          "color": "#f6f5f1",
+          "roughness": 0.94,
+          "metalness": 0.01
+        }
+      },
+      "fog": {
+        "color": "#8d867b",
+        "near": 13,
+        "far": 86
+      },
+      "postProcessing": {
+        "bloomStrength": 0.44,
+        "bloomThreshold": 0.36,
+        "bloomRadius": 0.66,
+        "vignetteDarkness": 0.92,
+        "vignetteOffset": 1.04
+      },
+      "lights": [
+        {
+          "index": 1,
+          "color": "#fff6dc",
+          "intensity": 1.36
+        },
+        {
+          "index": 2,
+          "color": "#ecd5a2",
+          "intensity": 0.84
+        }
+      ],
+      "additionalLights": [
+        {
+          "type": "ambient",
+          "color": "#b7ab97",
+          "intensity": 0.34
+        },
+        {
+          "type": "point",
+          "color": "#ffe5b9",
+          "intensity": 0.92,
+          "distance": 18,
+          "position": [
+            -6.5,
+            4.5,
+            -1.2
+          ]
+        },
+        {
+          "type": "point",
+          "color": "#ffe5b9",
+          "intensity": 0.92,
+          "distance": 18,
+          "position": [
+            6.5,
+            4.5,
+            -1.2
+          ]
+        },
+        {
+          "type": "spot",
+          "color": "#f5e8cf",
+          "intensity": 1.02,
+          "distance": 24,
+          "angle": 0.48,
+          "penumbra": 0.48,
+          "position": [
+            0,
+            6.9,
+            -5.3
+          ],
+          "target": [
+            0,
+            0.9,
+            -5.8
+          ]
+        }
+      ],
+      "ambientAudioMix": {
+        "lobby_pad": 0.34,
+        "roman_aura": 0.62,
+        "chime_metal": 0.22,
+        "backrooms_buzz": 0.02,
+        "inferno_rumble": 0,
+        "purgatory_void": 0.03,
+        "neon_pulse": 0,
+        "winter_air": 0.04
+      },
+      "particles": {
+        "effect": {
+          "enabled": true,
+          "type": "dust",
+          "count": 150,
+          "area": [
+            30,
+            7,
+            30
+          ],
+          "fallSpeed": 0.08,
+          "drift": 0.22,
+          "color": "#d9c8a8",
+          "size": 0.038,
+          "opacity": 0.18
+        }
+      },
+      "additionalProps": [
+        {
+          "id": "lodge_dais",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.32,
+            -5.8
+          ],
+          "scale": [
+            8.6,
+            0.64,
+            3
+          ],
+          "material": {
+            "color": "#56483b",
+            "procedural": "marble",
+            "textureRepeat": [
+              3,
+              1
+            ],
+            "roughness": 0.72,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "lodge_altar",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            0.72,
+            -5.8
+          ],
+          "scale": [
+            2.2,
+            1.44,
+            1.2
+          ],
+          "material": {
+            "color": "#3f372d",
+            "roughness": 0.8,
+            "metalness": 0.09
+          }
+        },
+        {
+          "id": "lodge_obelisk_l",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -9.5,
+            2.2,
+            -6.2
+          ],
+          "scale": [
+            1.05,
+            4.4,
+            1.05
+          ],
+          "material": {
+            "color": "#9c8f7a",
+            "procedural": "mosaic",
+            "textureRepeat": [
+              1,
+              3
+            ],
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "lodge_obelisk_r",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            9.5,
+            2.2,
+            -6.2
+          ],
+          "scale": [
+            1.05,
+            4.4,
+            1.05
+          ],
+          "material": {
+            "color": "#9c8f7a",
+            "procedural": "mosaic",
+            "textureRepeat": [
+              1,
+              3
+            ],
+            "roughness": 0.88,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "lodge_column_l",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            -6.6,
+            2.1,
+            4.8
+          ],
+          "scale": [
+            0.65,
+            4.2,
+            0.65
+          ],
+          "material": {
+            "color": "#d3c8b6",
+            "roughness": 0.8,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "lodge_column_r",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            6.6,
+            2.1,
+            4.8
+          ],
+          "scale": [
+            0.65,
+            4.2,
+            0.65
+          ],
+          "material": {
+            "color": "#d3c8b6",
+            "roughness": 0.8,
+            "metalness": 0.05
+          }
+        },
+        {
+          "id": "lodge_column_cap_l",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -6.6,
+            4.35,
+            4.8
+          ],
+          "scale": [
+            1.2,
+            0.25,
+            1.2
+          ],
+          "material": {
+            "color": "#e3dacd",
+            "roughness": 0.72,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "lodge_column_cap_r",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            6.6,
+            4.35,
+            4.8
+          ],
+          "scale": [
+            1.2,
+            0.25,
+            1.2
+          ],
+          "material": {
+            "color": "#e3dacd",
+            "roughness": 0.72,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "lodge_roman_arch",
+          "type": "primitive",
+          "primitive": "torus",
+          "position": [
+            0,
+            3.4,
+            -8.6
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            2.2,
+            2.2,
+            0.28
+          ],
+          "collider": false,
+          "material": {
+            "color": "#b8a888",
+            "roughness": 0.62,
+            "metalness": 0.22
+          }
+        },
+        {
+          "id": "lodge_checker_runner",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.03,
+            1.1
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            6.2,
+            12.8,
+            1
+          ],
+          "material": {
+            "color": "#ffffff",
+            "procedural": "checkerboard-bw",
+            "textureRepeat": [
+              6,
+              12
+            ],
+            "roughness": 0.88,
+            "metalness": 0.02
+          }
+        },
+        {
+          "id": "lodge_symbol_square",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            -1.1,
+            0.035,
+            -5.8
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            0.95,
+            0.95,
+            1
+          ],
+          "material": {
+            "color": "#d8bf88",
+            "roughness": 0.8,
+            "metalness": 0.16
+          }
+        },
+        {
+          "id": "lodge_symbol_compass",
+          "type": "primitive",
+          "primitive": "torus",
+          "position": [
+            1.1,
+            0.08,
+            -5.8
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            0.62,
+            0.62,
+            0.08
+          ],
+          "material": {
+            "color": "#d8bf88",
+            "roughness": 0.6,
+            "metalness": 0.25
+          }
+        },
+        {
+          "id": "lodge_torch_l",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -3.6,
+            2.1,
+            -5.4
+          ],
+          "scale": [
+            0.24,
+            0.24,
+            0.24
+          ],
+          "material": {
+            "color": "#f9d49f",
+            "emissiveColor": "#f9d49f",
+            "emissiveIntensity": 0.78,
+            "roughness": 0.3,
+            "metalness": 0.04
+          }
+        },
+        {
+          "id": "lodge_torch_r",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            3.6,
+            2.1,
+            -5.4
+          ],
+          "scale": [
+            0.24,
+            0.24,
+            0.24
+          ],
+          "material": {
+            "color": "#f9d49f",
+            "emissiveColor": "#f9d49f",
+            "emissiveIntensity": 0.78,
+            "roughness": 0.3,
+            "metalness": 0.04
+          }
+        },
+        {
+          "id": "lodge_egyptian_inlay_n",
+          "type": "primitive",
+          "primitive": "plane",
+          "position": [
+            0,
+            0.031,
+            -9.6
+          ],
+          "rotation": [
+            -90,
+            0,
+            0
+          ],
+          "scale": [
+            5.4,
+            2.2,
+            1
+          ],
+          "material": {
+            "color": "#c2a874",
+            "procedural": "mosaic",
+            "textureRepeat": [
+              3,
+              1
+            ],
+            "roughness": 0.86,
+            "metalness": 0.06
+          }
+        }
+      ],
+      "portalStyle": {
+        "color": "#d4b57d",
+        "ringBaseIntensity": 0.15,
+        "ringHoverBoost": 0.62,
+        "rimBaseIntensity": 0.3,
+        "rimHoverBoost": 0.92,
+        "hazeBaseOpacity": 0.09,
+        "hazeHoverBoost": 0.14,
+        "pulseSpeed": 1.35,
+        "rotationSpeed": 0.09,
+        "hoverRotationBoost": 0.28,
+        "waveAmplitude": 0.006
+      },
+      "portalStyles": {
+        "shop": {
+          "color": "#d2be93"
+        },
+        "contact": {
+          "color": "#cfbf9b"
+        },
+        "youtube": {
+          "color": "#bfa279"
+        },
+        "discord": {
+          "color": "#b8b3a2"
+        },
+        "github": {
+          "color": "#c9b58f"
         }
       }
     }

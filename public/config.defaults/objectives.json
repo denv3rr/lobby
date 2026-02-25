@@ -15,7 +15,7 @@
     "showObjectivesPanel": true,
     "stabilityLabel": "Liminal Stability",
     "title": "Liminal Objectives",
-    "subtitle": "Keep the lobby coherent while you navigate.",
+    "subtitle": "Set one main intent first, then complete optional secondary tasks.",
     "labels": {
       "stable": "Coherent",
       "low": "Fraying",
@@ -25,27 +25,36 @@
   "allRequiredCompletedStabilityDelta": 0.05,
   "objectives": [
     {
-      "id": "orient_portals",
-      "label": "Orient To The Portals",
-      "detail": "Sweep view across three primary links.",
-      "target": 3,
+      "id": "brainstorm_main_task",
+      "label": "Main: Set Your Intent",
+      "detail": "Inspect any interactive prop (like the center plinth) to define your main challenge before proceeding.",
+      "target": 1,
       "progress": 0,
       "optional": false,
       "stabilityDeltaOnComplete": 0.03
     },
     {
-      "id": "hold_coherence",
-      "label": "Hold Coherence",
-      "detail": "Maintain a calm position for one cycle.",
-      "target": 8,
+      "id": "orient_portals",
+      "label": "Secondary: Orient To The Portals",
+      "detail": "Sweep view across two primary links.",
+      "target": 2,
       "progress": 0,
-      "optional": false,
+      "optional": true,
+      "stabilityDeltaOnComplete": 0.03
+    },
+    {
+      "id": "hold_coherence",
+      "label": "Secondary: Hold Coherence",
+      "detail": "Maintain a calm position briefly to steady the space.",
+      "target": 4,
+      "progress": 0,
+      "optional": true,
       "stabilityDeltaOnComplete": 0.04
     },
     {
       "id": "verify_annex",
-      "label": "Verify Annex Signal",
-      "detail": "Approach an annex entry and confirm response.",
+      "label": "Secondary: Verify Hidden Area",
+      "detail": "Check the back-left shadow corner to unlock the hidden area.",
       "target": 1,
       "progress": 0,
       "optional": true,

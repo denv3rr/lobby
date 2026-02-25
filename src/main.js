@@ -8,6 +8,8 @@ import { DesktopControls } from "./systems/controls/desktopControls.js";
 import { MobileControls } from "./systems/controls/mobileControls.js";
 import { PortalInteractionSystem } from "./systems/interactions/portalInteractions.js";
 import { AudioSystem } from "./systems/audio/audioSystem.js";
+import { DriftEventsSystem } from "./systems/drift/driftEventsSystem.js";
+import { StabilityObjectivesSystem } from "./systems/gameplay/stabilityObjectivesSystem.js";
 import { resolveInitialThemeName, ThemeSystem } from "./systems/theming/applyTheme.js";
 import { createOverlay } from "./ui/overlay.js";
 import { createPerfHud } from "./ui/perfHud.js";
@@ -16,9 +18,12 @@ import { resolvePublicPath } from "./utils/path.js";
 const BUILD_ID = import.meta.env.VITE_BUILD_ID || "";
 const THEME_STORAGE_KEY = "lobby.theme.v1";
 const QUALITY_STORAGE_KEY = "lobby.quality.v1";
+const SECRET_UNLOCKS_STORAGE_KEY = "lobby.secret_unlocks.v1";
 const LEGACY_DEV_THEME_STORAGE_KEY = "lobby.dev.theme";
 const LEGACY_DEV_QUALITY_STORAGE_KEY = "lobby.dev.quality";
 const VALID_QUALITY_VALUES = new Set(["low", "medium", "high"]);
+const MAIN_OBJECTIVE_ID = "brainstorm_main_task";
+const SECONDARY_OBJECTIVE_IDS = ["orient_portals", "hold_coherence", "verify_annex"];
 
 function supportsWebGL() {
   try {
@@ -165,6 +170,25 @@ function getThemeAmbientMix(themesConfig, themeName) {
   return { ...mix };
 }
 
+function getThemePostProcessing(themesConfig, themeName) {
+  if (!themesConfig?.themes || !themeName) {
+    return {};
+  }
+  const postProcessing = themesConfig.themes[themeName]?.postProcessing;
+  if (!postProcessing || typeof postProcessing !== "object") {
+    return {};
+  }
+  return { ...postProcessing };
+}
+
+function clamp01(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return 0;
+  }
+  return Math.max(0, Math.min(1, numeric));
+}
+
 function getSafeStorage() {
   try {
     if (typeof window === "undefined" || !window.localStorage) {
@@ -228,6 +252,31 @@ function writeStorageString(key, value) {
   }
 }
 
+function readStorageJson(key, fallback = null) {
+  const raw = readStorageString(key);
+  if (!raw) {
+    return fallback;
+  }
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fallback;
+  }
+}
+
+function writeStorageJson(key, value) {
+  if (typeof key !== "string" || !key.trim()) {
+    return false;
+  }
+
+  try {
+    const serialized = JSON.stringify(value);
+    return writeStorageString(key, serialized);
+  } catch {
+    return false;
+  }
+}
+
 function normalizeQualityValue(value) {
   const normalized = typeof value === "string" ? value.trim() : "";
   return VALID_QUALITY_VALUES.has(normalized) ? normalized : null;
@@ -285,6 +334,117 @@ function saveQualitySelection(quality, options = {}) {
   }
 
   return writeStorageString(QUALITY_STORAGE_KEY, normalized);
+}
+
+function isObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function cloneJson(value) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return null;
+  }
+}
+
+function getUnlockedSecretIds() {
+  const stored = readStorageJson(SECRET_UNLOCKS_STORAGE_KEY, null);
+  const ids = Array.isArray(stored?.unlockedIds) ? stored.unlockedIds : [];
+  const unique = [];
+  const seen = new Set();
+  for (const id of ids) {
+    const normalized = typeof id === "string" ? id.trim() : "";
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  return unique;
+}
+
+function saveUnlockedSecretIds(ids) {
+  const unique = [];
+  const seen = new Set();
+  for (const id of Array.isArray(ids) ? ids : []) {
+    const normalized = typeof id === "string" ? id.trim() : "";
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  writeStorageJson(SECRET_UNLOCKS_STORAGE_KEY, { unlockedIds: unique });
+}
+
+function findZoneById(zones, zoneId) {
+  const lookup = typeof zoneId === "string" ? zoneId.trim() : "";
+  if (!lookup) {
+    return null;
+  }
+  for (const zone of zones || []) {
+    if (zone?.id === lookup) {
+      return zone;
+    }
+  }
+  return null;
+}
+
+function isPositionInsideBoxZone(zone, position) {
+  if (!zone || zone.shape !== "box" || !position) {
+    return false;
+  }
+  const [sx, sy, sz] = zone.size || [0, 0, 0];
+  const [px, py, pz] = zone.position || [0, 0, 0];
+  return (
+    Math.abs(position.x - px) <= sx * 0.5 &&
+    Math.abs(position.y - py) <= sy * 0.5 &&
+    Math.abs(position.z - pz) <= sz * 0.5
+  );
+}
+
+function normalizeSecretUnlocks(rawUnlocks, zones, unlockedIdSet) {
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of Array.isArray(rawUnlocks) ? rawUnlocks : []) {
+    if (!isObject(entry)) {
+      continue;
+    }
+    const id = typeof entry.id === "string" ? entry.id.trim() : "";
+    if (!id || seen.has(id)) {
+      continue;
+    }
+
+    const zoneId = typeof entry.zoneId === "string" ? entry.zoneId.trim() : "";
+    const zone = findZoneById(zones, zoneId);
+    if (!zone) {
+      continue;
+    }
+
+    const requiredEntries = Math.max(1, Math.round(Number(entry.requiredEntries) || 3));
+    const cooldownSeconds = Math.max(0.1, Number(entry.cooldownSeconds) || 1.2);
+    const unlocked = unlockedIdSet.has(id);
+    const floorplan = isObject(entry.floorplan) ? cloneJson(entry.floorplan) : null;
+    normalized.push({
+      id,
+      zoneId,
+      zone,
+      requiredEntries,
+      cooldownMs: cooldownSeconds * 1000,
+      message:
+        typeof entry.message === "string" && entry.message.trim()
+          ? entry.message.trim()
+          : `Secret unlocked: ${id}`,
+      floorplan,
+      unlocked,
+      hits: unlocked ? requiredEntries : 0,
+      wasInside: false,
+      nextEligibleAtMs: 0
+    });
+    seen.add(id);
+  }
+  return normalized;
 }
 
 function normalizeThemeEntries(entries, themesConfig) {
@@ -374,6 +534,7 @@ async function boot() {
   const hasThemeQuery = params.has("theme");
   const debugUiParam = params.get("debugui") === "1";
   const sceneUiEnabled = params.get("sceneui") !== "0";
+  const allowThemeSelector = isDev && sceneUiEnabled;
   const perfEnabled = params.get("perf") === "1";
 
   let rendererContext = null;
@@ -386,24 +547,259 @@ async function boot() {
   let loadedThemesConfig = null;
   let availableThemeIds = [];
   let themeAmbientMixBase = {};
+  let themePostProcessingBase = {};
+  let themeFogBase = null;
   let currentThemeName = null;
   let audioReady = false;
   let getInteractionTargets = () => [];
   let perfHud = null;
   let debugApiMounted = false;
+  let driftSystem = null;
+  let driftSnapshot = null;
+  let stabilitySystem = null;
+  let holdCoherenceSeconds = 0;
+  let lastPlayerPosition = null;
+  const seenObjectivePortalIds = new Set();
+  let secretUnlocks = [];
+  const secretUnlockedIds = new Set(getUnlockedSecretIds());
+
+  function getMixedAmbientMap() {
+    const mixed = { ...(themeAmbientMixBase || {}) };
+    if (!driftSnapshot?.ambientMix || typeof driftSnapshot.ambientMix !== "object") {
+      return mixed;
+    }
+
+    for (const [layerId, delta] of Object.entries(driftSnapshot.ambientMix)) {
+      const baseValue = Number(mixed[layerId] ?? 0);
+      const normalizedBase = Number.isFinite(baseValue) ? baseValue : 0;
+      const normalizedDelta = Number.isFinite(delta) ? delta : 0;
+      mixed[layerId] = clamp01(normalizedBase + normalizedDelta);
+    }
+    return mixed;
+  }
 
   function applyThemeAmbientMix() {
     if (!audioSystem) {
       return;
     }
-    audioSystem.setAmbientMix(themeAmbientMixBase);
+    audioSystem.setAmbientMix(getMixedAmbientMap());
+  }
+
+  function applyThemeAudioProfile(options = {}) {
+    if (!audioSystem) {
+      return;
+    }
+    audioSystem.setTheme(currentThemeName, options);
+  }
+
+  function applyThemePostProcessing() {
+    if (!rendererContext) {
+      return;
+    }
+    rendererContext.setPostProcessingOverrides(themePostProcessingBase);
+  }
+
+  function captureThemeFogBase() {
+    const fog = rendererContext?.scene?.fog;
+    if (!fog?.isFog) {
+      themeFogBase = null;
+      return;
+    }
+
+    themeFogBase = {
+      color: fog.color?.clone?.() || new THREE.Color("#444444"),
+      near: Number.isFinite(fog.near) ? fog.near : 1,
+      far: Number.isFinite(fog.far) ? fog.far : 40
+    };
+  }
+
+  function applyDriftFogPulse() {
+    const fog = rendererContext?.scene?.fog;
+    const scene = rendererContext?.scene;
+    if (!fog?.isFog || !scene || !themeFogBase?.color) {
+      return;
+    }
+
+    const pulse = driftSnapshot?.fogPulse || null;
+    const nearScale = Number.isFinite(pulse?.nearScale) ? pulse.nearScale : 1;
+    const farScale = Number.isFinite(pulse?.farScale) ? pulse.farScale : 1;
+    const colorLerp = clamp01(pulse?.colorLerp ?? 0);
+    const intensity = clamp01(pulse?.intensity ?? 0);
+
+    fog.near = Math.max(0.01, themeFogBase.near * nearScale);
+    fog.far = Math.max(fog.near + 0.5, themeFogBase.far * farScale);
+
+    if (colorLerp > 0) {
+      const targetFogColor = themeFogBase.color
+        .clone()
+        .lerp(new THREE.Color("#e9e0c8"), Math.min(1, colorLerp * (0.64 + intensity * 0.72)));
+      fog.color.copy(themeFogBase.color).lerp(targetFogColor, colorLerp);
+    } else {
+      fog.color.copy(themeFogBase.color);
+    }
+
+    if (scene.background?.isColor) {
+      scene.background.copy(fog.color);
+    } else {
+      scene.background = fog.color.clone();
+    }
+  }
+
+  function onPortalObjectiveSeen(target) {
+    if (!stabilitySystem || !target?.url || !isMainObjectiveCompleted()) {
+      return;
+    }
+    const targetId = typeof target.id === "string" ? target.id.trim() : "";
+    if (!targetId || seenObjectivePortalIds.has(targetId)) {
+      return;
+    }
+    seenObjectivePortalIds.add(targetId);
+    stabilitySystem.incrementObjectiveProgress("orient_portals", 1);
+  }
+
+  function updateCoherenceObjective(delta) {
+    if (!stabilitySystem || !sceneContext?.player?.position || !isMainObjectiveCompleted()) {
+      return;
+    }
+
+    const position = sceneContext.player.position;
+    if (!lastPlayerPosition) {
+      lastPlayerPosition = position.clone();
+      return;
+    }
+
+    const movementDistance = position.distanceTo(lastPlayerPosition);
+    lastPlayerPosition.copy(position);
+
+    if (movementDistance <= 0.08) {
+      holdCoherenceSeconds += delta;
+    } else {
+      holdCoherenceSeconds = Math.max(0, holdCoherenceSeconds - delta * 0.35);
+    }
+
+    stabilitySystem.setObjectiveProgress("hold_coherence", holdCoherenceSeconds, {
+      completeWhenTarget: true
+    });
+  }
+
+  function updateStabilityFromDrift(delta) {
+    if (!stabilitySystem || !driftSnapshot) {
+      return;
+    }
+
+    const driftAmount = Number.isFinite(driftSnapshot.stabilityDelta)
+      ? driftSnapshot.stabilityDelta
+      : 0;
+    if (Math.abs(driftAmount) > 0.0001) {
+      stabilitySystem.adjustStability(driftAmount * delta * 0.7, {
+        reason: "drift:stability"
+      });
+    }
+
+    const fogPulseIntensity = Number.isFinite(driftSnapshot?.fogPulse?.intensity)
+      ? driftSnapshot.fogPulse.intensity
+      : 0;
+    const isDriftStress = Math.abs(driftAmount) >= 0.09 || fogPulseIntensity >= 0.16;
+    stabilitySystem.setStressSource("drift", isDriftStress);
+    stabilitySystem.update(delta);
+  }
+
+  function updateOptionalObjectives() {
+    if (!stabilitySystem || !isMainObjectiveCompleted()) {
+      return;
+    }
+
+    if (secretUnlocks.some((entry) => entry.unlocked)) {
+      stabilitySystem.completeObjective("verify_annex");
+    }
+  }
+
+  function isMainObjectiveCompleted() {
+    if (!stabilitySystem) {
+      return false;
+    }
+    return Boolean(stabilitySystem.getObjective(MAIN_OBJECTIVE_ID)?.completed);
+  }
+
+  function syncObjectiveHierarchy() {
+    if (!stabilitySystem) {
+      return;
+    }
+    const mainCompleted = isMainObjectiveCompleted();
+    for (const objectiveId of SECONDARY_OBJECTIVE_IDS) {
+      stabilitySystem.setObjectiveHidden(objectiveId, !mainCompleted);
+      stabilitySystem.setObjectiveActive(objectiveId, mainCompleted);
+    }
+  }
+
+  function applySecretFloorplanOverrides(options = {}) {
+    if (!themeSystem) {
+      return;
+    }
+    const floorplanOverrides = secretUnlocks
+      .filter((entry) => entry.unlocked && isObject(entry.floorplan))
+      .map((entry) => entry.floorplan);
+    themeSystem.setRuntimeFloorplanOverrides(floorplanOverrides, options);
+  }
+
+  function persistSecretUnlocks() {
+    const unlocked = secretUnlocks.filter((entry) => entry.unlocked).map((entry) => entry.id);
+    saveUnlockedSecretIds(unlocked);
+  }
+
+  function showSecretUnlockMessage(message) {
+    const text =
+      typeof message === "string" && message.trim() ? message.trim() : "Secret unlocked";
+    ui.setPortalPrompt({ label: text });
+    window.setTimeout(() => {
+      if (!interactionSystem?.hoveredTarget) {
+        ui.setPortalPrompt(null);
+      }
+    }, 2800);
+  }
+
+  function showPopupBlockedMessage() {
+    ui.setPortalPrompt({
+      label: "Popup blocked. Allow popups to open links in a new tab."
+    });
+    window.setTimeout(() => {
+      if (!interactionSystem?.hoveredTarget) {
+        ui.setPortalPrompt(null);
+      }
+    }, 2800);
+  }
+
+  function updateSecretUnlocks(nowMs) {
+    if (!secretUnlocks.length || !sceneContext?.player?.position) {
+      return;
+    }
+
+    for (const unlock of secretUnlocks) {
+      if (unlock.unlocked) {
+        continue;
+      }
+
+      const inside = isPositionInsideBoxZone(unlock.zone, sceneContext.player.position);
+      if (inside && !unlock.wasInside && nowMs >= unlock.nextEligibleAtMs) {
+        unlock.hits += 1;
+        unlock.nextEligibleAtMs = nowMs + unlock.cooldownMs;
+        if (unlock.hits >= unlock.requiredEntries) {
+          unlock.unlocked = true;
+          secretUnlockedIds.add(unlock.id);
+          persistSecretUnlocks();
+          applySecretFloorplanOverrides();
+          showSecretUnlockMessage(unlock.message);
+        }
+      }
+      unlock.wasInside = inside;
+    }
   }
 
   const ui = createOverlay({
     mount: app,
     isMobile: mobile,
     showDevPanel: isDev || debugUiParam,
-    showThemePanel: sceneUiEnabled,
+    showThemePanel: allowThemeSelector,
     onEnableSound: async () => {
       if (audioSystem) {
         audioReady = await audioSystem.enable();
@@ -416,6 +812,7 @@ async function boot() {
     },
     onThemeChange: async (themeName) => {
       let appliedTheme = themeName;
+      ui.hideInspectPanel?.();
       if (themeSystem) {
         const candidates = [themeName, loadedThemesConfig?.defaultTheme, ...availableThemeIds];
         const resolved = await applyFirstWorkingTheme(themeSystem, candidates);
@@ -433,7 +830,12 @@ async function boot() {
       }
       currentThemeName = appliedTheme;
       themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, appliedTheme);
+      themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, appliedTheme);
       applyThemeAmbientMix();
+      applyThemeAudioProfile({ playStinger: true });
+      applyThemePostProcessing();
+      captureThemeFogBase();
+      applyDriftFogPulse();
       saveThemeSelection(appliedTheme, { mirrorLegacyDevKey: isDev });
     },
     onQualityChange: (quality) => {
@@ -465,6 +867,8 @@ async function boot() {
     localThemesConfig,
     defaultThemesConfig,
     audioConfig,
+    driftEventsConfig,
+    objectivesConfig,
     catalogConfig,
     shopFeed,
     projectsFeed
@@ -474,6 +878,8 @@ async function boot() {
     loadOptionalJson("config/themes.json"),
       loadOptionalJson("config.defaults/themes.json"),
       loadRuntimeConfig("audio.json"),
+      loadOptionalRuntimeConfig("drift-events.json"),
+      loadOptionalRuntimeConfig("objectives.json"),
       loadOptionalRuntimeConfig("catalog.json"),
       loadOptionalRuntimeConfig("shop-feed.json"),
       loadOptionalRuntimeConfig("projects-feed.json")
@@ -540,12 +946,26 @@ async function boot() {
     sceneConfig,
     qualityProfile
   });
+  secretUnlocks = normalizeSecretUnlocks(
+    sceneConfig.secretUnlocks,
+    sceneContext?.zones || sceneConfig?.zones || [],
+    secretUnlockedIds
+  );
   ui.setLoadingState({
     message: "Linking portals and systems."
   });
 
   audioSystem = new AudioSystem(audioConfig);
   audioSystem.initialize();
+  audioSystem.setPortalTargets(sceneContext?.portals || []);
+  driftSystem = new DriftEventsSystem(driftEventsConfig || { enabled: false });
+  driftSnapshot = driftSystem.getSnapshot();
+  stabilitySystem = new StabilityObjectivesSystem({
+    config: objectivesConfig || { enabled: false },
+    ui
+  });
+  stabilitySystem.initialize();
+  syncObjectiveHierarchy();
   ui.showSoundGate();
 
   themeSystem = new ThemeSystem({
@@ -556,6 +976,7 @@ async function boot() {
     audioSystem,
     qualityProfile
   });
+  applySecretFloorplanOverrides({ reapply: false });
   const savedTheme = loadSavedThemeSelection();
   let themeName = resolveInitialThemeName(loadedThemesConfig);
   const themeEntries = normalizeThemeEntries(themeSystem.listThemes(), loadedThemesConfig);
@@ -588,9 +1009,12 @@ async function boot() {
   }
   currentThemeName = appliedTheme || availableThemeIds[0] || "lobby";
   themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, currentThemeName);
+  themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, currentThemeName);
   applyThemeAmbientMix();
-  ui.hideStabilityMeter?.();
-  ui.setObjectivesPanelVisible?.(false);
+  applyThemeAudioProfile({ playStinger: false });
+  applyThemePostProcessing();
+  captureThemeFogBase();
+  applyDriftFogPulse();
 
   const { CatalogRoomSystem } = await import("./systems/catalog/catalogRoomSystem.js");
   catalogSystem = new CatalogRoomSystem({
@@ -614,6 +1038,7 @@ async function boot() {
 
   getInteractionTargets = () => [
     ...(sceneContext?.portals || []),
+    ...(sceneContext?.getInteractionTargets?.() || []),
     ...(catalogSystem?.getTargets() || [])
   ];
   const getPlayerColliders = () => [
@@ -648,13 +1073,27 @@ async function boot() {
     camera: rendererContext.camera,
     targets: getInteractionTargets(),
     isPointerLocked: () => controls?.isPointerLocked?.() || false,
-    onHover: (portal) => {
-      ui.setPortalPrompt(portal);
+    onHover: (target) => {
+      ui.setPortalPrompt(target);
+      onPortalObjectiveSeen(target);
     },
-    onActivate: (portal) => {
-      const popup = window.open(portal.url, "_blank", "noopener,noreferrer");
+    onActivate: (target) => {
+      if (target?.inspectData) {
+        if (controls?.isPointerLocked?.()) {
+          return;
+        }
+        stabilitySystem?.completeObjective(MAIN_OBJECTIVE_ID);
+        syncObjectiveHierarchy();
+        ui.showInspectPanel?.(target.inspectData);
+        return;
+      }
+      const url = typeof target?.url === "string" ? target.url.trim() : "";
+      if (!url) {
+        return;
+      }
+      const popup = window.open(url, "_blank", "noopener,noreferrer");
       if (!popup) {
-        window.location.href = portal.url;
+        showPopupBlockedMessage();
       }
     }
   });
@@ -666,10 +1105,14 @@ async function boot() {
     const rendererInfo = rendererContext?.renderer?.info;
     const playerPos = sceneContext?.player?.position;
     const propStats = sceneContext?.getPropStats?.() || { total: 0, byTag: {} };
+    const stabilityState = stabilitySystem?.getState?.() || null;
     return {
       theme: themeSystem?.currentThemeName || null,
       portalCount: (sceneContext?.portals || []).length,
       interactionTargetCount: getInteractionTargets().length,
+      secretUnlocks: secretUnlocks
+        .filter((entry) => entry.unlocked)
+        .map((entry) => entry.id),
       anyInteractionHit: interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
       player: playerPos
         ? {
@@ -679,6 +1122,14 @@ async function boot() {
           }
         : null,
       props: propStats,
+      themeParticles: themeSystem?.particles?.effect
+        ? {
+            type: themeSystem.particles.effect.type || null,
+            count: Number.isFinite(themeSystem.particles.effect.speeds?.length)
+              ? themeSystem.particles.effect.speeds.length
+              : 0
+          }
+        : null,
       render: rendererInfo
         ? {
             calls: rendererInfo.render.calls,
@@ -687,6 +1138,21 @@ async function boot() {
             lines: rendererInfo.render.lines,
             geometries: rendererInfo.memory.geometries,
             textures: rendererInfo.memory.textures
+          }
+        : null,
+      drift: driftSnapshot
+        ? {
+            activeEventCount: driftSnapshot.activeEvents?.length || 0,
+            activeEvents: (driftSnapshot.activeEvents || []).map((event) => event.type),
+            nextEventInSeconds: driftSnapshot.nextEventInSeconds ?? null,
+            fogPulseIntensity: driftSnapshot.fogPulse?.intensity ?? 0,
+            stabilityDelta: driftSnapshot.stabilityDelta ?? 0
+          }
+        : null,
+      stability: stabilitySystem
+        ? {
+            value: Number(stabilityState?.stability?.toFixed?.(4) || 0),
+            state: stabilityState?.stabilityState || null
           }
         : null,
       jsHeapMb: Number.isFinite(performance?.memory?.usedJSHeapSize)
@@ -704,10 +1170,17 @@ async function boot() {
         interactionSystem?.setTargets(getInteractionTargets());
         currentThemeName = resolved;
         themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, resolved);
+        themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, resolved);
         applyThemeAmbientMix();
+        applyThemeAudioProfile({ playStinger: true });
+        applyThemePostProcessing();
+        captureThemeFogBase();
+        applyDriftFogPulse();
       }
       return resolved;
     },
+    getDriftSnapshot: () => driftSystem?.getSnapshot?.() || null,
+    resetDrift: (seed) => driftSystem?.reset?.(seed),
     findAnyTargetHit: () => interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
     activateHoveredOrAnyTarget: () =>
       Boolean(interactionSystem?.debugActivateHoveredOrAnyTarget?.())
@@ -727,12 +1200,22 @@ async function boot() {
     sceneContext.updateDynamicProps?.(elapsed, rendererContext.camera);
     catalogSystem?.update(delta, elapsed);
     themeSystem?.update(delta);
+    if (driftSystem?.config?.enabled) {
+      driftSnapshot = driftSystem.update(delta);
+      applyThemeAmbientMix();
+      applyDriftFogPulse();
+    }
+    updateStabilityFromDrift(delta);
+    updateCoherenceObjective(delta);
+    updateSecretUnlocks(performance.now());
+    updateOptionalObjectives();
 
     const surface = getSurfaceAtPosition(sceneContext.zones, sceneContext.player.position);
     audioSystem?.setSurface(surface);
+    audioSystem?.updateSpatialAudio(rendererContext.camera);
     audioSystem?.updateZones(sceneContext.player.position);
 
-    rendererContext.renderer.render(rendererContext.scene, rendererContext.camera);
+    rendererContext.render();
     if (!sceneInteractive) {
       sceneInteractive = true;
       ui.hideLoading();
@@ -748,6 +1231,7 @@ async function boot() {
     interactionSystem?.dispose?.();
     themeSystem?.dispose?.();
     catalogSystem?.dispose?.();
+    stabilitySystem?.dispose?.();
     audioSystem?.dispose?.();
     perfHud?.dispose?.();
     if (debugApiMounted) {
@@ -787,6 +1271,7 @@ async function attemptBoot() {
     const params = new URLSearchParams(window.location.search);
     const debugUiParam = params.get("debugui") === "1";
     const sceneUiEnabled = params.get("sceneui") !== "0";
+    const allowThemeSelector = isDev && sceneUiEnabled;
     const fallbackSceneConfig = await loadOptionalRuntimeConfig("scene.json");
     const fallbackLinks = getFallbackLinks(fallbackSceneConfig);
 
@@ -794,7 +1279,7 @@ async function attemptBoot() {
       mount: app,
       isMobile: mobile,
       showDevPanel: isDev || debugUiParam,
-      showThemePanel: sceneUiEnabled,
+      showThemePanel: allowThemeSelector,
       onEnableSound: async () => {},
       onThemeChange: () => {},
       onQualityChange: () => {}
