@@ -26,6 +26,7 @@
     },
     "wallMaterial": {
       "color": "#7b7a6f",
+      "texture": "/assets/textures/wall_default.webp",
       "textureRepeat": [
         6,
         2
@@ -33,6 +34,7 @@
     },
     "floorMaterial": {
       "color": "#616157",
+      "texture": "/assets/textures/floor_tile_default.webp",
       "textureRepeat": [
         8,
         8
@@ -270,7 +272,7 @@
   ],
   "props": [
     {
-      "id": "welcome_plinth",
+      "id": "Welcome",
       "type": "primitive",
       "primitive": "box",
       "position": [
@@ -289,9 +291,9 @@
         1.3
       ],
       "interactable": {
-        "label": "About This Lobby",
-        "title": "Seperet Lobby",
-        "description": "A modular Three.js portfolio lobby with theme-driven visuals, portals, and seasonal updates.",
+        "label": "About",
+        "title": "Lobby",
+        "description": "Built with:",
         "tags": [
           "Three.js",
           "Vite",
@@ -313,7 +315,7 @@
       }
     },
     {
-      "id": "center_hover_gif",
+      "id": "center_hover_item",
       "type": "primitive",
       "primitive": "plane",
       "position": [
@@ -339,9 +341,9 @@
         "speed": 1.35
       },
       "interactable": {
-        "label": "Featured Reel",
-        "title": "Seperet Build Reel",
-        "description": "A floating preview panel in the center of the lobby. Swap this texture or model to spotlight your latest project.",
+        "label": "Artifact",
+        "title": "seperet.com",
+        "description": "A floating artifact.",
         "tags": [
           "Showcase",
           "Billboard",

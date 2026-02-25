@@ -13,52 +13,24 @@
   "ui": {
     "showStabilityMeter": true,
     "showObjectivesPanel": true,
-    "stabilityLabel": "Liminal Stability",
-    "title": "Liminal Objectives",
-    "subtitle": "Set one main intent first, then complete optional secondary tasks.",
+    "stabilityLabel": "Signal",
+    "title": "Objectives",
     "labels": {
       "stable": "Coherent",
       "low": "Fraying",
-      "critical": "Near Collapse"
+      "critical": "No signal!"
     }
   },
   "allRequiredCompletedStabilityDelta": 0.05,
   "objectives": [
     {
       "id": "brainstorm_main_task",
-      "label": "Main: Set Your Intent",
-      "detail": "Inspect any interactive prop (like the center plinth) to define your main challenge before proceeding.",
+      "label": "Main: Inspect The Center Artifact",
+      "detail": "It looks cool.",
       "target": 1,
       "progress": 0,
       "optional": false,
       "stabilityDeltaOnComplete": 0.03
-    },
-    {
-      "id": "orient_portals",
-      "label": "Secondary: Orient To The Portals",
-      "detail": "Sweep view across two primary links.",
-      "target": 2,
-      "progress": 0,
-      "optional": true,
-      "stabilityDeltaOnComplete": 0.03
-    },
-    {
-      "id": "hold_coherence",
-      "label": "Secondary: Hold Coherence",
-      "detail": "Maintain a calm position briefly to steady the space.",
-      "target": 4,
-      "progress": 0,
-      "optional": true,
-      "stabilityDeltaOnComplete": 0.04
-    },
-    {
-      "id": "verify_annex",
-      "label": "Secondary: Verify Hidden Area",
-      "detail": "Check the back-left shadow corner to unlock the hidden area.",
-      "target": 1,
-      "progress": 0,
-      "optional": true,
-      "stabilityDeltaOnComplete": 0.02
     }
   ]
 }

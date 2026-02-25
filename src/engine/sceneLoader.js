@@ -21,6 +21,10 @@ function cloneConfig(config = {}) {
   return JSON.parse(JSON.stringify(config || {}));
 }
 
+function isObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
 function disposeManagedMaterial(material) {
   if (!material) {
     return;
@@ -528,7 +532,40 @@ function boundsOverlap2D(a, b) {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minZ <= b.maxZ && a.maxZ >= b.minZ;
 }
 
-function createProtectedFloorplanZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneConfig = {} }) {
+function computeCatalogRoomCapacity(config = {}) {
+  const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
+  const width = Math.max(1, Number(size[0]) || 8.6);
+  const depth = Math.max(1, Number(size[2]) || 9.6);
+  const layout = isObject(config.layout) ? config.layout : {};
+  const card = isObject(config.card) ? config.card : {};
+  const cardWidth = Math.max(0.2, Number(card.width) || 1.45);
+  const horizontalGap = Math.max(0, Number(layout.horizontalGap) || 0.42);
+  const wallMargin = Math.max(0, Number(layout.wallMargin) || 0.72);
+  const stride = cardWidth + horizontalGap;
+
+  function lineSlots(length) {
+    const usable = Math.max(0, length - wallMargin * 2);
+    if (stride <= 0) {
+      return 0;
+    }
+    return Math.max(0, Math.floor((usable + horizontalGap) / stride));
+  }
+
+  return lineSlots(width) + lineSlots(depth) + lineSlots(width);
+}
+
+function feedItemCount(feed) {
+  return Array.isArray(feed?.items) ? feed.items.length : 0;
+}
+
+function createProtectedFloorplanZones({
+  roomConfig = {},
+  roomSize = [30, 8, 30],
+  sceneConfig = {},
+  catalogConfig = null,
+  shopFeed = null,
+  projectsFeed = null
+}) {
   const zones = [];
   const width = roomSize[0] || 30;
   const depth = roomSize[2] || 30;
@@ -606,6 +643,50 @@ function createProtectedFloorplanZones({ roomConfig = {}, roomSize = [30, 8, 30]
     });
   }
 
+  const catalogRooms = isObject(catalogConfig?.rooms) ? catalogConfig.rooms : {};
+  const roomIds = ["shop", "projects"];
+  const itemCounts = {
+    shop: feedItemCount(shopFeed),
+    projects: feedItemCount(projectsFeed)
+  };
+
+  for (const roomId of roomIds) {
+    const config = isObject(catalogRooms[roomId]) ? catalogRooms[roomId] : null;
+    if (!config) {
+      continue;
+    }
+
+    const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
+    const roomWidth = Math.max(1, Number(size[0]) || 8.6);
+    const roomDepth = Math.max(1, Number(size[2]) || 9.6);
+    const defaultOriginX = roomId === "shop" ? -19.3 : 19.3;
+    const origin = Array.isArray(config.origin) ? config.origin : [defaultOriginX, 0, 0];
+    const expansionStep = Array.isArray(config.expansion?.step)
+      ? config.expansion.step
+      : [0, 0, -(roomDepth + 2.2)];
+    const maxItems = Number.isFinite(config.layout?.maxItems) && config.layout.maxItems > 0
+      ? Math.floor(config.layout.maxItems)
+      : itemCounts[roomId];
+    const boundedItems = Math.max(0, Math.min(itemCounts[roomId], maxItems));
+    const capacity = Math.max(1, computeCatalogRoomCapacity(config));
+    const roomCount = Math.max(1, Math.ceil(Math.max(1, boundedItems) / capacity));
+    const padX = Math.max(0.35, Number(config.protectionPaddingX) || 0.8);
+    const padZ = Math.max(0.35, Number(config.protectionPaddingZ) || 0.8);
+
+    for (let index = 0; index < roomCount; index += 1) {
+      const centerX = (origin[0] || 0) + (expansionStep[0] || 0) * index;
+      const centerZ = (origin[2] || 0) + (expansionStep[2] || 0) * index;
+      zones.push({
+        id: `catalog-${roomId}-${index + 1}`,
+        zoneType: "catalog",
+        minX: centerX - roomWidth * 0.5 - padX,
+        maxX: centerX + roomWidth * 0.5 + padX,
+        minZ: centerZ - roomDepth * 0.5 - padZ,
+        maxZ: centerZ + roomDepth * 0.5 + padZ
+      });
+    }
+  }
+
   return zones.filter(
     (zone) =>
       Number.isFinite(zone.minX) &&
@@ -622,7 +703,10 @@ export async function loadScene({
   camera,
   cache,
   sceneConfig,
-  qualityProfile
+  qualityProfile,
+  catalogConfig = null,
+  shopFeed = null,
+  projectsFeed = null
 }) {
   const roomConfig = sceneConfig.room || {};
   const roomSize = roomConfig.size || [30, 8, 30];
@@ -710,8 +794,14 @@ export async function loadScene({
   const floorplanProtectedZones = createProtectedFloorplanZones({
     roomConfig,
     roomSize,
-    sceneConfig
+    sceneConfig,
+    catalogConfig,
+    shopFeed,
+    projectsFeed
   });
+  const catalogProtectedZones = floorplanProtectedZones.filter(
+    (zone) => zone.zoneType === "catalog"
+  );
 
   function wallBlockedByProtectedZone(bounds) {
     for (const zone of floorplanProtectedZones) {
@@ -1366,6 +1456,34 @@ export async function loadScene({
     });
   }
 
+  function getObjectBounds2D(object) {
+    tempPropBox.setFromObject(object);
+    if (tempPropBox.isEmpty()) {
+      return null;
+    }
+
+    return {
+      minX: tempPropBox.min.x,
+      maxX: tempPropBox.max.x,
+      minZ: tempPropBox.min.z,
+      maxZ: tempPropBox.max.z
+    };
+  }
+
+  function isBlockedByCatalogZone(object) {
+    const bounds = getObjectBounds2D(object);
+    if (!bounds) {
+      return false;
+    }
+
+    for (const zone of catalogProtectedZones) {
+      if (boundsOverlap2D(bounds, zone)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   function registerPropCollider(wrapper, prop, tag) {
     if (prop.collider === false || prop.billboard || prop.hoverMotion) {
       return;
@@ -1592,6 +1710,12 @@ export async function loadScene({
 
     const scale = prop.scale || [1, 1, 1];
     wrapper.scale.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
+    wrapper.updateMatrixWorld(true);
+    if (prop.allowCatalogOverlap !== true && isBlockedByCatalogZone(wrapper)) {
+      disposeManagedObjectResources(wrapper);
+      return null;
+    }
+
     attachGlowLight(wrapper, prop);
     scene.add(wrapper);
     wrapper.updateMatrixWorld(true);

@@ -65,7 +65,25 @@ async function stabilizeSpawnYawForPortalChecks(page) {
       return;
     }
 
-    const sceneConfig = await response.json();
+    let sceneConfig = null;
+    try {
+      const contentType = response.headers()["content-type"] || "";
+      if (contentType.toLowerCase().includes("application/json")) {
+        sceneConfig = await response.json();
+      } else {
+        const payload = await response.text();
+        sceneConfig = JSON.parse(payload);
+      }
+    } catch {
+      await route.fulfill({ response });
+      return;
+    }
+
+    if (!sceneConfig || typeof sceneConfig !== "object" || Array.isArray(sceneConfig)) {
+      await route.fulfill({ response });
+      return;
+    }
+
     await route.fulfill({
       response,
       json: {

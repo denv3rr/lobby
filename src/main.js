@@ -23,7 +23,7 @@ const LEGACY_DEV_THEME_STORAGE_KEY = "lobby.dev.theme";
 const LEGACY_DEV_QUALITY_STORAGE_KEY = "lobby.dev.quality";
 const VALID_QUALITY_VALUES = new Set(["low", "medium", "high"]);
 const MAIN_OBJECTIVE_ID = "brainstorm_main_task";
-const SECONDARY_OBJECTIVE_IDS = ["orient_portals", "hold_coherence", "verify_annex"];
+const CENTER_ARTIFACT_TARGET_ID = "prop:center_hover_gif";
 
 function supportsWebGL() {
   try {
@@ -60,20 +60,28 @@ async function loadJson(path) {
   return response.json();
 }
 
-async function loadRuntimeConfig(fileName) {
+async function loadSceneConfig() {
   try {
-    return await loadJson(`config/${fileName}`);
+    return await loadJson("config/scene.json");
   } catch {
-    return loadJson(`config.defaults/${fileName}`);
+    return loadJson("config.defaults/scene.json");
   }
 }
 
-async function loadOptionalRuntimeConfig(fileName) {
+async function loadOptionalSceneConfig() {
   try {
-    return await loadRuntimeConfig(fileName);
+    return await loadSceneConfig();
   } catch {
     return null;
   }
+}
+
+async function loadDefaultConfig(fileName) {
+  return loadJson(`config.defaults/${fileName}`);
+}
+
+async function loadOptionalDefaultConfig(fileName) {
+  return loadOptionalJson(`config.defaults/${fileName}`);
 }
 
 async function loadOptionalJson(path) {
@@ -111,41 +119,6 @@ function hasThemeMap(value) {
       typeof value.themes === "object" &&
       Object.keys(value.themes).length > 0
   );
-}
-
-function mergeThemesConfig(defaultsConfig, overrideConfig) {
-  const defaults = hasThemeMap(defaultsConfig) ? defaultsConfig : { themes: {} };
-  const overrides = hasThemeMap(overrideConfig) ? overrideConfig : { themes: {} };
-
-  const mergedThemes = {
-    ...(defaults.themes || {})
-  };
-
-  for (const [themeId, themeValue] of Object.entries(overrides.themes || {})) {
-    mergedThemes[themeId] = {
-      ...(defaults.themes?.[themeId] || {}),
-      ...(themeValue || {})
-    };
-  }
-
-  return {
-    ...defaults,
-    ...overrides,
-    autoThemeByMonth: {
-      ...(defaults.autoThemeByMonth || {}),
-      ...(overrides.autoThemeByMonth || {}),
-      map: {
-        ...(defaults.autoThemeByMonth?.map || {}),
-        ...(overrides.autoThemeByMonth?.map || {})
-      }
-    },
-    themes: mergedThemes,
-    defaultTheme:
-      overrides.defaultTheme ||
-      defaults.defaultTheme ||
-      Object.keys(mergedThemes)[0] ||
-      "lobby"
-  };
 }
 
 function formatThemeLabel(id) {
@@ -557,9 +530,13 @@ async function boot() {
   let driftSystem = null;
   let driftSnapshot = null;
   let stabilitySystem = null;
-  let holdCoherenceSeconds = 0;
-  let lastPlayerPosition = null;
+  let centerArtifactActivated = false;
+  let centerArtifactOwner = null;
+  let centerArtifactLight = null;
   const seenObjectivePortalIds = new Set();
+  const centerArtifactMaterials = [];
+  const centerArtifactPrimaryColor = new THREE.Color("#ffffff");
+  const centerArtifactSecondaryColor = new THREE.Color("#ffffff");
   let secretUnlocks = [];
   const secretUnlockedIds = new Set(getUnlockedSecretIds());
 
@@ -646,7 +623,7 @@ async function boot() {
   }
 
   function onPortalObjectiveSeen(target) {
-    if (!stabilitySystem || !target?.url || !isMainObjectiveCompleted()) {
+    if (!stabilitySystem || !target?.url) {
       return;
     }
     const targetId = typeof target.id === "string" ? target.id.trim() : "";
@@ -657,29 +634,135 @@ async function boot() {
     stabilitySystem.incrementObjectiveProgress("orient_portals", 1);
   }
 
-  function updateCoherenceObjective(delta) {
-    if (!stabilitySystem || !sceneContext?.player?.position || !isMainObjectiveCompleted()) {
+  function findCenterArtifactOwner() {
+    if (centerArtifactOwner?.parent) {
+      return centerArtifactOwner;
+    }
+    if (!rendererContext?.scene) {
+      return null;
+    }
+    const owner = rendererContext.scene.getObjectByName("center_hover_gif");
+    if (!owner) {
+      return null;
+    }
+    centerArtifactOwner = owner;
+    return owner;
+  }
+
+  function collectCenterArtifactMaterials(owner) {
+    centerArtifactMaterials.length = 0;
+    if (!owner) {
       return;
     }
 
-    const position = sceneContext.player.position;
-    if (!lastPlayerPosition) {
-      lastPlayerPosition = position.clone();
-      return;
-    }
-
-    const movementDistance = position.distanceTo(lastPlayerPosition);
-    lastPlayerPosition.copy(position);
-
-    if (movementDistance <= 0.08) {
-      holdCoherenceSeconds += delta;
-    } else {
-      holdCoherenceSeconds = Math.max(0, holdCoherenceSeconds - delta * 0.35);
-    }
-
-    stabilitySystem.setObjectiveProgress("hold_coherence", holdCoherenceSeconds, {
-      completeWhenTarget: true
+    owner.traverse((child) => {
+      if (!child?.isMesh) {
+        return;
+      }
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material || !material.emissive?.isColor) {
+          continue;
+        }
+        material.userData = material.userData || {};
+        if (!material.userData.centerArtifactBaseEmissive) {
+          material.userData.centerArtifactBaseEmissive = material.emissive.clone();
+        }
+        if (!Number.isFinite(material.userData.centerArtifactBaseEmissiveIntensity)) {
+          material.userData.centerArtifactBaseEmissiveIntensity = material.emissiveIntensity ?? 0;
+        }
+        centerArtifactMaterials.push(material);
+      }
     });
+  }
+
+  function ensureCenterArtifactLight(owner) {
+    if (centerArtifactLight?.parent) {
+      return centerArtifactLight;
+    }
+    if (!owner) {
+      return null;
+    }
+
+    const light = new THREE.PointLight("#ffffff", 0, 34);
+    light.position.set(0, 0, 0.45);
+    light.userData = {
+      ...(light.userData || {}),
+      artifactMainLight: true,
+      canCastShadow: false
+    };
+    owner.add(light);
+    centerArtifactLight = light;
+    return centerArtifactLight;
+  }
+
+  function applyCenterArtifactLightingDominance() {
+    if (!centerArtifactActivated || !rendererContext?.scene) {
+      return;
+    }
+
+    rendererContext.scene.traverse((node) => {
+      if (!node?.isLight || node === centerArtifactLight || node.userData?.artifactMainLight) {
+        return;
+      }
+      node.userData = node.userData || {};
+      if (!Number.isFinite(node.userData.centerArtifactBaseIntensity)) {
+        node.userData.centerArtifactBaseIntensity = Number(node.intensity) || 0;
+      }
+      node.intensity = node.userData.centerArtifactBaseIntensity * 0.2;
+    });
+  }
+
+  function activateCenterArtifact(target = null) {
+    if (centerArtifactActivated) {
+      return;
+    }
+
+    const owner = target?.userData?.owner || findCenterArtifactOwner();
+    centerArtifactOwner = owner || centerArtifactOwner;
+    collectCenterArtifactMaterials(centerArtifactOwner);
+    ensureCenterArtifactLight(centerArtifactOwner);
+    centerArtifactActivated = true;
+    stabilitySystem?.completeObjective(MAIN_OBJECTIVE_ID);
+    applyCenterArtifactLightingDominance();
+  }
+
+  function updateCenterArtifact(elapsed) {
+    if (!centerArtifactActivated) {
+      return;
+    }
+
+    const owner = findCenterArtifactOwner();
+    if (!owner) {
+      return;
+    }
+    if (!centerArtifactMaterials.length) {
+      collectCenterArtifactMaterials(owner);
+    }
+    const light = ensureCenterArtifactLight(owner);
+    if (!light) {
+      return;
+    }
+
+    const hue = (elapsed * 0.14) % 1;
+    const pulse = 0.5 + 0.5 * Math.sin(elapsed * 4.2);
+    centerArtifactPrimaryColor.setHSL(hue, 0.96, 0.58);
+    centerArtifactSecondaryColor.setHSL((hue + 0.12) % 1, 0.92, 0.52);
+
+    for (const material of centerArtifactMaterials) {
+      if (!material?.emissive?.isColor) {
+        continue;
+      }
+      const baseIntensity =
+        material.userData?.centerArtifactBaseEmissiveIntensity ?? material.emissiveIntensity ?? 0;
+      material.emissive.copy(centerArtifactPrimaryColor);
+      material.color?.copy?.(centerArtifactSecondaryColor);
+      material.emissiveIntensity = Math.max(1.05, baseIntensity * 4.5) + pulse * 1.1;
+    }
+
+    light.color.copy(centerArtifactPrimaryColor);
+    light.intensity = 3.4 + pulse * 1.8;
+    light.distance = 38;
   }
 
   function updateStabilityFromDrift(delta) {
@@ -705,30 +788,12 @@ async function boot() {
   }
 
   function updateOptionalObjectives() {
-    if (!stabilitySystem || !isMainObjectiveCompleted()) {
+    if (!stabilitySystem) {
       return;
     }
 
     if (secretUnlocks.some((entry) => entry.unlocked)) {
       stabilitySystem.completeObjective("verify_annex");
-    }
-  }
-
-  function isMainObjectiveCompleted() {
-    if (!stabilitySystem) {
-      return false;
-    }
-    return Boolean(stabilitySystem.getObjective(MAIN_OBJECTIVE_ID)?.completed);
-  }
-
-  function syncObjectiveHierarchy() {
-    if (!stabilitySystem) {
-      return;
-    }
-    const mainCompleted = isMainObjectiveCompleted();
-    for (const objectiveId of SECONDARY_OBJECTIVE_IDS) {
-      stabilitySystem.setObjectiveHidden(objectiveId, !mainCompleted);
-      stabilitySystem.setObjectiveActive(objectiveId, mainCompleted);
     }
   }
 
@@ -836,6 +901,7 @@ async function boot() {
       applyThemePostProcessing();
       captureThemeFogBase();
       applyDriftFogPulse();
+      applyCenterArtifactLightingDominance();
       saveThemeSelection(appliedTheme, { mirrorLegacyDevKey: isDev });
     },
     onQualityChange: (quality) => {
@@ -864,7 +930,6 @@ async function boot() {
 
   const [
     sceneConfig,
-    localThemesConfig,
     defaultThemesConfig,
     audioConfig,
     driftEventsConfig,
@@ -874,15 +939,14 @@ async function boot() {
     projectsFeed
   ] =
     await Promise.all([
-    loadRuntimeConfig("scene.json"),
-    loadOptionalJson("config/themes.json"),
-      loadOptionalJson("config.defaults/themes.json"),
-      loadRuntimeConfig("audio.json"),
-      loadOptionalRuntimeConfig("drift-events.json"),
-      loadOptionalRuntimeConfig("objectives.json"),
-      loadOptionalRuntimeConfig("catalog.json"),
-      loadOptionalRuntimeConfig("shop-feed.json"),
-      loadOptionalRuntimeConfig("projects-feed.json")
+      loadSceneConfig(),
+      loadOptionalDefaultConfig("themes.json"),
+      loadDefaultConfig("audio.json"),
+      loadOptionalDefaultConfig("drift-events.json"),
+      loadOptionalDefaultConfig("objectives.json"),
+      loadOptionalDefaultConfig("catalog.json"),
+      loadOptionalDefaultConfig("shop-feed.json"),
+      loadOptionalDefaultConfig("projects-feed.json")
     ]);
   ui.setLoadingState({
     message: "Calibrating render pipeline."
@@ -896,12 +960,11 @@ async function boot() {
     }
   };
 
-  const mergedThemesConfig = mergeThemesConfig(defaultThemesConfig, localThemesConfig);
-  if (hasThemeMap(mergedThemesConfig)) {
-    loadedThemesConfig = mergedThemesConfig;
+  if (hasThemeMap(defaultThemesConfig)) {
+    loadedThemesConfig = defaultThemesConfig;
   } else {
     try {
-      const defaults = await loadJson("config.defaults/themes.json");
+      const defaults = await loadDefaultConfig("themes.json");
       loadedThemesConfig = hasThemeMap(defaults) ? defaults : emergencyThemesConfig;
     } catch {
       loadedThemesConfig = emergencyThemesConfig;
@@ -944,7 +1007,10 @@ async function boot() {
     camera: rendererContext.camera,
     cache,
     sceneConfig,
-    qualityProfile
+    qualityProfile,
+    catalogConfig,
+    shopFeed,
+    projectsFeed
   });
   secretUnlocks = normalizeSecretUnlocks(
     sceneConfig.secretUnlocks,
@@ -965,7 +1031,6 @@ async function boot() {
     ui
   });
   stabilitySystem.initialize();
-  syncObjectiveHierarchy();
   ui.showSoundGate();
 
   themeSystem = new ThemeSystem({
@@ -1079,11 +1144,13 @@ async function boot() {
     },
     onActivate: (target) => {
       if (target?.inspectData) {
+        const isCenterArtifact = target.id === CENTER_ARTIFACT_TARGET_ID;
+        if (isCenterArtifact) {
+          activateCenterArtifact(target);
+        }
         if (controls?.isPointerLocked?.()) {
           return;
         }
-        stabilitySystem?.completeObjective(MAIN_OBJECTIVE_ID);
-        syncObjectiveHierarchy();
         ui.showInspectPanel?.(target.inspectData);
         return;
       }
@@ -1176,6 +1243,7 @@ async function boot() {
         applyThemePostProcessing();
         captureThemeFogBase();
         applyDriftFogPulse();
+        applyCenterArtifactLightingDominance();
       }
       return resolved;
     },
@@ -1206,7 +1274,7 @@ async function boot() {
       applyDriftFogPulse();
     }
     updateStabilityFromDrift(delta);
-    updateCoherenceObjective(delta);
+    updateCenterArtifact(elapsed);
     updateSecretUnlocks(performance.now());
     updateOptionalObjectives();
 
@@ -1272,7 +1340,7 @@ async function attemptBoot() {
     const debugUiParam = params.get("debugui") === "1";
     const sceneUiEnabled = params.get("sceneui") !== "0";
     const allowThemeSelector = isDev && sceneUiEnabled;
-    const fallbackSceneConfig = await loadOptionalRuntimeConfig("scene.json");
+    const fallbackSceneConfig = await loadOptionalSceneConfig();
     const fallbackLinks = getFallbackLinks(fallbackSceneConfig);
 
     const ui = createOverlay({

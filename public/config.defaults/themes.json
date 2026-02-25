@@ -4319,14 +4319,14 @@
       "disableBaseLights": false,
       "roomOverrides": {
         "wallMaterial": {
-          "color": "#e9e3d6",
-          "procedural": "mosaic",
+          "color": "#8f2b2b",
+          "procedural": "checkerboard-bw",
           "textureRepeat": [
-            4,
+            5,
             2
           ],
           "roughness": 0.9,
-          "metalness": 0.02
+          "metalness": 0.03
         },
         "floorMaterial": {
           "color": "#ffffff",
@@ -4616,6 +4616,46 @@
             "color": "#e3dacd",
             "roughness": 0.72,
             "metalness": 0.08
+          }
+        },
+        {
+          "id": "lodge_column_orb_l",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -6.6,
+            4.75,
+            4.8
+          ],
+          "scale": [
+            0.38,
+            0.38,
+            0.38
+          ],
+          "material": {
+            "color": "#101014",
+            "roughness": 0.36,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "lodge_column_orb_r",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            6.6,
+            4.75,
+            4.8
+          ],
+          "scale": [
+            0.38,
+            0.38,
+            0.38
+          ],
+          "material": {
+            "color": "#f3f2ef",
+            "roughness": 0.3,
+            "metalness": 0.09
           }
         },
         {
