@@ -26,7 +26,6 @@
     },
     "wallMaterial": {
       "color": "#7b7a6f",
-      "texture": "/assets/textures/wall_default.webp",
       "textureRepeat": [
         6,
         2
@@ -34,7 +33,6 @@
     },
     "floorMaterial": {
       "color": "#616157",
-      "texture": "/assets/textures/floor_tile_default.webp",
       "textureRepeat": [
         8,
         8
@@ -272,7 +270,7 @@
   ],
   "props": [
     {
-      "id": "Welcome",
+      "id": "welcome_plinth",
       "type": "primitive",
       "primitive": "box",
       "position": [
@@ -291,8 +289,7 @@
         1.3
       ],
       "interactable": {
-        "label": "About",
-        "title": "Lobby",
+        "label": "Info",
         "description": "Built with:",
         "tags": [
           "Three.js",
@@ -305,7 +302,7 @@
             "url": "https://github.com/denv3rr/lobby"
           },
           {
-            "label": "Visit Seperet",
+            "label": "Visit seperet.com",
             "url": "https://seperet.com"
           }
         ]
@@ -315,7 +312,7 @@
       }
     },
     {
-      "id": "center_hover_item",
+      "id": "center_hover_gif",
       "type": "primitive",
       "primitive": "plane",
       "position": [
@@ -341,9 +338,7 @@
         "speed": 1.35
       },
       "interactable": {
-        "label": "Artifact",
-        "title": "seperet.com",
-        "description": "A floating artifact.",
+        "description": "A floating preview panel in the center of the lobby.",
         "tags": [
           "Showcase",
           "Billboard",

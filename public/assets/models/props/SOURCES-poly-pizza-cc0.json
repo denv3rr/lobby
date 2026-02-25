@@ -1,0 +1,113 @@
+{
+  "generatedAt": "2026-02-25T04:35:52.784Z",
+  "assets": [
+    {
+      "fileName": "lobby_planter.glb",
+      "publicId": "f6GPjbEgg0",
+      "title": "Houseplant",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 10696,
+      "source": "https://poly.pizza/m/f6GPjbEgg0"
+    },
+    {
+      "fileName": "backrooms_filing_cabinet.glb",
+      "publicId": "8xZQEZL2w3",
+      "title": "Drawer",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 17896,
+      "source": "https://poly.pizza/m/8xZQEZL2w3"
+    },
+    {
+      "fileName": "backrooms_office_chair.glb",
+      "publicId": "UfKvrZBK6C",
+      "title": "Office Chair",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 115760,
+      "source": "https://poly.pizza/m/UfKvrZBK6C"
+    },
+    {
+      "fileName": "roman_statue.glb",
+      "publicId": "AK9CmjFnL6",
+      "title": "Horse Statue",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 119712,
+      "source": "https://poly.pizza/m/AK9CmjFnL6"
+    },
+    {
+      "fileName": "roman_amphora.glb",
+      "publicId": "fHMy0Xrb0V",
+      "title": "Ceramic Pot Large",
+      "creator": "MilkAndBanana",
+      "licence": "CC0 1.0",
+      "bytes": 14148,
+      "source": "https://poly.pizza/m/fHMy0Xrb0V"
+    },
+    {
+      "fileName": "roman_topiary.glb",
+      "publicId": "I5KhMKZKju",
+      "title": "Bush",
+      "creator": "Isa Lousberg",
+      "licence": "CC0 1.0",
+      "bytes": 27344,
+      "source": "https://poly.pizza/m/I5KhMKZKju"
+    },
+    {
+      "fileName": "inferno_chain_bundle.glb",
+      "publicId": "ejWQny9Gcz",
+      "title": "Anchor",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 42536,
+      "source": "https://poly.pizza/m/ejWQny9Gcz"
+    },
+    {
+      "fileName": "inferno_skull_pile.glb",
+      "publicId": "ExZmhOIjka",
+      "title": "Skull",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 91552,
+      "source": "https://poly.pizza/m/ExZmhOIjka"
+    },
+    {
+      "fileName": "purgatory_obelisk.glb",
+      "publicId": "dJLAD6p90F",
+      "title": "Stone Tower",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 217660,
+      "source": "https://poly.pizza/m/dJLAD6p90F"
+    },
+    {
+      "fileName": "neon_server_rack.glb",
+      "publicId": "TDgvIuorcX",
+      "title": "Shelf Tall",
+      "creator": "Quaternius",
+      "licence": "CC0 1.0",
+      "bytes": 29224,
+      "source": "https://poly.pizza/m/TDgvIuorcX"
+    },
+    {
+      "fileName": "neon_holo_totem.glb",
+      "publicId": "UHEJDoCrcf",
+      "title": "Holographic",
+      "creator": "Pichuliru",
+      "licence": "CC0 1.0",
+      "bytes": 44412,
+      "source": "https://poly.pizza/m/UHEJDoCrcf"
+    },
+    {
+      "fileName": "christmas_tree.glb",
+      "publicId": "JV3IxxmVlT",
+      "title": "Christmas Tree Character",
+      "creator": "Polygonal Mind",
+      "licence": "CC0 1.0",
+      "bytes": 1039248,
+      "source": "https://poly.pizza/m/JV3IxxmVlT"
+    }
+  ]
+}

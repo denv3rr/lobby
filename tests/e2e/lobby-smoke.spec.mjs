@@ -61,6 +61,14 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
     )
     .toBeTruthy();
 
+  const objectivesPanel = page.locator("#objectives-panel");
+  await expect(objectivesPanel).toBeVisible();
+  await expect
+    .poll(async () => page.locator("#objectives-list .objectives-item").count(), {
+      timeout: 25_000
+    })
+    .toBeGreaterThan(0);
+
   const availableThemeIds = await themeSelect
     .locator("option")
     .evaluateAll((options) => options.map((option) => option.value).filter(Boolean));
