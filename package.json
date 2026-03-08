@@ -6,18 +6,27 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && node scripts/syncConfigAliases.mjs",
+    "check": "npm run validate:configs && npm run validate:model-assets:strict && npm run test:unit && npm run build && npm run validate:dist",
+    "promote": "node scripts/promoteConfigOverrides.mjs",
+    "ship": "npm run promote && npm run check",
+    "sync": "npm run sync:shop && npm run sync:projects && npm run sync:videos",
+    "sync:ci": "node scripts/syncShopFeed.mjs --defaults-only && node scripts/syncProjectsFeed.mjs --defaults-only && node scripts/syncVideosFeed.mjs --defaults-only",
+    "sync:defaults": "npm run sync:shop:defaults && npm run sync:projects:defaults && npm run sync:videos:defaults",
     "validate:configs": "node scripts/validateConfigs.mjs",
+    "validate:dist": "node scripts/validateDist.mjs",
     "validate:model-assets": "node scripts/validateModelAssets.mjs",
     "validate:model-assets:strict": "node scripts/validateModelAssets.mjs --strict",
     "test:unit": "node --test tests/unit/*.test.mjs",
-    "preview": "vite preview",
+    "preview": "node scripts/serveDist.mjs",
     "test:e2e": "playwright test --config=playwright.config.mjs",
     "test:e2e:smoke": "playwright test --config=playwright.config.mjs tests/e2e/lobby-smoke.spec.mjs tests/e2e/webgl-fallback.spec.mjs",
     "test:e2e:headed": "playwright test --config=playwright.config.mjs --headed",
     "sync:shop": "node scripts/syncShopFeed.mjs",
     "sync:shop:defaults": "node scripts/syncShopFeed.mjs --write-defaults --strict",
     "sync:projects": "node scripts/syncProjectsFeed.mjs",
-    "sync:projects:defaults": "node scripts/syncProjectsFeed.mjs --write-defaults"
+    "sync:projects:defaults": "node scripts/syncProjectsFeed.mjs --write-defaults --strict",
+    "sync:videos": "node scripts/syncVideosFeed.mjs",
+    "sync:videos:defaults": "node scripts/syncVideosFeed.mjs --write-defaults --strict"
   },
   "dependencies": {
     "three": "^0.181.1"

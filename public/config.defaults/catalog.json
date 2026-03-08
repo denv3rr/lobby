@@ -50,32 +50,121 @@
         "wallMargin": 0.72,
         "cardOffset": 0.08
       }
+    },
+    "atelier": {
+      "enabled": false,
+      "label": "Prototype Atelier",
+      "feedSource": "atelier",
+      "defaultUrl": "https://github.com/denv3rr/lobby",
+      "origin": [-13.8, 0, 38],
+      "size": [8.2, 4.8, 10.8],
+      "entrySide": "east",
+      "accentColor": "#92b8c8",
+      "titleColor": "#eef8ff",
+      "connectorDoor": {
+        "width": 2.5,
+        "height": 3.1
+      },
+      "card": {
+        "width": 1.48,
+        "height": 1.92
+      },
+      "expansion": {
+        "step": [0, 0, -12.2]
+      },
+      "layout": {
+        "maxItems": 6,
+        "displayY": 2.62,
+        "horizontalGap": 0.44,
+        "wallMargin": 0.76,
+        "cardOffset": 0.08
+      }
+    },
+    "videos": {
+      "label": "Screening Hall",
+      "feedSource": "videos",
+      "origin": [13.8, 0, 38],
+      "size": [8.2, 4.8, 10.8],
+      "entrySide": "west",
+      "accentColor": "#d99b94",
+      "titleColor": "#fff0eb",
+      "connectorDoor": {
+        "width": 2.5,
+        "height": 3.1
+      },
+      "card": {
+        "width": 1.55,
+        "height": 1.92
+      },
+      "presentationWall": {
+        "enabled": true,
+        "wall": "front",
+        "width": 3.58,
+        "aspectRatio": 1.7777777778,
+        "displayY": 2.62,
+        "offset": 0.08,
+        "label": "Now Screening",
+        "idleLabel": "Select A Video"
+      },
+      "playlistWall": {
+        "enabled": true,
+        "wall": "back",
+        "width": 3.28,
+        "height": 3.02,
+        "displayY": 2.28,
+        "offset": 0.08,
+        "label": "Longform Archive",
+        "feedSource": "videos-long",
+        "itemLimit": 28
+      },
+      "expansion": {
+        "step": [0, 0, -12.2]
+      },
+      "layout": {
+        "maxItems": 6,
+        "displayY": 2.62,
+        "horizontalGap": 0.44,
+        "wallMargin": 0.76,
+        "cardOffset": 0.08
+      }
     }
   },
   "themeContent": {
     "default": {
       "shop": { "tagsAny": [] },
-      "projects": { "tagsAny": ["core"] }
+      "projects": { "tagsAny": ["core"] },
+      "atelier": { "tagsAny": ["atelier", "lobby"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     },
     "inferno": {
       "shop": { "tagsAny": ["inferno", "neon"] },
-      "projects": { "tagsAny": ["inferno", "core"] }
+      "projects": { "tagsAny": ["inferno", "core"] },
+      "atelier": { "tagsAny": ["atelier", "inferno"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     },
     "backrooms": {
       "shop": { "tagsAny": ["backrooms", "purgatory"] },
-      "projects": { "tagsAny": ["backrooms", "core"] }
+      "projects": { "tagsAny": ["backrooms", "core"] },
+      "atelier": { "tagsAny": ["atelier", "backrooms"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     },
     "roman": {
       "shop": { "tagsAny": ["roman", "lobby"] },
-      "projects": { "tagsAny": ["roman", "core"] }
+      "projects": { "tagsAny": ["roman", "core"] },
+      "atelier": { "tagsAny": ["atelier", "roman"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     },
     "neon": {
       "shop": { "tagsAny": ["neon", "inferno"] },
-      "projects": { "tagsAny": ["neon", "core"] }
+      "projects": { "tagsAny": ["neon", "core"] },
+      "atelier": { "tagsAny": ["atelier", "neon"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     },
     "winter": {
       "shop": { "tagsAny": ["winter", "lobby"] },
-      "projects": { "tagsAny": ["winter", "core"] }
+      "projects": { "tagsAny": ["winter", "core"] },
+      "atelier": { "tagsAny": ["atelier", "winter"] },
+      "videos": { "tagsAny": ["youtube", "video"] }
     }
   }
 }

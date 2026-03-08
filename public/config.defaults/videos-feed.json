@@ -1,0 +1,103 @@
+{
+  "meta": {
+    "source": "youtube-rss",
+    "channelUrl": "https://www.youtube.com/@seperet",
+    "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
+    "fetchedAt": "2026-03-08T03:41:04.796Z",
+    "count": 6,
+    "usedFallback": false,
+    "errors": []
+  },
+  "items": [
+    {
+      "id": "RbnqMO2_bms",
+      "title": "Surrounded pilots refuse to give up #arma #funnymoments #gamingclips #armareforger #fps #thisisarma",
+      "url": "https://www.youtube.com/watch?v=RbnqMO2_bms",
+      "image": "https://i3.ytimg.com/vi/RbnqMO2_bms/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-07T21:40:50+00:00"
+    },
+    {
+      "id": "IUXclVHekm0",
+      "title": "We ran right into this guy… #armareforger #arma #conflict #gaming",
+      "url": "https://www.youtube.com/watch?v=IUXclVHekm0",
+      "image": "https://i2.ytimg.com/vi/IUXclVHekm0/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-07T17:48:16+00:00"
+    },
+    {
+      "id": "T94EbTQzHX4",
+      "title": "Gunner POV is pretty dope in Reforger #arma #fps #conflict",
+      "url": "https://www.youtube.com/watch?v=T94EbTQzHX4",
+      "image": "https://i1.ytimg.com/vi/T94EbTQzHX4/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-05T23:16:37+00:00"
+    },
+    {
+      "id": "q7i6y1paLu8",
+      "title": "Fireworks experiment nearly claims a man #arma #conflict #fps",
+      "url": "https://www.youtube.com/watch?v=q7i6y1paLu8",
+      "image": "https://i2.ytimg.com/vi/q7i6y1paLu8/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-05T03:42:44+00:00"
+    },
+    {
+      "id": "NAnA6Kxyv3o",
+      "title": "ngl almost ran out there 😂 #arma #gaming",
+      "url": "https://www.youtube.com/watch?v=NAnA6Kxyv3o",
+      "image": "https://i3.ytimg.com/vi/NAnA6Kxyv3o/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-05T02:49:49+00:00"
+    },
+    {
+      "id": "BONauiCvkvg",
+      "title": "He actually did see it coming #cannon",
+      "url": "https://www.youtube.com/watch?v=BONauiCvkvg",
+      "image": "https://i3.ytimg.com/vi/BONauiCvkvg/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-04T03:49:38+00:00"
+    }
+  ]
+}

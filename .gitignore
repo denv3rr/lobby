@@ -15,7 +15,6 @@ private-notes/
 notes-private/
 scratch-private/
 *.private.md
-docs/
 FEATURE-PASS-NOTES.md
 DESIGN-REFERENCE-LIBRARY.md
 

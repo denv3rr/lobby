@@ -41,6 +41,8 @@ export class MobileControls {
     this.raycaster = new THREE.Raycaster();
     this.floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.floorY);
     this.tmpHit = new THREE.Vector3();
+    this.tmpToTarget = new THREE.Vector3();
+    this.beforeMovePosition = new THREE.Vector3();
 
     this.boundPointerDown = (event) => this.onPointerDown(event);
     this.boundPointerMove = (event) => this.onPointerMove(event);
@@ -119,12 +121,42 @@ export class MobileControls {
     }
   }
 
+  setPose({ position = null, yaw = null, pitch = null } = {}) {
+    if (position) {
+      if (Array.isArray(position)) {
+        this.player.position.set(position[0] || 0, position[1] || 0, position[2] || 0);
+      } else if (
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y) &&
+        Number.isFinite(position.z)
+      ) {
+        this.player.position.copy(position);
+      }
+    }
+
+    if (Number.isFinite(yaw)) {
+      this.player.rotation.y = yaw;
+    }
+
+    if (Number.isFinite(pitch)) {
+      this.pitch.rotation.x = THREE.MathUtils.clamp(
+        pitch,
+        -Math.PI * 0.42,
+        Math.PI * 0.42
+      );
+    }
+
+    this.targetPosition = null;
+    this.activePointerId = null;
+    this.dragDistance = 0;
+  }
+
   update(deltaTime) {
     if (!this.targetPosition) {
       return 0;
     }
 
-    const toTarget = new THREE.Vector3(
+    const toTarget = this.tmpToTarget.set(
       this.targetPosition.x - this.player.position.x,
       0,
       this.targetPosition.z - this.player.position.z
@@ -138,7 +170,7 @@ export class MobileControls {
 
     toTarget.normalize();
     const step = Math.min(distance, this.speed * deltaTime);
-    const before = this.player.position.clone();
+    this.beforeMovePosition.copy(this.player.position);
     this.player.position.addScaledVector(toTarget, step);
 
     if (this.roomBounds) {
@@ -164,7 +196,7 @@ export class MobileControls {
     const targetYaw = Math.atan2(toTarget.x, -toTarget.z);
     this.player.rotation.y = angleLerp(this.player.rotation.y, targetYaw, 0.1);
 
-    const moved = before.distanceTo(this.player.position);
+    const moved = this.beforeMovePosition.distanceTo(this.player.position);
     if (moved > 0 && this.onMoveDistance) {
       this.onMoveDistance(moved);
     }

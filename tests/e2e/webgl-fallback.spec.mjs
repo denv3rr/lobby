@@ -1,5 +1,7 @@
 import { expect, test } from "@playwright/test";
 
+const LOBBY_PATH = (process.env.PLAYWRIGHT_BASE_PATH || "/").replace(/\/?$/, "/");
+
 test("shows fallback link hub when WebGL is unavailable", async ({ page }) => {
   await page.addInitScript(() => {
     const nativeGetContext = HTMLCanvasElement.prototype.getContext;
@@ -11,7 +13,7 @@ test("shows fallback link hub when WebGL is unavailable", async ({ page }) => {
     };
   });
 
-  await page.goto("/?sceneui=1");
+  await page.goto(`${LOBBY_PATH}?sceneui=1`);
 
   const fallbackPanel = page.locator("#fallback-panel");
   await expect(fallbackPanel).toBeVisible();

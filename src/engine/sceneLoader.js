@@ -206,6 +206,50 @@ function readText(value, fallback = "") {
   return trimmed || fallback;
 }
 
+function normalizeModuleIds(value) {
+  const source = Array.isArray(value) ? value : [value];
+  const seen = new Set();
+  const ids = [];
+  for (const entry of source) {
+    const normalized = readText(entry, "");
+    if (!normalized || seen.has(normalized)) {
+      continue;
+    }
+    seen.add(normalized);
+    ids.push(normalized);
+  }
+  return ids;
+}
+
+function normalizeInteractableAction(action = {}) {
+  const label = readText(action?.label, "Open");
+  const url = readText(action?.url, "");
+  const secretId = readText(action?.secretId, "");
+  const position = Array.isArray(action?.position)
+    ? action.position.slice(0, 3).map((value) => Number(value) || 0)
+    : null;
+  const hasSteps = Array.isArray(action?.steps) && action.steps.length > 0;
+  const type = readText(
+    action?.type,
+    hasSteps ? "sequence" : url ? "url" : secretId ? "unlock-secret" : position ? "teleport" : ""
+  ).toLowerCase();
+  return {
+    label,
+    type,
+    url,
+    theme: readText(action?.theme, ""),
+    secretId,
+    portalId: readText(action?.portalId, ""),
+    message: readText(action?.message, readText(action?.prompt, "")),
+    moduleIds: normalizeModuleIds(action?.moduleIds || action?.moduleId || action?.modules),
+    position,
+    yaw: Number.isFinite(action?.yaw) ? action.yaw : null,
+    pitch: Number.isFinite(action?.pitch) ? action.pitch : null,
+    steps: Array.isArray(action?.steps) ? cloneConfig(action.steps) : null,
+    closeOnRun: action?.closeOnRun !== false
+  };
+}
+
 async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
   const primitive = prop.primitive || "box";
   let geometry = null;
@@ -478,8 +522,10 @@ function createPortal(portalConfig) {
 
   return {
     id: portalConfig.id,
+    type: "portal",
     label: portalConfig.label,
     url: portalConfig.url,
+    interaction: isObject(portalConfig.interaction) ? cloneConfig(portalConfig.interaction) : null,
     group,
     hitbox,
     setHovered,
@@ -563,8 +609,7 @@ function createProtectedFloorplanZones({
   roomSize = [30, 8, 30],
   sceneConfig = {},
   catalogConfig = null,
-  shopFeed = null,
-  projectsFeed = null
+  catalogFeeds = {}
 }) {
   const zones = [];
   const width = roomSize[0] || 30;
@@ -644,11 +689,7 @@ function createProtectedFloorplanZones({
   }
 
   const catalogRooms = isObject(catalogConfig?.rooms) ? catalogConfig.rooms : {};
-  const roomIds = ["shop", "projects"];
-  const itemCounts = {
-    shop: feedItemCount(shopFeed),
-    projects: feedItemCount(projectsFeed)
-  };
+  const roomIds = Object.keys(catalogRooms);
 
   for (const roomId of roomIds) {
     const config = isObject(catalogRooms[roomId]) ? catalogRooms[roomId] : null;
@@ -656,6 +697,11 @@ function createProtectedFloorplanZones({
       continue;
     }
 
+    const feedSource =
+      typeof config.feedSource === "string" && config.feedSource.trim()
+        ? config.feedSource.trim()
+        : roomId;
+    const itemCount = feedItemCount(catalogFeeds?.[feedSource]);
     const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
     const roomWidth = Math.max(1, Number(size[0]) || 8.6);
     const roomDepth = Math.max(1, Number(size[2]) || 9.6);
@@ -666,8 +712,8 @@ function createProtectedFloorplanZones({
       : [0, 0, -(roomDepth + 2.2)];
     const maxItems = Number.isFinite(config.layout?.maxItems) && config.layout.maxItems > 0
       ? Math.floor(config.layout.maxItems)
-      : itemCounts[roomId];
-    const boundedItems = Math.max(0, Math.min(itemCounts[roomId], maxItems));
+      : itemCount;
+    const boundedItems = Math.max(0, Math.min(itemCount, maxItems));
     const capacity = Math.max(1, computeCatalogRoomCapacity(config));
     const roomCount = Math.max(1, Math.ceil(Math.max(1, boundedItems) / capacity));
     const padX = Math.max(0.35, Number(config.protectionPaddingX) || 0.8);
@@ -698,6 +744,77 @@ function createProtectedFloorplanZones({
   );
 }
 
+function createPropSafetyZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneConfig = {} }) {
+  const zones = [];
+  const width = roomSize[0] || 30;
+  const depth = roomSize[2] || 30;
+
+  const sideDoorways = roomConfig.sideDoorways || {};
+  if (sideDoorways.enabled !== false) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      sideDoorways.width ?? 3.8,
+      1.5,
+      Math.max(1.5, depth - 1)
+    );
+    const centerZ = sideDoorways.centerZ ?? 0;
+    const zHalf = doorwayWidth * 0.5 + 1.1;
+    const xDepth = 2.4;
+    zones.push({
+      id: "side-door-east",
+      kind: "doorway",
+      minX: width * 0.5 - xDepth,
+      maxX: width * 0.5 + 0.8,
+      minZ: centerZ - zHalf,
+      maxZ: centerZ + zHalf
+    });
+    zones.push({
+      id: "side-door-west",
+      kind: "doorway",
+      minX: -width * 0.5 - 0.8,
+      maxX: -width * 0.5 + xDepth,
+      minZ: centerZ - zHalf,
+      maxZ: centerZ + zHalf
+    });
+  }
+
+  const frontEntrance = roomConfig.frontEntrance || {};
+  if (frontEntrance.enabled) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      frontEntrance.width ?? 4.2,
+      1.6,
+      Math.max(1.6, width - 1.6)
+    );
+    const centerX = THREE.MathUtils.clamp(
+      frontEntrance.centerX ?? 0,
+      -width * 0.5 + doorwayWidth * 0.5 + 0.4,
+      width * 0.5 - doorwayWidth * 0.5 - 0.4
+    );
+    zones.push({
+      id: "front-entrance",
+      kind: "doorway",
+      minX: centerX - doorwayWidth * 0.5 - 1.15,
+      maxX: centerX + doorwayWidth * 0.5 + 1.15,
+      minZ: depth * 0.5 - 2.5,
+      maxZ: depth * 0.5 + 1
+    });
+  }
+
+  for (const portal of Array.isArray(sceneConfig?.portals) ? sceneConfig.portals : []) {
+    const [px, py, pz] = portal.position || [0, 0, 0];
+    const [sx, sy, sz] = portal.size || [2.2, 2.8, 0.4];
+    zones.push({
+      id: `portal-${portal.id || zones.length + 1}`,
+      kind: "portal",
+      minX: (px || 0) - sx * 0.5 - 1.2,
+      maxX: (px || 0) + sx * 0.5 + 1.2,
+      minZ: (pz || 0) - Math.max(1.1, sz * 1.1),
+      maxZ: (pz || 0) + Math.max(2.2, sz * 4.2)
+    });
+  }
+
+  return zones;
+}
+
 export async function loadScene({
   scene,
   camera,
@@ -705,8 +822,7 @@ export async function loadScene({
   sceneConfig,
   qualityProfile,
   catalogConfig = null,
-  shopFeed = null,
-  projectsFeed = null
+  catalogFeeds = {}
 }) {
   const roomConfig = sceneConfig.room || {};
   const roomSize = roomConfig.size || [30, 8, 30];
@@ -734,7 +850,9 @@ export async function loadScene({
     minY = floorY,
     maxY = floorY + height,
     tag = "room",
-    id = ""
+    id = "",
+    moduleIds = [],
+    enabled = true
   }) {
     if (sizeX <= 0 || sizeZ <= 0) {
       return;
@@ -742,6 +860,8 @@ export async function loadScene({
     colliders.push({
       id,
       tag,
+      enabled: enabled !== false,
+      moduleIds: normalizeModuleIds(moduleIds),
       minX: centerX - sizeX * 0.5,
       maxX: centerX + sizeX * 0.5,
       minZ: centerZ - sizeZ * 0.5,
@@ -796,12 +916,16 @@ export async function loadScene({
     roomSize,
     sceneConfig,
     catalogConfig,
-    shopFeed,
-    projectsFeed
+    catalogFeeds
   });
   const catalogProtectedZones = floorplanProtectedZones.filter(
     (zone) => zone.zoneType === "catalog"
   );
+  const propSafetyZones = createPropSafetyZones({
+    roomConfig,
+    roomSize,
+    sceneConfig
+  });
 
   function wallBlockedByProtectedZone(bounds) {
     for (const zone of floorplanProtectedZones) {
@@ -1422,19 +1546,35 @@ export async function loadScene({
 
   const propRecords = [];
   const propInteractionTargets = [];
+  const propModules = new Map();
   const animatedTextures = [];
   const dynamicProps = [];
+  const visibilityEntries = [];
   let glowLightCount = 0;
-  const maxGlowLights = sceneConfig.glowLightBudget ?? 48;
+  const maxGlowLights = Number.isFinite(qualityProfile?.sceneGlowLightBudget)
+    ? Math.max(0, Number(qualityProfile.sceneGlowLightBudget))
+    : sceneConfig.glowLightBudget ?? 48;
+  let lastVisibilityUpdateAt = -1;
+  const visibilityUpdateInterval = Math.max(
+    0.05,
+    Number(qualityProfile?.visibilityUpdateInterval) || 0.1
+  );
+  const managedVisibility = qualityProfile?.managedVisibility !== false;
+  const directionalVisibility = qualityProfile?.directionalVisibility !== false;
   const cameraWorldPosition = new THREE.Vector3();
+  const cameraWorldDirection = new THREE.Vector3();
   const objectWorldPosition = new THREE.Vector3();
+  const toObjectDirection = new THREE.Vector3();
   const lookTarget = new THREE.Vector3();
   const tempPropBox = new THREE.Box3();
   const tempPropSize = new THREE.Vector3();
   const tempPropCenter = new THREE.Vector3();
   const tempLocalCenter = new THREE.Vector3();
 
-  function addObjectCollider(object, { tag = "base", id = "" } = {}) {
+  function addObjectCollider(
+    object,
+    { tag = "base", id = "", moduleIds = [], enabled = true } = {}
+  ) {
     tempPropBox.setFromObject(object);
     if (tempPropBox.isEmpty()) {
       return;
@@ -1452,7 +1592,9 @@ export async function loadScene({
       minY: tempPropBox.min.y,
       maxY: tempPropBox.max.y + 0.02,
       tag,
-      id
+      id,
+      moduleIds,
+      enabled
     });
   }
 
@@ -1484,7 +1626,298 @@ export async function loadScene({
     return false;
   }
 
-  function registerPropCollider(wrapper, prop, tag) {
+  function isBlockedByPropSafetyZone(object, prop = {}) {
+    const bounds = getObjectBounds2D(object);
+    if (!bounds) {
+      return false;
+    }
+
+    for (const zone of propSafetyZones) {
+      if (zone.kind === "portal" && prop.allowPortalBlock === true) {
+        continue;
+      }
+      if (zone.kind === "doorway" && prop.allowDoorwayBlock === true) {
+        continue;
+      }
+      if (boundsOverlap2D(bounds, zone)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function applyResolvedVisibility(entry) {
+    const resolved = entry.cullVisible !== false && entry.moduleVisible !== false;
+    if (entry.visible === resolved) {
+      return;
+    }
+
+    entry.visible = resolved;
+    entry.object.visible = resolved;
+    if (entry.hitbox) {
+      entry.hitbox.visible = resolved;
+    }
+    if (entry.target?.userData) {
+      entry.target.userData.hiddenFromInteraction = !resolved;
+    }
+  }
+
+  function setVisibilityState(entry, visible) {
+    entry.cullVisible = Boolean(visible);
+    applyResolvedVisibility(entry);
+  }
+
+  function setModuleVisibilityState(entry, visible) {
+    entry.moduleVisible = Boolean(visible);
+    applyResolvedVisibility(entry);
+  }
+
+  function registerVisibilityEntry(wrapper, prop, tag, target = null) {
+    if (!wrapper?.parent || prop?.visibility?.enabled === false) {
+      return null;
+    }
+
+    tempPropBox.setFromObject(wrapper);
+    if (tempPropBox.isEmpty()) {
+      return null;
+    }
+    tempPropBox.getSize(tempPropSize);
+    const radius = Math.max(tempPropSize.x, tempPropSize.y, tempPropSize.z) * 0.5;
+    const nearDistance = Math.max(4, Number(prop?.visibility?.nearDistance) || 8);
+    const maxDistance = Math.max(
+      nearDistance + 1,
+      Number(prop?.visibility?.maxDistance) ||
+        (target ? 34 : tag === "theme-extra" ? 42 : 56)
+    );
+    const coneDegrees = THREE.MathUtils.clamp(
+      Number(prop?.visibility?.coneDegrees) || (target ? 160 : 138),
+      40,
+      178
+    );
+
+    const entry = {
+      object: wrapper,
+      hitbox: target?.hitbox || null,
+      target,
+      radius,
+      nearDistance,
+      relaxedDistance: Math.max(
+        nearDistance + radius,
+        Number(prop?.visibility?.relaxedDistance) || 14
+      ),
+      maxDistance,
+      coneCos: Math.cos(THREE.MathUtils.degToRad(coneDegrees * 0.5)),
+      cullVisible: true,
+      moduleVisible: true,
+      visible: true
+    };
+    visibilityEntries.push(entry);
+    setVisibilityState(entry, true);
+    return entry;
+  }
+
+  function resolveModuleVisibility(moduleIds = []) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length) {
+      return true;
+    }
+
+    for (const moduleId of ids) {
+      if (propModules.get(moduleId)?.visible === false) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  function syncModuleMemberVisibility(member) {
+    if (!member) {
+      return false;
+    }
+
+    const resolved = resolveModuleVisibility(member.moduleIds);
+    if (member.visibilityEntry) {
+      setModuleVisibilityState(member.visibilityEntry, resolved);
+    } else if (member.object) {
+      member.object.visible = resolved;
+      if (member.target?.hitbox) {
+        member.target.hitbox.visible = resolved;
+      }
+      if (member.target?.userData) {
+        member.target.userData.hiddenFromInteraction = !resolved;
+      }
+    }
+    return resolved;
+  }
+
+  function syncModuleColliderVisibility() {
+    for (const collider of colliders) {
+      if (!Array.isArray(collider.moduleIds) || !collider.moduleIds.length) {
+        continue;
+      }
+      collider.enabled = resolveModuleVisibility(collider.moduleIds);
+    }
+  }
+
+  function registerModuleMember(moduleIds, member, initialVisible = true) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length || !member) {
+      return ids;
+    }
+
+    member.moduleIds = ids;
+    for (const moduleId of ids) {
+      let record = propModules.get(moduleId);
+      if (!record) {
+        record = {
+          id: moduleId,
+          visible: initialVisible,
+          members: []
+        };
+        propModules.set(moduleId, record);
+      } else if (!initialVisible) {
+        record.visible = false;
+      }
+      record.members.push(member);
+    }
+    syncModuleMemberVisibility(member);
+    syncModuleColliderVisibility();
+    return ids;
+  }
+
+  function setPropModulesVisible(moduleIds, visible) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length) {
+      return [];
+    }
+
+    const touchedMembers = new Set();
+    const updated = [];
+    for (const moduleId of ids) {
+      let record = propModules.get(moduleId);
+      if (!record) {
+        record = {
+          id: moduleId,
+          visible: Boolean(visible),
+          members: []
+        };
+        propModules.set(moduleId, record);
+      }
+      record.visible = Boolean(visible);
+      updated.push({
+        id: moduleId,
+        visible: record.visible,
+        memberCount: record.members.length
+      });
+      for (const member of record.members) {
+        touchedMembers.add(member);
+      }
+    }
+
+    for (const member of touchedMembers) {
+      syncModuleMemberVisibility(member);
+    }
+    syncModuleColliderVisibility();
+    return updated;
+  }
+
+  function togglePropModulesVisible(moduleIds) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length) {
+      return [];
+    }
+    const nextVisible = !resolveModuleVisibility(ids);
+    return setPropModulesVisible(ids, nextVisible);
+  }
+
+  function getPropModuleState(moduleId) {
+    const id = readText(moduleId, "");
+    if (!id) {
+      return null;
+    }
+    const record = propModules.get(id);
+    if (!record) {
+      return {
+        id,
+        visible: true,
+        memberCount: 0
+      };
+    }
+    return {
+      id,
+      visible: record.visible !== false,
+      memberCount: record.members.length
+    };
+  }
+
+  function getPropModuleStates() {
+    return [...propModules.values()].map((record) => ({
+      id: record.id,
+      visible: record.visible !== false,
+      memberCount: record.members.length
+    }));
+  }
+
+  function updateManagedVisibility(elapsedTime, activeCamera) {
+    if (!visibilityEntries.length) {
+      return;
+    }
+
+    if (!managedVisibility) {
+      for (const entry of visibilityEntries) {
+        if (!entry.object?.parent) {
+          continue;
+        }
+        setVisibilityState(entry, true);
+      }
+      return;
+    }
+
+    if (!activeCamera) {
+      return;
+    }
+    if (lastVisibilityUpdateAt >= 0 && elapsedTime - lastVisibilityUpdateAt < visibilityUpdateInterval) {
+      return;
+    }
+    lastVisibilityUpdateAt = elapsedTime;
+
+    activeCamera.getWorldPosition(cameraWorldPosition);
+    activeCamera.getWorldDirection(cameraWorldDirection).normalize();
+
+    for (const entry of visibilityEntries) {
+      if (!entry.object?.parent) {
+        continue;
+      }
+
+      entry.object.getWorldPosition(objectWorldPosition);
+      const distanceSq = cameraWorldPosition.distanceToSquared(objectWorldPosition);
+      const currentlyVisible = entry.visible !== false;
+      const extraDistance = currentlyVisible ? Math.max(2, entry.radius * 2.2) : 0;
+      const nearDistance = entry.nearDistance + entry.radius + extraDistance;
+      const maxDistance = entry.maxDistance + entry.radius + extraDistance;
+      const relaxedDistance = entry.relaxedDistance + entry.radius + extraDistance;
+      let visible = distanceSq <= nearDistance * nearDistance;
+
+      if (!visible && distanceSq <= maxDistance * maxDistance) {
+        if (!directionalVisibility) {
+          visible = distanceSq <= relaxedDistance * relaxedDistance;
+        } else {
+          toObjectDirection
+            .copy(objectWorldPosition)
+            .sub(cameraWorldPosition)
+            .normalize();
+          visible =
+            distanceSq <= relaxedDistance * relaxedDistance ||
+            toObjectDirection.dot(cameraWorldDirection) >=
+              (currentlyVisible ? entry.coneCos - 0.12 : entry.coneCos);
+        }
+      }
+
+      setVisibilityState(entry, visible);
+    }
+  }
+
+  function registerPropCollider(wrapper, prop, tag, moduleIds = []) {
     if (prop.collider === false || prop.billboard || prop.hoverMotion) {
       return;
     }
@@ -1508,7 +1941,9 @@ export async function loadScene({
         minY: center.y - ySize * 0.5,
         maxY: center.y + ySize * 0.5,
         tag,
-        id: prop.id || wrapper.name
+        id: prop.id || wrapper.name,
+        moduleIds,
+        enabled: !prop.initiallyHidden
       });
       return;
     }
@@ -1519,7 +1954,9 @@ export async function loadScene({
 
     addObjectCollider(wrapper, {
       tag,
-      id: prop.id || wrapper.name
+      id: prop.id || wrapper.name,
+      moduleIds,
+      enabled: !prop.initiallyHidden
     });
   }
 
@@ -1575,12 +2012,20 @@ export async function loadScene({
       : [];
     const actions = Array.isArray(interactable.actions)
       ? interactable.actions
-          .map((entry) => ({
-            label: readText(entry?.label, "Open"),
-            url: readText(entry?.url, "")
-          }))
-          .filter((entry) => entry.url)
-          .slice(0, 4)
+          .map((entry) => normalizeInteractableAction(entry))
+          .filter(
+            (entry) =>
+              entry.url ||
+              entry.theme ||
+              entry.secretId ||
+              entry.portalId ||
+              entry.message ||
+              entry.moduleIds.length ||
+              entry.position ||
+              entry.steps?.length ||
+              entry.type
+          )
+          .slice(0, 6)
       : [];
 
     tempPropBox.setFromObject(wrapper);
@@ -1592,12 +2037,16 @@ export async function loadScene({
     tempPropBox.getCenter(tempPropCenter);
     tempLocalCenter.copy(tempPropCenter);
     wrapper.worldToLocal(tempLocalCenter);
+    const isCenterArtifact =
+      readText(prop.id, "") === "center_hover_gif" ||
+      readText(interactable?.interaction?.type, "") === "center-artifact";
+    const hitboxScale = isCenterArtifact ? 1.72 : 1.08;
 
     const hitbox = new THREE.Mesh(
       new THREE.BoxGeometry(
-        Math.max(0.6, tempPropSize.x * 1.08),
-        Math.max(0.8, tempPropSize.y * 1.08),
-        Math.max(0.6, tempPropSize.z * 1.08)
+        Math.max(isCenterArtifact ? 1.4 : 0.6, tempPropSize.x * hitboxScale),
+        Math.max(isCenterArtifact ? 1.6 : 0.8, tempPropSize.y * hitboxScale),
+        Math.max(isCenterArtifact ? 1.1 : 0.6, tempPropSize.z * hitboxScale)
       ),
       new THREE.MeshBasicMaterial({
         transparent: true,
@@ -1633,6 +2082,7 @@ export async function loadScene({
       label,
       type: "prop",
       hitbox,
+      interaction: isObject(interactable.interaction) ? cloneConfig(interactable.interaction) : null,
       inspectData: {
         title,
         description,
@@ -1715,16 +2165,42 @@ export async function loadScene({
       disposeManagedObjectResources(wrapper);
       return null;
     }
+    if (isBlockedByPropSafetyZone(wrapper, prop)) {
+      disposeManagedObjectResources(wrapper);
+      return null;
+    }
 
     attachGlowLight(wrapper, prop);
     scene.add(wrapper);
     wrapper.updateMatrixWorld(true);
     propRecords.push(wrapper);
-    registerPropCollider(wrapper, prop, tag);
+    const moduleIds = normalizeModuleIds(prop.moduleIds || prop.moduleId || prop.modules);
+    const initialModuleVisible = !prop.initiallyHidden;
+    registerPropCollider(wrapper, prop, tag, moduleIds);
     const interactionTarget = createPropInteractionTarget(wrapper, prop, tag);
     if (interactionTarget) {
       propInteractionTargets.push(interactionTarget);
       wrapper.userData.interactionTarget = interactionTarget;
+    }
+    const visibilityEntry = registerVisibilityEntry(wrapper, prop, tag, interactionTarget);
+    if (moduleIds.length) {
+      registerModuleMember(
+        moduleIds,
+        {
+          object: wrapper,
+          target: interactionTarget,
+          visibilityEntry
+        },
+        initialModuleVisible
+      );
+    } else if (prop.initiallyHidden) {
+      wrapper.visible = false;
+      if (interactionTarget?.hitbox) {
+        interactionTarget.hitbox.visible = false;
+      }
+      if (interactionTarget?.userData) {
+        interactionTarget.userData.hiddenFromInteraction = true;
+      }
     }
 
     const hover = prop.hoverMotion;
@@ -1793,15 +2269,22 @@ export async function loadScene({
             propInteractionTargets.splice(j, 1);
           }
         }
+        for (let j = visibilityEntries.length - 1; j >= 0; j -= 1) {
+          if (visibilityEntries[j].object === item) {
+            visibilityEntries.splice(j, 1);
+          }
+        }
+        for (const [moduleId, record] of propModules.entries()) {
+          record.members = record.members.filter((member) => member.object !== item);
+          if (!record.members.length) {
+            propModules.delete(moduleId);
+          }
+        }
       }
     }
   }
 
   function updateDynamicProps(elapsedTime, activeCamera) {
-    if (!dynamicProps.length) {
-      return;
-    }
-
     if (activeCamera) {
       activeCamera.getWorldPosition(cameraWorldPosition);
     }
@@ -1809,6 +2292,9 @@ export async function loadScene({
     for (const item of dynamicProps) {
       const object = item.object;
       if (!object?.parent) {
+        continue;
+      }
+      if (object.visible === false) {
         continue;
       }
 
@@ -1839,6 +2325,8 @@ export async function loadScene({
         object.lookAt(lookTarget);
       }
     }
+
+    updateManagedVisibility(elapsedTime, activeCamera);
   }
 
   function getPropStats() {
@@ -1907,6 +2395,10 @@ export async function loadScene({
     resetThemeFloorplan,
     addProps,
     removePropsByTag,
+    setPropModulesVisible,
+    togglePropModulesVisible,
+    getPropModuleState,
+    getPropModuleStates,
     updateDynamicProps,
     getPropStats
   };

@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,7 @@ const FALLBACK_WORKSHOP_URL =
 
 function parseArgs(argv = process.argv.slice(2)) {
   const options = {
+    strict: false,
     writeLocal: true,
     writeDefaults: false,
     workshopUrl: "",
@@ -24,6 +25,8 @@ function parseArgs(argv = process.argv.slice(2)) {
     } else if (arg === "--defaults-only") {
       options.writeDefaults = true;
       options.writeLocal = false;
+    } else if (arg === "--strict") {
+      options.strict = true;
     } else if (arg.startsWith("--workshop-url=")) {
       options.workshopUrl = arg.slice("--workshop-url=".length).trim();
     } else if (arg.startsWith("--workshop-title=")) {
@@ -211,40 +214,79 @@ async function writeJson(filePath, payload) {
   await writeFile(filePath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
 }
 
+async function readExistingFeed(filePath) {
+  try {
+    const raw = await readFile(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed?.items)) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 async function main() {
   const options = parseArgs();
-  const readme = await fetchText(README_URL);
-  const repos = extractPinnedRepos(readme);
-  if (!repos.length) {
-    throw new Error("Could not resolve pinned repos from profile README.");
-  }
+  const fallback =
+    (await readExistingFeed(OUTPUT_LOCAL)) ||
+    (await readExistingFeed(OUTPUT_DEFAULTS));
+  const errors = [];
+  let items = [];
 
-  const items = [];
-  for (const repoName of repos.slice(0, 4)) {
-    const meta = await fetchRepoMeta(repoName);
-    const title = toTitle(repoName.replace(/\.github\.io$/i, " site"));
-    items.push({
-      id: repoName.toLowerCase().replace(/[^a-z0-9_-]+/g, "-"),
-      title: meta?.name || title,
-      url: `https://github.com/denv3rr/${repoName}`,
-      image: `https://opengraph.githubassets.com/1/denv3rr/${repoName}`,
-      price: null,
-      currency: null,
-      tags: ["core", "github", "project"],
-      artwork: []
+  try {
+    const readme = await fetchText(README_URL);
+    const repos = extractPinnedRepos(readme);
+    if (!repos.length) {
+      throw new Error("Could not resolve pinned repos from profile README.");
+    }
+
+    for (const repoName of repos.slice(0, 4)) {
+      const meta = await fetchRepoMeta(repoName);
+      const title = toTitle(repoName.replace(/\.github\.io$/i, " site"));
+      items.push({
+        id: repoName.toLowerCase().replace(/[^a-z0-9_-]+/g, "-"),
+        title: meta?.name || title,
+        url: `https://github.com/denv3rr/${repoName}`,
+        image: `https://opengraph.githubassets.com/1/denv3rr/${repoName}`,
+        price: null,
+        currency: null,
+        tags: ["core", "github", "project"],
+        artwork: []
+      });
+    }
+
+    items.push(await buildSouthPadreItem(options.workshopUrl, options.workshopTitle));
+  } catch (error) {
+    errors.push({
+      url: README_URL,
+      message: error.message
     });
+    if (!options.strict) {
+      console.warn(`Project sync warning: ${error.message}`);
+    }
   }
 
-  items.push(await buildSouthPadreItem(options.workshopUrl, options.workshopTitle));
+  const finalItems = items.length ? items : fallback?.items || [];
+  if (!finalItems.length) {
+    throw new Error(
+      options.strict
+        ? "Strict mode: project sync generated zero items."
+        : "Project sync failed and no fallback feed was available."
+    );
+  }
 
   const payload = {
     meta: {
       source: "github-readme-plus-workshop",
       updatedAt: new Date().toISOString(),
-      count: items.length,
-      workshopUrl: options.workshopUrl || null
+      count: finalItems.length,
+      workshopUrl: options.workshopUrl || null,
+      usedFallback: items.length === 0,
+      errors
     },
-    items
+    items: finalItems
   };
 
   if (options.writeLocal) {

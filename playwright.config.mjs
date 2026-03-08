@@ -2,6 +2,12 @@ import { defineConfig } from "@playwright/test";
 
 const port = Number(process.env.PLAYWRIGHT_PORT || 4173);
 const baseURL = `http://127.0.0.1:${port}`;
+const serverMode = process.env.PLAYWRIGHT_SERVER_MODE || "dev";
+const webServerCommand =
+  process.env.PLAYWRIGHT_SERVER_COMMAND ||
+  (serverMode === "preview"
+    ? `npm run preview -- --host 127.0.0.1 --port ${port} --strictPort`
+    : `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`);
 
 export default defineConfig({
   testDir: "./tests/e2e",
@@ -30,9 +36,9 @@ export default defineConfig({
     }
   },
   webServer: {
-    command: `npm run dev -- --host 127.0.0.1 --port ${port} --strictPort`,
+    command: webServerCommand,
     url: baseURL,
     timeout: 120_000,
-    reuseExistingServer: !process.env.CI
+    reuseExistingServer: serverMode === "dev" && !process.env.CI
   }
 });

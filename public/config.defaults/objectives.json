@@ -11,10 +11,11 @@
     "criticalThreshold": 0.24
   },
   "ui": {
-    "showStabilityMeter": true,
+    "showStabilityMeter": false,
     "showObjectivesPanel": true,
     "stabilityLabel": "Signal",
-    "title": "Objectives",
+    "title": "Artifact Directive",
+    "subtitle": "Only one thing matters here.",
     "labels": {
       "stable": "Coherent",
       "low": "Fraying",

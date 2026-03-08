@@ -313,10 +313,11 @@ async function main() {
   const useFallback = items.length === 0 && !options.strict;
   const finalItems = items.length ? items : useFallback ? fallback?.items || [] : [];
   if (!finalItems.length) {
-    if (!options.strict) {
-      throw new Error("Failed to build shop feed and no fallback feed was available.");
-    }
-    console.warn("Strict mode: writing empty feed with no fallback items.");
+    throw new Error(
+      options.strict
+        ? "Strict mode: generated zero shop items."
+        : "Failed to build shop feed and no fallback feed was available."
+    );
   }
 
   const payload = {

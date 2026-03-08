@@ -43,17 +43,41 @@ function isObject(value) {
 
 const QUALITY_PROFILES = {
   low: {
+    renderScale: 0.72,
     maxPixelRatio: 1,
     shadows: false,
-    particleMultiplier: 0.35,
+    particleMultiplier: 0,
+    atmosphereEnabled: false,
+    animatedTextureFps: 12,
+    catalogCardLightBudget: 0,
+    catalogCardGlow: false,
+    catalogCardFloat: false,
+    catalogMaterialMode: "basic",
+    catalogThumbnails: false,
+    sceneGlowLightBudget: 0,
+    managedVisibility: false,
+    directionalVisibility: false,
+    visibilityUpdateInterval: 0.14,
     postProcessing: {
       enabled: false
     }
   },
   medium: {
+    renderScale: 0.94,
     maxPixelRatio: 1.5,
     shadows: true,
     particleMultiplier: 0.7,
+    atmosphereEnabled: true,
+    animatedTextureFps: 24,
+    catalogCardLightBudget: 6,
+    catalogCardGlow: true,
+    catalogCardFloat: false,
+    catalogMaterialMode: "standard",
+    catalogThumbnails: true,
+    sceneGlowLightBudget: 12,
+    managedVisibility: false,
+    directionalVisibility: false,
+    visibilityUpdateInterval: 0.12,
     postProcessing: {
       enabled: true,
       bloomEnabled: true,
@@ -66,9 +90,21 @@ const QUALITY_PROFILES = {
     }
   },
   high: {
+    renderScale: 1,
     maxPixelRatio: 2,
     shadows: true,
     particleMultiplier: 1,
+    atmosphereEnabled: true,
+    animatedTextureFps: 30,
+    catalogCardLightBudget: 12,
+    catalogCardGlow: true,
+    catalogCardFloat: true,
+    catalogMaterialMode: "standard",
+    catalogThumbnails: true,
+    sceneGlowLightBudget: 24,
+    managedVisibility: false,
+    directionalVisibility: false,
+    visibilityUpdateInterval: 0.14,
     postProcessing: {
       enabled: true,
       bloomEnabled: true,
@@ -102,7 +138,10 @@ export function detectAutoQuality() {
 
 function applyRendererQuality(renderer, quality) {
   const profile = QUALITY_PROFILES[quality] || QUALITY_PROFILES.medium;
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, profile.maxPixelRatio));
+  const deviceRatio = window.devicePixelRatio || 1;
+  const baseRatio = Math.min(deviceRatio, profile.maxPixelRatio);
+  const pixelRatio = Math.max(0.5, baseRatio * (profile.renderScale || 1));
+  renderer.setPixelRatio(pixelRatio);
   renderer.shadowMap.enabled = profile.shadows;
 }
 

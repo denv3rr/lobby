@@ -3,16 +3,11 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { CORE_RUNTIME_CONFIG_FILES, listRuntimeConfigFiles } from "./configWorkspace.mjs";
+
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DEFAULTS_DIR = path.join(ROOT_DIR, "public", "config.defaults");
-const REQUIRED_FILES = [
-  "scene.json",
-  "themes.json",
-  "audio.json",
-  "catalog.json",
-  "objectives.json",
-  "drift-events.json"
-];
+const REQUIRED_FILES = [...CORE_RUNTIME_CONFIG_FILES];
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
@@ -161,7 +156,7 @@ function validateCatalogConfig(catalogConfig, errors) {
   if (!isObject(catalogConfig.rooms)) {
     errors.push("catalog.json is missing required object: rooms.");
   } else {
-    const requiredRooms = ["shop", "projects"];
+    const requiredRooms = ["shop", "projects", "atelier", "videos"];
     for (const roomId of requiredRooms) {
       if (!isObject(catalogConfig.rooms[roomId])) {
         errors.push(`catalog.json rooms must include object: ${roomId}.`);
@@ -171,6 +166,22 @@ function validateCatalogConfig(catalogConfig, errors) {
 
   if (!isObject(catalogConfig.themeContent)) {
     errors.push("catalog.json is missing required object: themeContent.");
+  }
+}
+
+function validateFeedConfig(fileName, feedConfig, errors) {
+  if (!isObject(feedConfig)) {
+    errors.push(`${fileName} must be a JSON object.`);
+    return;
+  }
+
+  if (!Array.isArray(feedConfig.items)) {
+    errors.push(`${fileName} is missing required array: items.`);
+    return;
+  }
+
+  if (!feedConfig.items.length) {
+    errors.push(`${fileName} items must not be empty.`);
   }
 }
 
@@ -330,6 +341,15 @@ async function main() {
     loaded[fileName] = await readJson(fileName, errors);
   }
 
+  const runtimeFiles = await listRuntimeConfigFiles("defaults");
+  const feedFiles = runtimeFiles.filter((fileName) => /-feed\.json$/i.test(fileName));
+  for (const fileName of feedFiles) {
+    if (Object.prototype.hasOwnProperty.call(loaded, fileName)) {
+      continue;
+    }
+    loaded[fileName] = await readJson(fileName, errors);
+  }
+
   const sceneConfig = loaded["scene.json"];
   const themesConfig = loaded["themes.json"];
   const audioConfig = loaded["audio.json"];
@@ -343,6 +363,9 @@ async function main() {
   validateCatalogConfig(catalogConfig, errors);
   validateObjectivesConfig(objectivesConfig, errors);
   validateDriftEventsConfig(driftEventsConfig, errors);
+  for (const fileName of feedFiles) {
+    validateFeedConfig(fileName, loaded[fileName], errors);
+  }
   validateCrossConfigConsistency(
     themesConfig,
     catalogConfig,

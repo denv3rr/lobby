@@ -19,7 +19,8 @@ export class ParticleSystem {
   }
 
   setEffect(effectConfig, qualityMultiplier, roomSize) {
-    if (!effectConfig?.enabled) {
+    const normalizedMultiplier = Number(qualityMultiplier);
+    if (!effectConfig?.enabled || !Number.isFinite(normalizedMultiplier) || normalizedMultiplier <= 0) {
       this.clearEffect();
       return;
     }
@@ -30,7 +31,7 @@ export class ParticleSystem {
     const area = effectConfig.area || [roomSize[0], 10, roomSize[2]];
     const count = Math.max(
       40,
-      Math.floor((effectConfig.count || 300) * (qualityMultiplier || 1))
+      Math.floor((effectConfig.count || 300) * normalizedMultiplier)
     );
     const positions = new Float32Array(count * 3);
     const speeds = new Float32Array(count);

@@ -23,7 +23,9 @@ export function createOverlay({
   isMobile,
   showDevPanel,
   showThemePanel = showDevPanel,
+  devMenu = null,
   onEnableSound,
+  onInspectAction,
   onThemeChange,
   onQualityChange
 }) {
@@ -31,6 +33,8 @@ export function createOverlay({
   const qualityHiddenClass = showDevPanel ? "" : "hidden";
   const hintHiddenClass = showDevPanel ? "" : "hidden";
   const themeHiddenClass = showThemePanel ? "" : "hidden";
+  const devPanelHiddenClass = devMenu?.enabled ? "" : "hidden";
+  const devModeLabel = devMenu?.writable ? "Local Write" : "Read Only";
 
   mount.innerHTML = `
     <div class="lobby-root">
@@ -40,6 +44,7 @@ export function createOverlay({
         <div class="settings-panel ${settingsVisible ? "" : "hidden"}" data-ui>
           <h1>Lobby</h1>
           <label class="${themeHiddenClass}">
+            Theme
             <select id="theme-select" data-ui></select>
           </label>
           <label class="${qualityHiddenClass}">
@@ -51,6 +56,41 @@ export function createOverlay({
             </select>
           </label>
           <p id="control-hint" class="control-hint ${hintHiddenClass}"></p>
+
+          <section id="dev-panel" class="dev-panel ${devPanelHiddenClass}" data-ui>
+            <div class="dev-panel-head">
+              <h2>Dev Menu</h2>
+              <span id="dev-mode-badge" class="dev-mode-badge">${devModeLabel}</span>
+            </div>
+            <label class="dev-label">
+              Config
+              <select id="dev-config-file" data-ui></select>
+            </label>
+            <label class="dev-label">
+              Load Source
+              <select id="dev-config-source" data-ui>
+                <option value="effective">Effective</option>
+                <option value="local">Local Override</option>
+                <option value="defaults">Deploy Defaults</option>
+              </select>
+            </label>
+            <textarea
+              id="dev-config-editor"
+              class="dev-config-editor"
+              spellcheck="false"
+              data-ui
+            ></textarea>
+            <p id="dev-config-status" class="dev-config-status">
+              Local save writes to public/config. Deploy save writes to public/config.defaults.
+            </p>
+            <div class="dev-actions">
+              <button id="dev-load-btn" type="button" data-ui>Reload</button>
+              <button id="dev-save-local-btn" type="button" data-ui>Set Local</button>
+              <button id="dev-save-defaults-btn" type="button" data-ui>Save Deploy</button>
+              <button id="dev-delete-local-btn" type="button" data-ui>Clear Local</button>
+              <button id="dev-reload-runtime-btn" type="button" data-ui>Reload App</button>
+            </div>
+          </section>
         </div>
 
         <div id="portal-prompt" class="portal-prompt"></div>
@@ -94,10 +134,9 @@ export function createOverlay({
         </div>
 
         <div id="sound-gate" class="sound-gate hidden" data-ui>
-          <div class="sound-card">
-            <h2>Sound Is Off</h2>
-            <p>Enable ambient audio and interaction SFX.</p>
-            <button id="enable-sound-btn" type="button" data-ui>Enable Sound</button>
+          <div class="sound-chip">
+            <span id="sound-status-text">Sound Off</span>
+            <button id="enable-sound-btn" type="button" data-ui>Enable</button>
           </div>
         </div>
 
@@ -134,6 +173,7 @@ export function createOverlay({
   const inspectTags = mount.querySelector("#inspect-tags");
   const inspectActions = mount.querySelector("#inspect-actions");
   const soundGate = mount.querySelector("#sound-gate");
+  const soundStatusText = mount.querySelector("#sound-status-text");
   const enableSoundButton = mount.querySelector("#enable-sound-btn");
   const loadingPanel = mount.querySelector("#loading-panel");
   const loadingTitle = mount.querySelector("#loading-title");
@@ -151,6 +191,15 @@ export function createOverlay({
   const objectivesTitle = mount.querySelector("#objectives-title");
   const objectivesSubtitle = mount.querySelector("#objectives-subtitle");
   const objectivesList = mount.querySelector("#objectives-list");
+  const devConfigFile = mount.querySelector("#dev-config-file");
+  const devConfigSource = mount.querySelector("#dev-config-source");
+  const devConfigEditor = mount.querySelector("#dev-config-editor");
+  const devConfigStatus = mount.querySelector("#dev-config-status");
+  const devLoadButton = mount.querySelector("#dev-load-btn");
+  const devSaveLocalButton = mount.querySelector("#dev-save-local-btn");
+  const devSaveDefaultsButton = mount.querySelector("#dev-save-defaults-btn");
+  const devDeleteLocalButton = mount.querySelector("#dev-delete-local-btn");
+  const devReloadRuntimeButton = mount.querySelector("#dev-reload-runtime-btn");
 
   if (showDevPanel) {
     controlHint.textContent = isMobile
@@ -161,6 +210,8 @@ export function createOverlay({
   let objectiveOrder = [];
   const objectiveMap = new Map();
   let objectivesPanelVisible = false;
+  let activeDevFile = "";
+  let devBusy = false;
 
   function resolveStabilityState(value, explicitState) {
     const override = readText(explicitState, "");
@@ -363,6 +414,147 @@ export function createOverlay({
     }
   }
 
+  function setDevStatus(message, tone = "muted") {
+    if (!devConfigStatus) {
+      return;
+    }
+    devConfigStatus.textContent = readText(message, "");
+    devConfigStatus.dataset.tone = readText(tone, "muted");
+  }
+
+  function setDevButtonsDisabled(disabled) {
+    const next = Boolean(disabled);
+    for (const element of [
+      devLoadButton,
+      devSaveLocalButton,
+      devSaveDefaultsButton,
+      devDeleteLocalButton,
+      devReloadRuntimeButton,
+      devConfigFile,
+      devConfigSource
+    ]) {
+      if (element) {
+        element.disabled = next;
+      }
+    }
+  }
+
+  function setDevWriteButtonsEnabled(enabled) {
+    const next = Boolean(enabled);
+    if (devSaveLocalButton) {
+      devSaveLocalButton.disabled = !next;
+    }
+    if (devSaveDefaultsButton) {
+      devSaveDefaultsButton.disabled = !next;
+    }
+    if (devDeleteLocalButton) {
+      devDeleteLocalButton.disabled = !next;
+    }
+    if (devConfigEditor) {
+      devConfigEditor.readOnly = !next;
+    }
+  }
+
+  async function loadDevConfig(requestedSource = null) {
+    if (!devMenu?.enabled || typeof devMenu.loadConfig !== "function" || !devConfigFile) {
+      return false;
+    }
+
+    const fileName = readText(devConfigFile.value, "");
+    if (!fileName) {
+      return false;
+    }
+
+    activeDevFile = fileName;
+    devBusy = true;
+    setDevButtonsDisabled(true);
+    setDevStatus(`Loading ${fileName}...`, "info");
+
+    try {
+      const payload = await devMenu.loadConfig(fileName, requestedSource || devConfigSource?.value || "effective");
+      if (devConfigEditor) {
+        devConfigEditor.value = payload?.text || "";
+      }
+      if (devConfigSource) {
+        devConfigSource.value = payload?.source || requestedSource || devConfigSource.value;
+      }
+      const sourceLabel = readText(payload?.source, "effective");
+      const localState = payload?.hasLocal ? "local override present" : "no local override";
+      setDevStatus(`${fileName} loaded from ${sourceLabel}. ${localState}.`, "success");
+      return true;
+    } catch (error) {
+      setDevStatus(error instanceof Error ? error.message : "Failed to load config.", "error");
+      return false;
+    } finally {
+      devBusy = false;
+      setDevButtonsDisabled(false);
+      setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+    }
+  }
+
+  async function saveDevConfig(target) {
+    if (!devMenu?.enabled || typeof devMenu.saveConfig !== "function" || !devConfigEditor || devBusy) {
+      return false;
+    }
+
+    const fileName = readText(devConfigFile?.value || activeDevFile, "");
+    if (!fileName) {
+      return false;
+    }
+
+    devBusy = true;
+    setDevButtonsDisabled(true);
+    setDevStatus(`Saving ${fileName} to ${target}...`, "info");
+
+    try {
+      await devMenu.saveConfig(fileName, target, devConfigEditor.value);
+      await loadDevConfig(target === "defaults" ? "defaults" : "local");
+      setDevStatus(
+        target === "defaults"
+          ? `${fileName} saved to deploy defaults. Push to publish it.`
+          : `${fileName} saved as a local override.`,
+        "success"
+      );
+      return true;
+    } catch (error) {
+      setDevStatus(error instanceof Error ? error.message : "Failed to save config.", "error");
+      return false;
+    } finally {
+      devBusy = false;
+      setDevButtonsDisabled(false);
+      setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+    }
+  }
+
+  async function deleteLocalDevConfig() {
+    if (!devMenu?.enabled || typeof devMenu.deleteConfig !== "function" || devBusy) {
+      return false;
+    }
+
+    const fileName = readText(devConfigFile?.value || activeDevFile, "");
+    if (!fileName) {
+      return false;
+    }
+
+    devBusy = true;
+    setDevButtonsDisabled(true);
+    setDevStatus(`Clearing local override for ${fileName}...`, "info");
+
+    try {
+      await devMenu.deleteConfig(fileName, "local");
+      await loadDevConfig("effective");
+      setDevStatus(`${fileName} local override cleared.`, "success");
+      return true;
+    } catch (error) {
+      setDevStatus(error instanceof Error ? error.message : "Failed to clear local override.", "error");
+      return false;
+    } finally {
+      devBusy = false;
+      setDevButtonsDisabled(false);
+      setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+    }
+  }
+
   function setLoadingState({ visible = true, title, message } = {}) {
     if (title !== undefined) {
       loadingTitle.textContent = readText(title, "Entering Lobby");
@@ -484,10 +676,38 @@ export function createOverlay({
       ? data.actions
           .map((entry) => ({
             label: readText(entry?.label, "Open"),
-            url: readText(entry?.url, "")
+            type: readText(entry?.type, entry?.url ? "url" : "").toLowerCase(),
+            url: readText(entry?.url, ""),
+            theme: readText(entry?.theme, ""),
+            secretId: readText(entry?.secretId, ""),
+            portalId: readText(entry?.portalId, ""),
+            message: readText(entry?.message, readText(entry?.prompt, "")),
+            moduleIds: Array.isArray(entry?.moduleIds)
+              ? entry.moduleIds.map((value) => readText(value, "")).filter(Boolean).slice(0, 8)
+              : readText(entry?.moduleId, "")
+                ? [readText(entry?.moduleId, "")]
+                : [],
+            position: Array.isArray(entry?.position)
+              ? entry.position.slice(0, 3).map((value) => toFiniteNumber(value, 0))
+              : null,
+            yaw: toFiniteNumber(entry?.yaw, null),
+            pitch: toFiniteNumber(entry?.pitch, null),
+            steps: Array.isArray(entry?.steps) ? entry.steps : null,
+            closeOnRun: entry?.closeOnRun !== false
           }))
-          .filter((entry) => entry.url)
-          .slice(0, 4)
+          .filter(
+            (entry) =>
+              entry.url ||
+              entry.theme ||
+              entry.secretId ||
+              entry.portalId ||
+              entry.message ||
+              entry.moduleIds.length ||
+              entry.position ||
+              entry.steps?.length ||
+              entry.type
+          )
+          .slice(0, 6)
       : [];
 
     return {
@@ -532,19 +752,69 @@ export function createOverlay({
 
     inspectActions.innerHTML = "";
     for (const action of normalized.actions) {
-      const link = document.createElement("a");
-      link.className = "inspect-action";
-      link.href = action.url;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.textContent = action.label;
-      link.dataset.ui = "true";
-      inspectActions.appendChild(link);
+      const isUrlAction = action.type === "url" && action.url;
+      if (isUrlAction) {
+        const link = document.createElement("a");
+        link.className = "inspect-action";
+        link.href = action.url;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = action.label;
+        link.dataset.ui = "true";
+        inspectActions.appendChild(link);
+        continue;
+      }
+
+      const button = document.createElement("button");
+      button.className = "inspect-action";
+      button.type = "button";
+      button.textContent = action.label;
+      button.dataset.ui = "true";
+      button.addEventListener("click", async () => {
+        if (typeof onInspectAction !== "function") {
+          return;
+        }
+        const handled = await onInspectAction(action);
+        if (handled !== false && action.closeOnRun !== false) {
+          hideInspectPanel();
+        }
+      });
+      inspectActions.appendChild(button);
     }
     inspectActions.classList.toggle("hidden", !normalized.actions.length);
 
     inspectPanel.classList.remove("hidden");
     return true;
+  }
+
+  function setDevConfigFiles(entries) {
+    if (!devMenu?.enabled) {
+      return;
+    }
+
+    const nextEntries = Array.isArray(entries) ? entries : [];
+    const previousValue = readText(devConfigFile?.value, "");
+    devConfigFile.innerHTML = "";
+    for (const entry of nextEntries) {
+      const fileName = readText(entry?.fileName, "");
+      if (!fileName) {
+        continue;
+      }
+      const option = document.createElement("option");
+      option.value = fileName;
+      option.textContent = readText(entry?.label, fileName);
+      devConfigFile.appendChild(option);
+    }
+
+    if (!devConfigFile.options.length) {
+      const option = document.createElement("option");
+      option.value = "scene.json";
+      option.textContent = "Scene";
+      devConfigFile.appendChild(option);
+    }
+
+    const hasPrevious = [...devConfigFile.options].some((option) => option.value === previousValue);
+    devConfigFile.value = hasPrevious ? previousValue : devConfigFile.options[0].value;
   }
 
   enableSoundButton.addEventListener("click", async () => {
@@ -568,6 +838,42 @@ export function createOverlay({
   inspectCloseButton.addEventListener("click", () => {
     hideInspectPanel();
   });
+
+  if (devMenu?.enabled) {
+    setDevConfigFiles(devMenu.configFiles);
+
+    setDevWriteButtonsEnabled(Boolean(devMenu.writable));
+    setDevStatus(
+      devMenu.writable
+        ? "Edit JSON here, then save locally or directly to deploy defaults."
+        : "Read-only mode. Open local dev to save config files from this panel.",
+      "muted"
+    );
+
+    devConfigFile.addEventListener("change", () => {
+      loadDevConfig().catch(() => {});
+    });
+    devConfigSource.addEventListener("change", () => {
+      loadDevConfig(devConfigSource.value).catch(() => {});
+    });
+    devLoadButton.addEventListener("click", () => {
+      loadDevConfig().catch(() => {});
+    });
+    devSaveLocalButton.addEventListener("click", () => {
+      saveDevConfig("local").catch(() => {});
+    });
+    devSaveDefaultsButton.addEventListener("click", () => {
+      saveDevConfig("defaults").catch(() => {});
+    });
+    devDeleteLocalButton.addEventListener("click", () => {
+      deleteLocalDevConfig().catch(() => {});
+    });
+    devReloadRuntimeButton.addEventListener("click", () => {
+      devMenu.reloadRuntime?.();
+    });
+
+    loadDevConfig().catch(() => {});
+  }
 
   return {
     viewport,
@@ -654,9 +960,15 @@ export function createOverlay({
       hideFallback();
     },
     hideSoundGate() {
+      if (soundStatusText) {
+        soundStatusText.textContent = "Sound On";
+      }
       soundGate.classList.add("hidden");
     },
     showSoundGate() {
+      if (soundStatusText) {
+        soundStatusText.textContent = "Sound Off";
+      }
       soundGate.classList.remove("hidden");
     },
     setStabilityMeter(value, options) {
@@ -682,6 +994,9 @@ export function createOverlay({
     },
     clearObjectives() {
       clearObjectives();
+    },
+    setDevConfigFiles(entries) {
+      setDevConfigFiles(entries);
     },
     setObjectivesPanel(panelState) {
       setObjectivesPanel(panelState);

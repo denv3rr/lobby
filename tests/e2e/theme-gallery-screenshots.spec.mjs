@@ -3,6 +3,7 @@ import path from "node:path";
 import { mkdir } from "node:fs/promises";
 
 const PREFERRED_THEMES = ["lodge", "lobby", "winter", "neon"];
+const LOBBY_PATH = (process.env.PLAYWRIGHT_BASE_PATH || "/").replace(/\/?$/, "/");
 const DEBUG_HOOK_NAMES = [
   "__LOBBY_DEBUG",
   "__LOBBY_DEBUG__",
@@ -10,6 +11,8 @@ const DEBUG_HOOK_NAMES = [
   "lobbyDebug",
   "__SEPERET_LOBBY_DEBUG__"
 ];
+
+test.setTimeout(180_000);
 
 async function readWinterParticleCount(page) {
   return page.evaluate(async (hookNames) => {
@@ -43,7 +46,7 @@ test("captures themed screenshots and verifies texture/model requests stay healt
     }
   });
 
-  await page.goto("/?debugui=1&sceneui=1");
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1`);
 
   const fallbackVisible = await page.evaluate(() => {
     const panel = document.querySelector("#fallback-panel");

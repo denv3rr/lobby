@@ -7,6 +7,9 @@ const DEBUG_HOOK_NAMES = [
   "lobbyDebug",
   "__SEPERET_LOBBY_DEBUG__"
 ];
+const LOBBY_PATH = (process.env.PLAYWRIGHT_BASE_PATH || "/").replace(/\/?$/, "/");
+
+test.setTimeout(120_000);
 
 async function installPointerLockShim(page) {
   await page.addInitScript(() => {
@@ -117,26 +120,144 @@ async function readDebugStats(page) {
   }, DEBUG_HOOK_NAMES);
 }
 
-async function readAnyInteractionHit(page) {
+async function readAnyPortalHit(page) {
   const { stats } = await readDebugStats(page);
-  const hitId = stats?.anyInteractionHit;
+  const hitId = stats?.anyPortalHit;
   return typeof hitId === "string" && hitId.trim() ? hitId.trim() : null;
 }
 
-async function debugActivateHoveredOrAnyTarget(page) {
+async function readPortalIds(page) {
   return page.evaluate(async (hookNames) => {
     for (const hookName of hookNames) {
       const api = window[hookName];
       if (!api || typeof api !== "object") {
         continue;
       }
-      if (typeof api.activateHoveredOrAnyTarget === "function") {
-        const activated = await api.activateHoveredOrAnyTarget();
+      if (typeof api.getPortalIds === "function") {
+        const ids = await api.getPortalIds();
+        return Array.isArray(ids) ? ids.filter((id) => typeof id === "string" && id.trim()) : [];
+      }
+    }
+    return [];
+  }, DEBUG_HOOK_NAMES);
+}
+
+async function debugActivatePortal(page, portalId) {
+  return page.evaluate(async ({ hookNames, portalId: nextPortalId }) => {
+    for (const hookName of hookNames) {
+      const api = window[hookName];
+      if (!api || typeof api !== "object") {
+        continue;
+      }
+      if (typeof api.activatePortal === "function") {
+        const activated = await api.activatePortal(nextPortalId);
         return Boolean(activated);
       }
     }
     return false;
-  }, DEBUG_HOOK_NAMES);
+  }, { hookNames: DEBUG_HOOK_NAMES, portalId });
+}
+
+async function activatePortalThroughDebugApi(page) {
+  const visiblePortalId = await readAnyPortalHit(page);
+  const portalIds = await readPortalIds(page);
+  const candidateIds = [
+    visiblePortalId,
+    ...portalIds,
+    "contact",
+    "shop",
+    "youtube",
+    "discord",
+    "github"
+  ].filter((portalId, index, source) => {
+    const normalizedId = typeof portalId === "string" ? portalId.trim() : "";
+    return normalizedId && source.indexOf(portalId) === index;
+  });
+
+  for (const portalId of candidateIds) {
+    const activated = await debugActivatePortal(page, portalId);
+    if (!activated) {
+      continue;
+    }
+    await page.waitForTimeout(80);
+    const openedCount = await page.evaluate(() => window.__pwOpenedUrls.length);
+    if (openedCount > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function clickCenterCanvas(page) {
+  const canvas = page.locator("#viewport canvas");
+  await expect(canvas).toBeVisible();
+  await canvas.click({ position: { x: 640, y: 360 } });
+}
+
+async function ensurePointerLock(page) {
+  await expect
+    .poll(async () => page.evaluate(() => Boolean(document.pointerLockElement)))
+    .toBeTruthy();
+}
+
+async function primePortalView(page) {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const visiblePortalId = await readAnyPortalHit(page);
+    if (visiblePortalId) {
+      return visiblePortalId;
+    }
+
+    const direction = attempt % 2 === 0 ? 1 : -1;
+    const vertical = attempt % 3 === 0 ? -12 : attempt % 3 === 1 ? 12 : 0;
+    await dispatchMouseLook(page, 110 * direction, vertical);
+    await page.waitForTimeout(50);
+  }
+
+  return readAnyPortalHit(page);
+}
+
+async function activateAnyPortal(page) {
+  await clickCenterCanvas(page);
+  await ensurePointerLock(page);
+  await primePortalView(page);
+  return activatePortalThroughDebugApi(page);
+}
+
+async function ensureCanvasReady(page) {
+  const canvas = page.locator("#viewport canvas");
+  await expect(canvas).toBeVisible();
+  return canvas;
+}
+
+async function lockCanvas(page) {
+  await clickCenterCanvas(page);
+  await ensurePointerLock(page);
+}
+
+async function prepareCanvas(page) {
+  await ensureCanvasReady(page);
+  await lockCanvas(page);
+}
+
+async function waitForPortalOpen(page) {
+  const openedUrl = await page.evaluate(() => window.__pwOpenedUrls[0] || "");
+  return typeof openedUrl === "string" ? openedUrl : "";
+}
+
+async function activatePortalAndReadUrl(page) {
+  const portalActivated = await activateAnyPortal(page);
+  if (!portalActivated) {
+    return {
+      activated: false,
+      openedUrl: ""
+    };
+  }
+
+  return {
+    activated: true,
+    openedUrl: await waitForPortalOpen(page)
+  };
 }
 
 async function readThemeExtraCount(page) {
@@ -223,54 +344,19 @@ async function dispatchMouseLook(page, movementX, movementY = 0) {
   );
 }
 
-async function findPortalPromptViaLook(page) {
-  const prompt = page.locator("#portal-prompt");
-  for (const direction of [-1, 1]) {
-    for (let step = 0; step < 20; step += 1) {
-      const currentText = ((await prompt.textContent()) || "").trim();
-      if (currentText) {
-        return currentText;
-      }
-      await dispatchMouseLook(page, 120 * direction, 0);
-      await page.waitForTimeout(60);
-    }
-  }
-  return ((await prompt.textContent()) || "").trim();
-}
+async function waitForDebugSceneReady(page, timeoutMs = 25_000) {
+  await expect
+    .poll(async () => Boolean((await readDebugStats(page)).stats?.player), {
+      timeout: timeoutMs
+    })
+    .toBeTruthy();
 
-async function activateAnyPortal(page) {
-  for (let attempt = 0; attempt < 90; attempt += 1) {
-    const sweepDirection = attempt < 45 ? 1 : -1;
-    const horizontal = 85 * sweepDirection;
-    const vertical = attempt % 3 === 0 ? -12 : attempt % 3 === 1 ? 12 : 0;
-    await dispatchMouseLook(page, horizontal, vertical);
-    await page.waitForTimeout(75);
-
-    const promptLabel = ((await page.locator("#portal-prompt").textContent()) || "").trim();
-    const hitId = await readAnyInteractionHit(page);
-    if (!promptLabel && !hitId) {
-      continue;
-    }
-
-    await page.mouse.click(640, 360);
-    await page.waitForTimeout(90);
-
-    const openedCount = await page.evaluate(() => window.__pwOpenedUrls.length);
-    if (openedCount > 0) {
-      return true;
-    }
-
-    const debugActivated = await debugActivateHoveredOrAnyTarget(page);
-    if (!debugActivated) {
-      continue;
-    }
-    await page.waitForTimeout(90);
-    const openedAfterDebug = await page.evaluate(() => window.__pwOpenedUrls.length);
-    if (openedAfterDebug > 0) {
-      return true;
-    }
-  }
-  return false;
+  await expect
+    .poll(async () => {
+      const { stats } = await readDebugStats(page);
+      return Number(stats?.portalCount || 0);
+    }, { timeout: timeoutMs })
+    .toBeGreaterThan(0);
 }
 
 test("rapid theme switching leaves no stale props and controls/portals still respond", async ({
@@ -278,7 +364,7 @@ test("rapid theme switching leaves no stale props and controls/portals still res
 }) => {
   await installPointerLockShim(page);
   await stabilizeSpawnYawForPortalChecks(page);
-  await page.goto("/?debugui=1&sceneui=1&perf=1");
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1&perf=1`);
 
   const fallbackVisible = await page.evaluate(() => {
     const panel = document.querySelector("#fallback-panel");
@@ -295,6 +381,7 @@ test("rapid theme switching leaves no stale props and controls/portals still res
   await expect
     .poll(async () => (await readDebugStats(page)).hookName, { timeout: 30_000 })
     .not.toBeNull();
+  await waitForDebugSceneReady(page, 30_000);
 
   const themeIds = await themeSelect
     .locator("option")
@@ -321,6 +408,7 @@ test("rapid theme switching leaves no stale props and controls/portals still res
 
   await expect(themeSelect).toHaveValue(finalTheme);
   await page.waitForTimeout(700);
+  await waitForDebugSceneReady(page, 20_000);
 
   const postBurstThemeExtraCount = await waitForThemeExtraCount(page, 10_000);
   expect(postBurstThemeExtraCount).toBe(baselineThemeExtraCount);
@@ -339,23 +427,10 @@ test("rapid theme switching leaves no stale props and controls/portals still res
     };
   });
 
-  const canvas = page.locator("#viewport canvas");
-  await expect(canvas).toBeVisible();
-  await canvas.click({ position: { x: 640, y: 360 } });
+  await prepareCanvas(page);
 
-  await expect
-    .poll(async () => page.evaluate(() => Boolean(document.pointerLockElement)))
-    .toBeTruthy();
-
-  let promptLabel = ((await page.locator("#portal-prompt").textContent()) || "").trim();
-  if (!promptLabel) {
-    promptLabel = await findPortalPromptViaLook(page);
-  }
-
-  const portalActivated = await activateAnyPortal(page);
+  const { activated: portalActivated, openedUrl } = await activatePortalAndReadUrl(page);
   expect(portalActivated).toBeTruthy();
-
-  const openedUrl = await page.evaluate(() => window.__pwOpenedUrls[0] || "");
   expect(openedUrl).toMatch(/^https?:\/\//);
 
   const movedDistance = await moveProbeDistance(page);

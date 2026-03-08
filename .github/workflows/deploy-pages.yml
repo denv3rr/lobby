@@ -19,6 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       VITE_BUILD_ID: ${{ github.sha }}
+      PAGES_BASE_PATH: ${{ vars.PAGES_BASE_PATH }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,43 +30,47 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Resolve base path
+        run: |
+          BASE_PATH="${PAGES_BASE_PATH:-/${GITHUB_REPOSITORY#*/}/}"
+          echo "VITE_BASE_PATH=${BASE_PATH}" >> "$GITHUB_ENV"
+          echo "PLAYWRIGHT_BASE_PATH=${BASE_PATH}" >> "$GITHUB_ENV"
+
       - name: Install
         run: npm ci
+
+      - name: Refresh external content
+        run: npm run sync:ci
 
       - name: Validate config defaults
         run: npm run validate:configs
 
-      - name: Audit model assets (strict mode)
+      - name: Audit model assets
         run: npm run validate:model-assets:strict
 
       - name: Unit tests
         run: npm run test:unit
 
+      - name: Build
+        run: npm run build
+
+      - name: Validate dist artifact
+        run: npm run validate:dist
+
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: End-to-end smoke tests
+      - name: Smoke test built Pages artifact
+        env:
+          PLAYWRIGHT_SERVER_MODE: preview
         run: npm run test:e2e:smoke
 
-      - name: Build
-        env:
-          VITE_BASE_PATH: /lobby/
-        run: npm run build
-
-      - name: Verify dist base path
-        env:
-          VITE_BASE_PATH: /lobby/
-        run: |
-          node -e "const fs=require('node:fs'); const html=fs.readFileSync('dist/index.html','utf8'); const base=(process.env.VITE_BASE_PATH || '/').replace(/\/?$/, '/'); if (!html.includes(base)) { console.error('Expected base path not found in dist/index.html:', base); process.exit(1); } console.log('Base path verified:', base);"
-
       - name: Upload artifact
-        if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: dist
 
   deploy:
-    if: github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     environment:

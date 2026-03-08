@@ -1,0 +1,51 @@
+{
+  "meta": {
+    "source": "atelier-curated",
+    "channel": "seperet-worldbuilding",
+    "generatedAt": "2026-03-08T00:00:00Z"
+  },
+  "items": [
+    {
+      "id": "atelier-atrium-reset",
+      "title": "Atrium Reset",
+      "url": "https://seperet.com",
+      "image": null,
+      "tags": ["atelier", "lobby", "world", "atrium"]
+    },
+    {
+      "id": "atelier-inferno-foundry",
+      "title": "Inferno Foundry",
+      "url": "https://youtube.com/@seperet",
+      "image": null,
+      "tags": ["atelier", "inferno", "world", "forge"]
+    },
+    {
+      "id": "atelier-backrooms-office-loop",
+      "title": "Office Loop District",
+      "url": "https://github.com/denv3rr/lobby",
+      "image": null,
+      "tags": ["atelier", "backrooms", "world", "liminal"]
+    },
+    {
+      "id": "atelier-roman-sun-court",
+      "title": "Sun Court Archive",
+      "url": "https://github.com/denv3rr",
+      "image": null,
+      "tags": ["atelier", "roman", "world", "archive"]
+    },
+    {
+      "id": "atelier-neon-rooftop-grid",
+      "title": "Rooftop Signal Grid",
+      "url": "https://youtube.com/@seperet",
+      "image": null,
+      "tags": ["atelier", "neon", "world", "rooftop"]
+    },
+    {
+      "id": "atelier-winter-conservatory",
+      "title": "Frost Conservatory",
+      "url": "https://seperet.com/shop",
+      "image": null,
+      "tags": ["atelier", "winter", "world", "garden"]
+    }
+  ]
+}

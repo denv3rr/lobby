@@ -10,7 +10,8 @@ export class DesktopControls {
     roomBounds,
     getColliders,
     onMoveDistance,
-    onPointerLockChange
+    onPointerLockChange,
+    shouldRequestPointerLock
   }) {
     this.domElement = domElement;
     this.camera = camera;
@@ -20,6 +21,7 @@ export class DesktopControls {
     this.getColliders = getColliders;
     this.onMoveDistance = onMoveDistance;
     this.onPointerLockChange = onPointerLockChange;
+    this.shouldRequestPointerLock = shouldRequestPointerLock;
 
     this.speed = 5.2;
     this.sprintMultiplier = 1.4;
@@ -32,6 +34,7 @@ export class DesktopControls {
     this.right = new THREE.Vector3();
     this.moveVector = new THREE.Vector3();
     this.worldUp = new THREE.Vector3(0, 1, 0);
+    this.beforeMovePosition = new THREE.Vector3();
     this.collisionRadius = 0.42;
     this.collisionSampleHeightOffset = 0.9;
 
@@ -39,7 +42,7 @@ export class DesktopControls {
     this.boundKeyUp = (event) => this.onKeyUp(event);
     this.boundMouseMove = (event) => this.onMouseMove(event);
     this.boundPointerLock = () => this.onPointerLockChanged();
-    this.boundCanvasClick = () => this.requestPointerLock();
+    this.boundCanvasClick = (event) => this.onCanvasClick(event);
     this.boundWindowBlur = () => this.clearKeys();
     this.boundVisibilityChange = () => {
       if (document.visibilityState !== "visible") {
@@ -114,14 +117,58 @@ export class DesktopControls {
     );
   }
 
-  requestPointerLock() {
-    if (!this.pointerLocked) {
-      this.domElement.requestPointerLock?.();
+  onCanvasClick(event) {
+    if (this.pointerLocked) {
+      return;
     }
+    if (typeof this.shouldRequestPointerLock === "function") {
+      const allowed = this.shouldRequestPointerLock(event);
+      if (allowed === false) {
+        return;
+      }
+    }
+    this.requestPointerLock(event);
+  }
+
+  requestPointerLock(event = null) {
+    if (event?.defaultPrevented || this.pointerLocked) {
+      return;
+    }
+
+    const suppressedUntil = Number(this.domElement?.dataset?.pointerLockSuppressedUntil || 0);
+    if (Number.isFinite(suppressedUntil) && performance.now() < suppressedUntil) {
+      return;
+    }
+
+    this.domElement.requestPointerLock?.();
   }
 
   isPointerLocked() {
     return this.pointerLocked;
+  }
+
+  setPose({ position = null, yaw = null, pitch = null } = {}) {
+    if (position) {
+      if (Array.isArray(position)) {
+        this.player.position.set(position[0] || 0, position[1] || 0, position[2] || 0);
+      } else if (
+        Number.isFinite(position.x) &&
+        Number.isFinite(position.y) &&
+        Number.isFinite(position.z)
+      ) {
+        this.player.position.copy(position);
+      }
+    }
+
+    if (Number.isFinite(yaw)) {
+      this.player.rotation.y = yaw;
+    }
+
+    if (Number.isFinite(pitch)) {
+      this.pitch.rotation.x = THREE.MathUtils.clamp(pitch, this.pitchMin, this.pitchMax);
+    }
+
+    this.clearKeys();
   }
 
   update(deltaTime) {
@@ -158,7 +205,7 @@ export class DesktopControls {
         ? this.sprintMultiplier
         : 1);
 
-    const before = this.player.position.clone();
+    this.beforeMovePosition.copy(this.player.position);
     this.player.position.addScaledVector(this.moveVector, speed * deltaTime);
 
     if (this.roomBounds) {
@@ -181,7 +228,7 @@ export class DesktopControls {
       sampleY: this.player.position.y - this.collisionSampleHeightOffset
     });
 
-    const moved = before.distanceTo(this.player.position);
+    const moved = this.beforeMovePosition.distanceTo(this.player.position);
     if (moved > 0 && this.onMoveDistance) {
       this.onMoveDistance(moved);
     }

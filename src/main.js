@@ -6,6 +6,7 @@ import { createRenderer, detectAutoQuality } from "./engine/renderer.js";
 import { loadScene } from "./engine/sceneLoader.js";
 import { DesktopControls } from "./systems/controls/desktopControls.js";
 import { MobileControls } from "./systems/controls/mobileControls.js";
+import { InteractionDirector } from "./systems/interactions/interactionDirector.js";
 import { PortalInteractionSystem } from "./systems/interactions/portalInteractions.js";
 import { AudioSystem } from "./systems/audio/audioSystem.js";
 import { DriftEventsSystem } from "./systems/drift/driftEventsSystem.js";
@@ -24,6 +25,64 @@ const LEGACY_DEV_QUALITY_STORAGE_KEY = "lobby.dev.quality";
 const VALID_QUALITY_VALUES = new Set(["low", "medium", "high"]);
 const MAIN_OBJECTIVE_ID = "brainstorm_main_task";
 const CENTER_ARTIFACT_TARGET_ID = "prop:center_hover_gif";
+const DEV_CONFIG_FILES = [
+  {
+    fileName: "scene.json",
+    label: "Scene",
+    description: "Room layout, portals, props, spawn, and zones."
+  },
+  {
+    fileName: "themes.json",
+    label: "Themes",
+    description: "Theme visuals, props, lighting, and mood."
+  },
+  {
+    fileName: "catalog.json",
+    label: "Catalog",
+    description: "Feed room placement, room sizing, and theme routing."
+  },
+  {
+    fileName: "audio.json",
+    label: "Audio",
+    description: "Ambient layers, portal hums, and theme stingers."
+  },
+  {
+    fileName: "objectives.json",
+    label: "Objective",
+    description: "Artifact objective and HUD visibility."
+  },
+  {
+    fileName: "drift-events.json",
+    label: "Drift",
+    description: "Atmospheric event pulses and ambience shifts."
+  },
+  {
+    fileName: "shop-feed.json",
+    label: "Shop Feed",
+    description: "Items shown in the shop wing."
+  },
+  {
+    fileName: "projects-feed.json",
+    label: "Projects Feed",
+    description: "Projects shown in the projects wing."
+  },
+  {
+    fileName: "videos-feed.json",
+    label: "Video Feed",
+    description: "Recent YouTube uploads for the screening hall."
+  },
+  {
+    fileName: "videos-long-feed.json",
+    label: "Longform Feed",
+    description: "Long-form channel uploads for the screening archive wall."
+  },
+  {
+    fileName: "atelier-feed.json",
+    label: "Atelier Feed",
+    description: "Prototype spaces and future room concepts for the atelier wing."
+  }
+];
+const DEV_CONFIG_FILE_SET = new Set(DEV_CONFIG_FILES.map((entry) => entry.fileName));
 
 function supportsWebGL() {
   try {
@@ -50,6 +109,14 @@ function withBuildId(path) {
   return `${path}${separator}v=${encodeURIComponent(BUILD_ID)}`;
 }
 
+function readText(value, fallback = "") {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  return trimmed || fallback;
+}
+
 async function loadJson(path) {
   const response = await fetch(withBuildId(resolvePublicPath(path)), {
     cache: "no-cache"
@@ -60,36 +127,190 @@ async function loadJson(path) {
   return response.json();
 }
 
-async function loadSceneConfig() {
-  try {
-    return await loadJson("config/scene.json");
-  } catch {
-    return loadJson("config.defaults/scene.json");
+async function loadRuntimeConfig(fileName, { optional = false, defaultsOnly = false } = {}) {
+  const normalizedFileName = isSupportedRuntimeConfigFile(fileName)
+    ? normalizeRuntimeConfigFileName(fileName)
+    : "";
+  if (!normalizedFileName) {
+    if (optional) {
+      return null;
+    }
+    throw new Error(`Unsupported runtime config "${fileName}".`);
   }
+
+  const attempts = defaultsOnly
+    ? [`config.defaults/${normalizedFileName}`]
+    : [`config/${normalizedFileName}`, `config.defaults/${normalizedFileName}`];
+  let lastError = null;
+
+  for (const candidate of attempts) {
+    try {
+      return await loadJson(candidate);
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  if (optional) {
+    return null;
+  }
+
+  throw lastError || new Error(`Failed loading runtime config ${normalizedFileName}.`);
+}
+
+async function loadSceneConfig() {
+  return loadRuntimeConfig("scene.json");
 }
 
 async function loadOptionalSceneConfig() {
+  return loadRuntimeConfig("scene.json", { optional: true });
+}
+
+function buildRuntimeConfigPath(fileName, source = "effective") {
+  if (!isSupportedRuntimeConfigFile(fileName)) {
+    throw new Error(`Unsupported runtime config "${fileName}".`);
+  }
+  const normalizedFileName = normalizeRuntimeConfigFileName(fileName);
+  if (source === "local") {
+    return `config/${normalizedFileName}`;
+  }
+  return `config.defaults/${normalizedFileName}`;
+}
+
+async function fetchRuntimeConfigText(path) {
+  const response = await fetch(withBuildId(resolvePublicPath(path)), {
+    cache: "no-cache"
+  });
+  if (!response.ok) {
+    throw new Error(`Failed loading ${path}: ${response.status}`);
+  }
+  return response.text();
+}
+
+async function readEditableRuntimeConfig(fileName, source = "effective") {
+  if (!isSupportedRuntimeConfigFile(fileName)) {
+    throw new Error(`Unsupported runtime config "${fileName}".`);
+  }
+  const normalizedFileName = normalizeRuntimeConfigFileName(fileName);
+
+  if (import.meta.env.DEV) {
+    const url = new URL(resolvePublicPath("__dev/config"), window.location.origin);
+    url.searchParams.set("file", normalizedFileName);
+    url.searchParams.set("source", source);
+    const response = await fetch(url, {
+      cache: "no-cache"
+    });
+    if (!response.ok) {
+      throw new Error(`Dev config read failed for ${fileName}: ${response.status}`);
+    }
+    const payload = await response.json();
+    if (!payload?.ok) {
+      throw new Error(payload?.error || `Dev config read failed for ${fileName}.`);
+    }
+    return {
+      fileName: normalizedFileName,
+      source: payload.source || source,
+      exists: Boolean(payload.exists),
+      text: payload.text || "",
+      hasLocal: Boolean(payload.hasLocal),
+      hasDefaults: Boolean(payload.hasDefaults)
+    };
+  }
+
+  if (source === "local") {
+    return {
+      fileName: normalizedFileName,
+      source: "local",
+      exists: false,
+      text: "",
+      hasLocal: false,
+      hasDefaults: true
+    };
+  }
+
+  if (source === "defaults") {
+    const text = await fetchRuntimeConfigText(buildRuntimeConfigPath(normalizedFileName, "defaults"));
+    return {
+      fileName: normalizedFileName,
+      source: "defaults",
+      exists: true,
+      text,
+      hasLocal: false,
+      hasDefaults: true
+    };
+  }
+
   try {
-    return await loadSceneConfig();
+    const text = await fetchRuntimeConfigText(buildRuntimeConfigPath(normalizedFileName, "local"));
+    return {
+      fileName: normalizedFileName,
+      source: "local",
+      exists: true,
+      text,
+      hasLocal: true,
+      hasDefaults: true
+    };
   } catch {
-    return null;
+    const text = await fetchRuntimeConfigText(buildRuntimeConfigPath(normalizedFileName, "defaults"));
+    return {
+      fileName: normalizedFileName,
+      source: "defaults",
+      exists: true,
+      text,
+      hasLocal: false,
+      hasDefaults: true
+    };
   }
 }
 
-async function loadDefaultConfig(fileName) {
-  return loadJson(`config.defaults/${fileName}`);
-}
-
-async function loadOptionalDefaultConfig(fileName) {
-  return loadOptionalJson(`config.defaults/${fileName}`);
-}
-
-async function loadOptionalJson(path) {
-  try {
-    return await loadJson(path);
-  } catch {
-    return null;
+async function writeEditableRuntimeConfig(fileName, target, text) {
+  if (!import.meta.env.DEV) {
+    throw new Error("Saving runtime config from the dev menu only works in local dev mode.");
   }
+  if (!isSupportedRuntimeConfigFile(fileName)) {
+    throw new Error(`Unsupported runtime config "${fileName}".`);
+  }
+  const normalizedFileName = normalizeRuntimeConfigFileName(fileName);
+
+  const response = await fetch(resolvePublicPath("__dev/config"), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      fileName: normalizedFileName,
+      target,
+      text
+    })
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.error || `Dev config write failed for ${fileName}.`);
+  }
+  return payload;
+}
+
+async function deleteEditableRuntimeConfig(fileName, target = "local") {
+  if (!import.meta.env.DEV) {
+    throw new Error("Deleting runtime config from the dev menu only works in local dev mode.");
+  }
+  if (!isSupportedRuntimeConfigFile(fileName)) {
+    throw new Error(`Unsupported runtime config "${fileName}".`);
+  }
+  const normalizedFileName = normalizeRuntimeConfigFileName(fileName);
+
+  const url = new URL(resolvePublicPath("__dev/config"), window.location.origin);
+  url.searchParams.set("file", normalizedFileName);
+  url.searchParams.set("target", target);
+
+  const response = await fetch(url, {
+    method: "DELETE"
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok || !payload?.ok) {
+    throw new Error(payload?.error || `Dev config delete failed for ${fileName}.`);
+  }
+  return payload;
 }
 
 function getSurfaceAtPosition(zones, position) {
@@ -130,6 +351,99 @@ function formatThemeLabel(id) {
     .replace(/\s+/g, " ")
     .trim()
     .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeRuntimeConfigFileName(fileName) {
+  return typeof fileName === "string" ? fileName.trim() : "";
+}
+
+function isFeedConfigFile(fileName) {
+  return /^[a-z0-9_-]+-feed\.json$/i.test(normalizeRuntimeConfigFileName(fileName));
+}
+
+function isSupportedRuntimeConfigFile(fileName) {
+  const normalized = normalizeRuntimeConfigFileName(fileName);
+  return DEV_CONFIG_FILE_SET.has(normalized) || isFeedConfigFile(normalized);
+}
+
+function mergeDevConfigFiles(...sources) {
+  const merged = [];
+  const seen = new Set();
+
+  for (const source of sources) {
+    for (const entry of Array.isArray(source) ? source : []) {
+      const fileName = normalizeRuntimeConfigFileName(entry?.fileName);
+      if (!isSupportedRuntimeConfigFile(fileName) || seen.has(fileName)) {
+        continue;
+      }
+      merged.push({
+        fileName,
+        label: readText(entry?.label, fileName),
+        description: readText(entry?.description, "")
+      });
+      seen.add(fileName);
+    }
+  }
+
+  return merged;
+}
+
+function getCatalogFeedDefinitions(catalogConfig) {
+  const definitions = [];
+  const seenSources = new Set();
+  const roomEntries = Object.entries(catalogConfig?.rooms || {});
+  const fallbackRoomIds = ["shop", "projects", "videos"];
+  const sourceEntries = roomEntries.length
+    ? roomEntries
+    : fallbackRoomIds.map((roomId) => [roomId, {}]);
+  const appendDefinition = (roomId, roomConfig, feedSource, fileName, labelSuffix = "Feed") => {
+    const normalizedSource =
+      typeof feedSource === "string" && feedSource.trim() ? feedSource.trim() : "";
+    if (!normalizedSource || seenSources.has(normalizedSource)) {
+      return;
+    }
+
+    const normalizedFileName =
+      typeof fileName === "string" && fileName.trim()
+        ? fileName.trim()
+        : `${normalizedSource}-feed.json`;
+    definitions.push({
+      roomId,
+      roomLabel: readText(roomConfig?.label, formatThemeLabel(roomId)),
+      feedSource: normalizedSource,
+      fileName: normalizedFileName,
+      labelSuffix
+    });
+    seenSources.add(normalizedSource);
+  };
+
+  for (const [roomId, roomConfig] of sourceEntries) {
+    const feedSource =
+      typeof roomConfig?.feedSource === "string" && roomConfig.feedSource.trim()
+        ? roomConfig.feedSource.trim()
+        : roomId;
+    appendDefinition(roomId, roomConfig, feedSource, roomConfig?.feedFile, "Feed");
+    appendDefinition(
+      roomId,
+      roomConfig,
+      roomConfig?.playlistWall?.feedSource,
+      roomConfig?.playlistWall?.feedFile,
+      "Archive"
+    );
+  }
+
+  return definitions;
+}
+
+function buildCatalogFeedDevConfigFiles(catalogConfig) {
+  return getCatalogFeedDefinitions(catalogConfig).map((definition) => ({
+    fileName: definition.fileName,
+    label: `${definition.roomLabel} ${definition.labelSuffix}`,
+    description:
+      definition.labelSuffix === "Archive"
+        ? `Archive items shown on the ${definition.roomLabel} wall.`
+        : `Items shown in the ${definition.roomLabel} room.`
+  }));
 }
 
 function getThemeAmbientMix(themesConfig, themeName) {
@@ -507,12 +821,14 @@ async function boot() {
   const hasThemeQuery = params.has("theme");
   const debugUiParam = params.get("debugui") === "1";
   const sceneUiEnabled = params.get("sceneui") !== "0";
-  const allowThemeSelector = isDev && sceneUiEnabled;
+  const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
+  const devMenuEnabled = isDev || debugUiParam;
   const perfEnabled = params.get("perf") === "1";
 
   let rendererContext = null;
   let controls = null;
   let interactionSystem = null;
+  let interactionDirector = null;
   let themeSystem = null;
   let catalogSystem = null;
   let sceneContext = null;
@@ -533,7 +849,7 @@ async function boot() {
   let centerArtifactActivated = false;
   let centerArtifactOwner = null;
   let centerArtifactLight = null;
-  const seenObjectivePortalIds = new Set();
+  let detachAudioUnlock = () => {};
   const centerArtifactMaterials = [];
   const centerArtifactPrimaryColor = new THREE.Color("#ffffff");
   const centerArtifactSecondaryColor = new THREE.Color("#ffffff");
@@ -620,18 +936,6 @@ async function boot() {
     } else {
       scene.background = fog.color.clone();
     }
-  }
-
-  function onPortalObjectiveSeen(target) {
-    if (!stabilitySystem || !target?.url) {
-      return;
-    }
-    const targetId = typeof target.id === "string" ? target.id.trim() : "";
-    if (!targetId || seenObjectivePortalIds.has(targetId)) {
-      return;
-    }
-    seenObjectivePortalIds.add(targetId);
-    stabilitySystem.incrementObjectiveProgress("orient_portals", 1);
   }
 
   function findCenterArtifactOwner() {
@@ -765,38 +1069,6 @@ async function boot() {
     light.distance = 38;
   }
 
-  function updateStabilityFromDrift(delta) {
-    if (!stabilitySystem || !driftSnapshot) {
-      return;
-    }
-
-    const driftAmount = Number.isFinite(driftSnapshot.stabilityDelta)
-      ? driftSnapshot.stabilityDelta
-      : 0;
-    if (Math.abs(driftAmount) > 0.0001) {
-      stabilitySystem.adjustStability(driftAmount * delta * 0.7, {
-        reason: "drift:stability"
-      });
-    }
-
-    const fogPulseIntensity = Number.isFinite(driftSnapshot?.fogPulse?.intensity)
-      ? driftSnapshot.fogPulse.intensity
-      : 0;
-    const isDriftStress = Math.abs(driftAmount) >= 0.09 || fogPulseIntensity >= 0.16;
-    stabilitySystem.setStressSource("drift", isDriftStress);
-    stabilitySystem.update(delta);
-  }
-
-  function updateOptionalObjectives() {
-    if (!stabilitySystem) {
-      return;
-    }
-
-    if (secretUnlocks.some((entry) => entry.unlocked)) {
-      stabilitySystem.completeObjective("verify_annex");
-    }
-  }
-
   function applySecretFloorplanOverrides(options = {}) {
     if (!themeSystem) {
       return;
@@ -815,23 +1087,188 @@ async function boot() {
   function showSecretUnlockMessage(message) {
     const text =
       typeof message === "string" && message.trim() ? message.trim() : "Secret unlocked";
+    showTransientPrompt(text);
+  }
+
+  function showPopupBlockedMessage() {
+    showTransientPrompt("Popup blocked. Allow popups to open links in a new tab.");
+  }
+
+  function showTransientPrompt(label, durationMs = 2800) {
+    const text = typeof label === "string" ? label.trim() : "";
+    if (!text) {
+      return;
+    }
     ui.setPortalPrompt({ label: text });
     window.setTimeout(() => {
       if (!interactionSystem?.hoveredTarget) {
         ui.setPortalPrompt(null);
       }
-    }, 2800);
+    }, durationMs);
   }
 
-  function showPopupBlockedMessage() {
-    ui.setPortalPrompt({
-      label: "Popup blocked. Allow popups to open links in a new tab."
-    });
-    window.setTimeout(() => {
-      if (!interactionSystem?.hoveredTarget) {
-        ui.setPortalPrompt(null);
+  function openExternalUrl(url) {
+    const targetUrl = typeof url === "string" ? url.trim() : "";
+    if (!targetUrl) {
+      return false;
+    }
+    const popup = window.open(targetUrl, "_blank", "noopener,noreferrer");
+    if (popup) {
+      document.exitPointerLock?.();
+      return true;
+    }
+    try {
+      document.exitPointerLock?.();
+      window.location.assign(targetUrl);
+      return true;
+    } catch {
+      showPopupBlockedMessage();
+      return false;
+    }
+  }
+
+  async function unlockSecretById(secretId, options = {}) {
+    const normalizedSecretId = typeof secretId === "string" ? secretId.trim() : "";
+    if (!normalizedSecretId) {
+      return false;
+    }
+
+    const unlock = secretUnlocks.find((entry) => entry.id === normalizedSecretId) || null;
+    if (!unlock) {
+      return false;
+    }
+
+    if (!unlock.unlocked) {
+      unlock.unlocked = true;
+      unlock.hits = Math.max(unlock.hits, unlock.requiredEntries);
+      unlock.wasInside = false;
+      unlock.nextEligibleAtMs = performance.now() + unlock.cooldownMs;
+      secretUnlockedIds.add(unlock.id);
+      persistSecretUnlocks();
+      applySecretFloorplanOverrides();
+    }
+
+    showSecretUnlockMessage(options.message || unlock.message);
+    return true;
+  }
+
+  function teleportPlayer(position, yaw = null, pitchValue = null) {
+    if (!sceneContext?.player || !Array.isArray(position) || position.length < 3) {
+      return false;
+    }
+
+    const nextPosition = new THREE.Vector3(
+      Number(position[0]) || 0,
+      Number(position[1]) || sceneContext.player.position.y || 1.7,
+      Number(position[2]) || 0
+    );
+    const nextYaw = Number.isFinite(yaw) ? THREE.MathUtils.degToRad(yaw) : sceneContext.player.rotation.y;
+    const nextPitch =
+      sceneContext.pitch && Number.isFinite(pitchValue)
+        ? THREE.MathUtils.degToRad(pitchValue)
+        : sceneContext?.pitch?.rotation?.x ?? 0;
+
+    if (controls?.setPose) {
+      controls.setPose({
+        position: nextPosition,
+        yaw: nextYaw,
+        pitch: nextPitch
+      });
+    } else {
+      sceneContext.player.position.copy(nextPosition);
+      sceneContext.player.rotation.y = nextYaw;
+      if (sceneContext.pitch) {
+        sceneContext.pitch.rotation.x = nextPitch;
       }
-    }, 2800);
+    }
+    interactionSystem?.setHovered?.(null);
+    return true;
+  }
+
+  function focusCatalogRoomWall(roomId, wall = "front", distance = 4.2) {
+    const roomConfig = catalogSystem?.getRoomConfig?.(roomId);
+    if (!roomConfig) {
+      return false;
+    }
+
+    const origin = Array.isArray(roomConfig.origin) ? roomConfig.origin : [0, 0, 0];
+    const size = Array.isArray(roomConfig.size) ? roomConfig.size : [8.6, 4.6, 9.6];
+    const safeDistance = Math.max(1.4, Number(distance) || 4.2);
+    const playerY = sceneContext?.player?.position?.y || 1.7;
+    const normalizedWall = typeof wall === "string" ? wall.trim().toLowerCase() : "front";
+
+    switch (normalizedWall) {
+      case "back":
+        return teleportPlayer(
+          [origin[0], playerY, origin[2] - size[2] * 0.5 + safeDistance],
+          0,
+          0
+        );
+      case "left":
+        return teleportPlayer(
+          [origin[0] - size[0] * 0.5 + safeDistance, playerY, origin[2]],
+          -90,
+          0
+        );
+      case "right":
+        return teleportPlayer(
+          [origin[0] + size[0] * 0.5 - safeDistance, playerY, origin[2]],
+          90,
+          0
+        );
+      default:
+        return teleportPlayer(
+          [origin[0], playerY, origin[2] + size[2] * 0.5 - safeDistance],
+          180,
+          0
+        );
+    }
+  }
+
+  function activateCenterArtifactTarget() {
+    const target =
+      getInteractionTargets().find((entry) => entry?.id === CENTER_ARTIFACT_TARGET_ID) || null;
+    activateCenterArtifact(target);
+    return centerArtifactActivated;
+  }
+
+  async function applyThemeSelection(themeName, options = {}) {
+    let appliedTheme = themeName;
+    if (options.hideInspectPanel !== false) {
+      ui.hideInspectPanel?.();
+    }
+    if (themeSystem) {
+      const candidates = [themeName, loadedThemesConfig?.defaultTheme, ...availableThemeIds];
+      const resolved = await applyFirstWorkingTheme(themeSystem, candidates);
+      if (resolved) {
+        appliedTheme = resolved;
+      } else {
+        themeSystem.resetToBaseState();
+        appliedTheme = availableThemeIds[0] || "lobby";
+      }
+      ui.setTheme(appliedTheme);
+    }
+    if (catalogSystem) {
+      await catalogSystem.applyTheme(appliedTheme);
+      interactionSystem?.setTargets(getInteractionTargets());
+    }
+    currentThemeName = appliedTheme;
+    themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, appliedTheme);
+    themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, appliedTheme);
+    applyThemeAmbientMix();
+    applyThemeAudioProfile({ playStinger: options.playStinger !== false });
+    applyThemePostProcessing();
+    captureThemeFogBase();
+    applyDriftFogPulse();
+    applyCenterArtifactLightingDominance();
+    if (options.persist !== false) {
+      saveThemeSelection(appliedTheme, { mirrorLegacyDevKey: isDev });
+    }
+    return appliedTheme;
+  }
+
+  async function handleInspectAction(action) {
+    return Boolean(await interactionDirector?.runInteraction(action));
   }
 
   function updateSecretUnlocks(nowMs) {
@@ -860,64 +1297,60 @@ async function boot() {
     }
   }
 
+  async function tryEnableAudioFromInteraction() {
+    if (audioReady || !audioSystem) {
+      return audioReady;
+    }
+
+    audioReady = await audioSystem.autoEnable();
+    if (audioReady) {
+      ui.hideSoundGate();
+      detachAudioUnlock();
+    } else {
+      ui.showSoundGate();
+    }
+    return audioReady;
+  }
+
   const ui = createOverlay({
     mount: app,
     isMobile: mobile,
-    showDevPanel: isDev || debugUiParam,
+    showDevPanel: devMenuEnabled,
     showThemePanel: allowThemeSelector,
-    onEnableSound: async () => {
-      if (audioSystem) {
-        audioReady = await audioSystem.enable();
-        if (audioReady) {
-          ui.hideSoundGate();
-        } else {
-          ui.showSoundGate();
-        }
-      }
+    devMenu: {
+      enabled: devMenuEnabled,
+      writable: isDev,
+      configFiles: DEV_CONFIG_FILES,
+      loadConfig: (fileName, source) => readEditableRuntimeConfig(fileName, source),
+      saveConfig: (fileName, target, text) => writeEditableRuntimeConfig(fileName, target, text),
+      deleteConfig: (fileName, target) => deleteEditableRuntimeConfig(fileName, target),
+      reloadRuntime: () => window.location.reload()
     },
-    onThemeChange: async (themeName) => {
-      let appliedTheme = themeName;
-      ui.hideInspectPanel?.();
-      if (themeSystem) {
-        const candidates = [themeName, loadedThemesConfig?.defaultTheme, ...availableThemeIds];
-        const resolved = await applyFirstWorkingTheme(themeSystem, candidates);
-        if (resolved) {
-          appliedTheme = resolved;
-        } else {
-          themeSystem.resetToBaseState();
-          appliedTheme = availableThemeIds[0] || "lobby";
-        }
-        ui.setTheme(appliedTheme);
-      }
-      if (catalogSystem) {
-        await catalogSystem.applyTheme(appliedTheme);
-        interactionSystem?.setTargets(getInteractionTargets());
-      }
-      currentThemeName = appliedTheme;
-      themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, appliedTheme);
-      themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, appliedTheme);
-      applyThemeAmbientMix();
-      applyThemeAudioProfile({ playStinger: true });
-      applyThemePostProcessing();
-      captureThemeFogBase();
-      applyDriftFogPulse();
-      applyCenterArtifactLightingDominance();
-      saveThemeSelection(appliedTheme, { mirrorLegacyDevKey: isDev });
-    },
+    onEnableSound: async () => tryEnableAudioFromInteraction(),
+    onInspectAction: async (action) => handleInspectAction(action),
+    onThemeChange: async (themeName) =>
+      applyThemeSelection(themeName, {
+        playStinger: true,
+        persist: true,
+        hideInspectPanel: true
+      }),
     onQualityChange: (quality) => {
       if (rendererContext) {
         rendererContext.setQuality(quality);
       }
+      const nextProfile = rendererContext?.getQualityProfile(quality) || null;
       if (themeSystem?.sceneContext && rendererContext) {
-        const profile = rendererContext.getQualityProfile(quality);
         for (const light of themeSystem.sceneContext.lights) {
           if (light.isPointLight) {
-            light.castShadow = Boolean(light.userData.canCastShadow && profile.shadows);
+            light.castShadow = Boolean(light.userData.canCastShadow && nextProfile?.shadows);
           }
         }
       }
-      if (themeSystem && rendererContext) {
-        themeSystem.setQualityProfile(rendererContext.getQualityProfile(quality));
+      if (themeSystem && nextProfile) {
+        themeSystem.setQualityProfile(nextProfile);
+      }
+      if (catalogSystem && nextProfile) {
+        catalogSystem.setQualityProfile?.(nextProfile);
       }
       saveQualitySelection(quality, { mirrorLegacyDevKey: isDev });
     }
@@ -930,24 +1363,28 @@ async function boot() {
 
   const [
     sceneConfig,
-    defaultThemesConfig,
+    runtimeThemesConfig,
     audioConfig,
     driftEventsConfig,
     objectivesConfig,
-    catalogConfig,
-    shopFeed,
-    projectsFeed
-  ] =
-    await Promise.all([
-      loadSceneConfig(),
-      loadOptionalDefaultConfig("themes.json"),
-      loadDefaultConfig("audio.json"),
-      loadOptionalDefaultConfig("drift-events.json"),
-      loadOptionalDefaultConfig("objectives.json"),
-      loadOptionalDefaultConfig("catalog.json"),
-      loadOptionalDefaultConfig("shop-feed.json"),
-      loadOptionalDefaultConfig("projects-feed.json")
-    ]);
+    catalogConfig
+  ] = await Promise.all([
+    loadSceneConfig(),
+    loadRuntimeConfig("themes.json", { optional: true }),
+    loadRuntimeConfig("audio.json"),
+    loadRuntimeConfig("drift-events.json", { optional: true }),
+    loadRuntimeConfig("objectives.json", { optional: true }),
+    loadRuntimeConfig("catalog.json", { optional: true })
+  ]);
+  const catalogFeedDefinitions = getCatalogFeedDefinitions(catalogConfig);
+  ui.setDevConfigFiles?.(mergeDevConfigFiles(DEV_CONFIG_FILES, buildCatalogFeedDevConfigFiles(catalogConfig)));
+  const catalogFeedEntries = await Promise.all(
+    catalogFeedDefinitions.map(async (definition) => [
+      definition.feedSource,
+      (await loadRuntimeConfig(definition.fileName, { optional: true })) || { items: [] }
+    ])
+  );
+  const catalogFeeds = Object.fromEntries(catalogFeedEntries);
   ui.setLoadingState({
     message: "Calibrating render pipeline."
   });
@@ -960,16 +1397,9 @@ async function boot() {
     }
   };
 
-  if (hasThemeMap(defaultThemesConfig)) {
-    loadedThemesConfig = defaultThemesConfig;
-  } else {
-    try {
-      const defaults = await loadDefaultConfig("themes.json");
-      loadedThemesConfig = hasThemeMap(defaults) ? defaults : emergencyThemesConfig;
-    } catch {
-      loadedThemesConfig = emergencyThemesConfig;
-    }
-  }
+  loadedThemesConfig = hasThemeMap(runtimeThemesConfig)
+    ? runtimeThemesConfig
+    : emergencyThemesConfig;
 
   if (!supportsWebGL()) {
     const fallbackLinks = getFallbackLinks(sceneConfig);
@@ -993,6 +1423,15 @@ async function boot() {
     mount: ui.viewport,
     quality
   });
+  const autoUnlockAudio = () => {
+    tryEnableAudioFromInteraction().catch(() => {});
+  };
+  rendererContext.renderer.domElement.addEventListener("pointerdown", autoUnlockAudio, {
+    passive: true
+  });
+  detachAudioUnlock = () => {
+    rendererContext?.renderer?.domElement?.removeEventListener?.("pointerdown", autoUnlockAudio);
+  };
   ui.setLoadingState({
     message: "Assembling scene geometry."
   });
@@ -1009,8 +1448,7 @@ async function boot() {
     sceneConfig,
     qualityProfile,
     catalogConfig,
-    shopFeed,
-    projectsFeed
+    catalogFeeds
   });
   secretUnlocks = normalizeSecretUnlocks(
     sceneConfig.secretUnlocks,
@@ -1058,13 +1496,12 @@ async function boot() {
   }
 
   ui.setThemeOptions(themeEntries, themeName);
-  const appliedTheme = await applyFirstWorkingTheme(themeSystem, [
-    themeName,
-    loadedThemesConfig.defaultTheme,
-    ...availableThemeIds
-  ]);
+  const appliedTheme = await applyThemeSelection(themeName, {
+    playStinger: false,
+    persist: false,
+    hideInspectPanel: true
+  });
   if (appliedTheme) {
-    ui.setTheme(appliedTheme);
     if (isDev) {
       writeStorageString(LEGACY_DEV_THEME_STORAGE_KEY, appliedTheme);
     }
@@ -1072,23 +1509,15 @@ async function boot() {
     themeSystem.resetToBaseState();
     ui.setTheme(availableThemeIds[0] || "lobby");
   }
-  currentThemeName = appliedTheme || availableThemeIds[0] || "lobby";
-  themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, currentThemeName);
-  themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, currentThemeName);
-  applyThemeAmbientMix();
-  applyThemeAudioProfile({ playStinger: false });
-  applyThemePostProcessing();
-  captureThemeFogBase();
-  applyDriftFogPulse();
 
   const { CatalogRoomSystem } = await import("./systems/catalog/catalogRoomSystem.js");
   catalogSystem = new CatalogRoomSystem({
     scene: rendererContext.scene,
     cache,
     catalogConfig: catalogConfig || {},
-    shopFeed: shopFeed || { items: [] },
-    projectsFeed: projectsFeed || { items: [] },
-    domElement: rendererContext.renderer.domElement
+    catalogFeeds,
+    domElement: rendererContext.renderer.domElement,
+    qualityProfile
   });
   let catalogReady = false;
   const catalogInitPromise = catalogSystem
@@ -1130,8 +1559,59 @@ async function boot() {
         roomBounds: sceneContext.roomBounds,
         getColliders: getPlayerColliders,
         onMoveDistance: (distance) => audioSystem?.registerMovementDistance(distance),
-        onPointerLockChange: (locked) => ui.setPointerLockState(locked)
+        onPointerLockChange: (locked) => ui.setPointerLockState(locked),
+        shouldRequestPointerLock: (event) => !interactionSystem?.peekActivationTarget?.(event)
       });
+
+  interactionDirector = new InteractionDirector({
+    inspectTarget: async (target) => {
+      if (target?.id === CENTER_ARTIFACT_TARGET_ID) {
+        activateCenterArtifact(target);
+      }
+      if (controls?.isPointerLocked?.()) {
+        return true;
+      }
+      ui.showInspectPanel?.(target.inspectData);
+      return true;
+    },
+    openUrl: async (url) => openExternalUrl(url),
+    applyTheme: async (themeName) =>
+      applyThemeSelection(themeName, {
+        playStinger: true,
+        persist: true,
+        hideInspectPanel: false
+      }),
+    teleport: async (interaction) =>
+      teleportPlayer(interaction.position, interaction.yaw, interaction.pitch),
+    unlockSecret: unlockSecretById,
+    playScreenVideo: async (interaction) => {
+      document.exitPointerLock?.();
+      return Boolean(await catalogSystem?.playScreenVideo?.(interaction));
+    },
+    activateCenterArtifact,
+    toggleModules: async (moduleIds) => {
+      const updated = sceneContext?.togglePropModulesVisible?.(moduleIds) || [];
+      interactionSystem?.setTargets(getInteractionTargets());
+      return updated;
+    },
+    setModulesVisible: async (moduleIds, visible) => {
+      const updated = sceneContext?.setPropModulesVisible?.(moduleIds, visible) || [];
+      interactionSystem?.setTargets(getInteractionTargets());
+      return updated;
+    },
+    activatePortal: async (portalId, interaction = {}) => {
+      const normalizedPortalId = typeof portalId === "string" ? portalId.trim() : "";
+      if (!normalizedPortalId) {
+        return false;
+      }
+      const portalUrl =
+        interaction.url ||
+        sceneContext?.portals?.find((entry) => entry.id === normalizedPortalId)?.url ||
+        "";
+      return openExternalUrl(portalUrl);
+    },
+    showPrompt: showTransientPrompt
+  });
 
   interactionSystem = new PortalInteractionSystem({
     domElement: rendererContext.renderer.domElement,
@@ -1140,38 +1620,24 @@ async function boot() {
     isPointerLocked: () => controls?.isPointerLocked?.() || false,
     onHover: (target) => {
       ui.setPortalPrompt(target);
-      onPortalObjectiveSeen(target);
     },
     onActivate: (target) => {
-      if (target?.inspectData) {
-        const isCenterArtifact = target.id === CENTER_ARTIFACT_TARGET_ID;
-        if (isCenterArtifact) {
-          activateCenterArtifact(target);
-        }
-        if (controls?.isPointerLocked?.()) {
-          return;
-        }
-        ui.showInspectPanel?.(target.inspectData);
-        return;
-      }
-      const url = typeof target?.url === "string" ? target.url.trim() : "";
-      if (!url) {
-        return;
-      }
-      const popup = window.open(url, "_blank", "noopener,noreferrer");
-      if (!popup) {
-        showPopupBlockedMessage();
-      }
+      const activation = interactionDirector?.activate(target);
+      activation?.catch?.((error) => {
+        console.error("Target interaction failed", error);
+      });
     }
   });
   if (catalogReady) {
     interactionSystem.setTargets(getInteractionTargets());
   }
 
-  function getDebugStats() {
+  function getDebugStats(options = {}) {
+    const includeRaycasts = options.includeRaycasts === true;
     const rendererInfo = rendererContext?.renderer?.info;
     const playerPos = sceneContext?.player?.position;
     const propStats = sceneContext?.getPropStats?.() || { total: 0, byTag: {} };
+    const moduleStates = sceneContext?.getPropModuleStates?.() || [];
     const stabilityState = stabilitySystem?.getState?.() || null;
     return {
       theme: themeSystem?.currentThemeName || null,
@@ -1180,7 +1646,8 @@ async function boot() {
       secretUnlocks: secretUnlocks
         .filter((entry) => entry.unlocked)
         .map((entry) => entry.id),
-      anyInteractionHit: interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
+      anyInteractionHit: includeRaycasts ? interactionSystem?.debugFindAnyTargetHit?.()?.id || null : null,
+      anyPortalHit: includeRaycasts ? interactionSystem?.debugFindAnyPortalHit?.()?.id || null : null,
       player: playerPos
         ? {
             x: Number(playerPos.x.toFixed(3)),
@@ -1189,6 +1656,7 @@ async function boot() {
           }
         : null,
       props: propStats,
+      modules: moduleStates,
       themeParticles: themeSystem?.particles?.effect
         ? {
             type: themeSystem.particles.effect.type || null,
@@ -1229,27 +1697,44 @@ async function boot() {
   }
 
   window.__LOBBY_DEBUG = {
-    getStats: () => getDebugStats(),
-    setTheme: async (themeName) => {
-      const resolved = await applyFirstWorkingTheme(themeSystem, [themeName, ...availableThemeIds]);
-      if (resolved && catalogSystem) {
-        await catalogSystem.applyTheme(resolved);
-        interactionSystem?.setTargets(getInteractionTargets());
-        currentThemeName = resolved;
-        themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, resolved);
-        themePostProcessingBase = getThemePostProcessing(loadedThemesConfig, resolved);
-        applyThemeAmbientMix();
-        applyThemeAudioProfile({ playStinger: true });
-        applyThemePostProcessing();
-        captureThemeFogBase();
-        applyDriftFogPulse();
-        applyCenterArtifactLightingDominance();
-      }
-      return resolved;
-    },
+    getStats: (options = {}) =>
+      getDebugStats({
+        includeRaycasts: true,
+        ...options
+      }),
+    setTheme: async (themeName) =>
+      applyThemeSelection(themeName, {
+        playStinger: true,
+        persist: false,
+        hideInspectPanel: false
+      }),
     getDriftSnapshot: () => driftSystem?.getSnapshot?.() || null,
     resetDrift: (seed) => driftSystem?.reset?.(seed),
+    getModuleStates: () => sceneContext?.getPropModuleStates?.() || [],
+    setModuleVisibility: (moduleId, visible) =>
+      sceneContext?.setPropModulesVisible?.([moduleId], visible) || [],
+    toggleModuleVisibility: (moduleId) =>
+      sceneContext?.togglePropModulesVisible?.([moduleId]) || [],
+    playScreeningItem: (roomId, itemId) =>
+      catalogSystem?.playScreenVideo?.({ roomId, itemId }) || false,
+    getScreeningState: () => catalogSystem?.getScreeningState?.() || null,
+    activateCenterArtifact: () => activateCenterArtifactTarget(),
+    teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
+    focusCatalogRoomWall: (roomId, wall, distance) => focusCatalogRoomWall(roomId, wall, distance),
+    getPortalIds: () =>
+      (sceneContext?.portals || [])
+        .map((portal) => (typeof portal?.id === "string" ? portal.id.trim() : ""))
+        .filter(Boolean),
+    pickTargetAt: (x = 0, y = 0) => interactionSystem?.debugPickAtNdc?.(x, y)?.id || null,
+    getHoveredTargetId: () => interactionSystem?.hoveredTarget?.id || null,
     findAnyTargetHit: () => interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
+    findAnyPortalHit: () => interactionSystem?.debugFindAnyPortalHit?.()?.id || null,
+    activateAnyPortal: () => Boolean(interactionSystem?.debugActivateAnyPortal?.()),
+    activatePortal: (portalId) =>
+      interactionDirector?.runInteraction?.({
+        type: "portal",
+        portalId
+      }) || false,
     activateHoveredOrAnyTarget: () =>
       Boolean(interactionSystem?.debugActivateHoveredOrAnyTarget?.())
   };
@@ -1266,17 +1751,15 @@ async function boot() {
       portal.update?.(delta, elapsed);
     }
     sceneContext.updateDynamicProps?.(elapsed, rendererContext.camera);
-    catalogSystem?.update(delta, elapsed);
+    catalogSystem?.update(delta, elapsed, rendererContext.camera);
     themeSystem?.update(delta);
     if (driftSystem?.config?.enabled) {
       driftSnapshot = driftSystem.update(delta);
       applyThemeAmbientMix();
       applyDriftFogPulse();
     }
-    updateStabilityFromDrift(delta);
     updateCenterArtifact(elapsed);
     updateSecretUnlocks(performance.now());
-    updateOptionalObjectives();
 
     const surface = getSurfaceAtPosition(sceneContext.zones, sceneContext.player.position);
     audioSystem?.setSurface(surface);
@@ -1295,6 +1778,7 @@ async function boot() {
   });
 
   window.addEventListener("beforeunload", () => {
+    detachAudioUnlock?.();
     controls?.dispose?.();
     interactionSystem?.dispose?.();
     themeSystem?.dispose?.();
@@ -1339,7 +1823,7 @@ async function attemptBoot() {
     const params = new URLSearchParams(window.location.search);
     const debugUiParam = params.get("debugui") === "1";
     const sceneUiEnabled = params.get("sceneui") !== "0";
-    const allowThemeSelector = isDev && sceneUiEnabled;
+    const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
     const fallbackSceneConfig = await loadOptionalSceneConfig();
     const fallbackLinks = getFallbackLinks(fallbackSceneConfig);
 

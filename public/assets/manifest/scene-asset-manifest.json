@@ -3,7 +3,7 @@
     "version": 1,
     "status": "phase-1-in-progress",
     "notes": "Track source, license, and integration state per scene asset slot.",
-    "lastUpdated": "2026-02-23"
+    "lastUpdated": "2026-03-08"
   },
   "scenes": {
     "lobby": {
@@ -257,6 +257,94 @@
           "sourceUrl": "https://gdc.sonniss.com/",
           "license": "#GameAudioGDC Unlimited User License (royalty-free, restrictions apply)",
           "attributionRequired": false
+        }
+      ]
+    },
+    "atelierWing": {
+      "models": [
+        {
+          "slot": "atelier_shell.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/city-kit-commercial",
+          "license": "CC0 (Kenney asset page/license)",
+          "attributionRequired": false,
+          "notes": "Strong base for expanding the mirrored outdoor building beyond primitive shells."
+        },
+        {
+          "slot": "atelier_signal_console.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://quaternius.com/packs/ultimatemodularscifi.html",
+          "license": "CC0 (Quaternius pack page/license)",
+          "attributionRequired": false,
+          "notes": "Useful for hero kiosks, lab terminals, and modular interaction stations."
+        },
+        {
+          "slot": "atelier_display_set.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/furniture-kit",
+          "license": "CC0 (Kenney asset page/license)",
+          "attributionRequired": false,
+          "notes": "Useful for tables, shelving, and concept-wall kitbashing inside the atelier."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "atelier_wall_panels.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/concrete_slab_wall",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false,
+          "notes": "Neutral industrial paneling for a flexible prototype room."
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_atelier_room.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://pixabay.com/sound-effects/search/ambient/",
+          "license": "Pixabay Content License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Prefer subtle workshop air, distant ventilation, or low mechanical bed."
+        }
+      ]
+    },
+    "screeningHall": {
+      "models": [
+        {
+          "slot": "screening_hall_shell.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://kenney.nl/assets/city-kit-commercial",
+          "license": "CC0 (Kenney asset page/license)",
+          "attributionRequired": false,
+          "notes": "Good source for modular exterior facades and simple commercial footprints."
+        },
+        {
+          "slot": "screening_wayfinder.glb",
+          "status": "source-validated",
+          "sourceUrl": "https://quaternius.com/packs/ultimatemodularscifi.html",
+          "license": "CC0 (Quaternius pack page/license)",
+          "attributionRequired": false,
+          "notes": "Useful for signage, kiosks, and screen-adjacent trim if the wing graduates from primitives."
+        }
+      ],
+      "textures": [
+        {
+          "slot": "screening_hall_panels.webp",
+          "status": "source-validated",
+          "sourceUrl": "https://polyhaven.com/a/concrete_slab_wall",
+          "license": "CC0 (Poly Haven license)",
+          "attributionRequired": false,
+          "notes": "Neutral walling for the workflow-fed YouTube room."
+        }
+      ],
+      "audio": [
+        {
+          "slot": "amb_screening_room.ogg",
+          "status": "source-validated",
+          "sourceUrl": "https://pixabay.com/sound-effects/search/ambient/",
+          "license": "Pixabay Content License (royalty-free, restrictions apply)",
+          "attributionRequired": false,
+          "notes": "Prefer low-key projector hum or distant roomtone, not music."
         }
       ]
     }

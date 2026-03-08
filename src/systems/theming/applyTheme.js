@@ -401,6 +401,7 @@ export class ThemeSystem {
     this.animatedTextures = [];
     this.runtimeFloorplanOverrides = [];
     this.applyToken = 0;
+    this.animatedTextureAccumulator = 0;
   }
 
   async ensureAtmosphereSystem() {
@@ -485,6 +486,7 @@ export class ThemeSystem {
 
   setQualityProfile(profile) {
     this.qualityProfile = profile;
+    this.animatedTextureAccumulator = 0;
     if (this.currentThemeName) {
       this.applyTheme(this.currentThemeName).catch(() => {});
     } else {
@@ -694,8 +696,12 @@ export class ThemeSystem {
         this.qualityProfile?.particleMultiplier || 1,
         this.sceneContext.roomConfig.size
       );
-      await this.ensureAtmosphereSystem();
-      await this.atmosphere.apply(theme.atmosphere || null);
+      if (this.qualityProfile?.atmosphereEnabled === false) {
+        this.atmosphere.clear();
+      } else {
+        await this.ensureAtmosphereSystem();
+        await this.atmosphere.apply(theme.atmosphere || null);
+      }
       if (token !== this.applyToken) {
         return false;
       }
@@ -710,19 +716,28 @@ export class ThemeSystem {
 
   update(deltaTime) {
     this.particles.update(deltaTime);
-    this.atmosphere.update(deltaTime);
+    if (this.qualityProfile?.atmosphereEnabled !== false) {
+      this.atmosphere.update(deltaTime);
+    }
     const allAnimated = [
       ...(this.sceneContext.animatedTextures || []),
       ...this.animatedTextures
     ];
+    const targetAnimatedFps = Math.max(1, Number(this.qualityProfile?.animatedTextureFps) || 24);
+    const animatedFrameStep = 1 / targetAnimatedFps;
+    this.animatedTextureAccumulator += deltaTime;
+    const shouldAdvanceAnimatedFrames = this.animatedTextureAccumulator >= animatedFrameStep;
+    if (shouldAdvanceAnimatedFrames) {
+      this.animatedTextureAccumulator %= animatedFrameStep;
+    }
     for (const entry of allAnimated) {
       const updateFrame = entry.texture.userData?.updateFrame;
-      if (typeof updateFrame === "function") {
+      if (typeof updateFrame === "function" && shouldAdvanceAnimatedFrames) {
         updateFrame(deltaTime);
       }
       entry.texture.offset.x += entry.scrollX * deltaTime;
       entry.texture.offset.y += entry.scrollY * deltaTime;
-      if (entry.animatedImage) {
+      if (entry.animatedImage && shouldAdvanceAnimatedFrames) {
         entry.texture.needsUpdate = true;
       }
     }
