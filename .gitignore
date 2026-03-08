@@ -4,7 +4,7 @@ dist/
 Thumbs.db
 *.log
 
-# Private agent planning
+# Docs/Info
 agents.md
 AGENTS.md
 _agents/
@@ -17,6 +17,8 @@ scratch-private/
 *.private.md
 FEATURE-PASS-NOTES.md
 DESIGN-REFERENCE-LIBRARY.md
+docs/
+README.md
 
 # Local runtime config overrides (dev-only)
 public/config/*.json
