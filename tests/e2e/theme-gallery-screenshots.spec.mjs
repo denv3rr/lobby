@@ -29,6 +29,23 @@ async function readWinterParticleCount(page) {
   }, DEBUG_HOOK_NAMES);
 }
 
+async function waitForThemeOption(page, themeId) {
+  const themeSelect = page.locator("#theme-select");
+  await expect(themeSelect).toBeVisible();
+  await expect
+    .poll(
+      async () => {
+        const options = await themeSelect
+          .locator("option")
+          .evaluateAll((entries) => entries.map((option) => option.value).filter(Boolean));
+        return options.includes(themeId);
+      },
+      { timeout: 30_000 }
+    )
+    .toBe(true);
+  return themeSelect;
+}
+
 test("captures themed screenshots and verifies texture/model requests stay healthy", async ({
   page
 }) => {
@@ -77,8 +94,9 @@ test("captures themed screenshots and verifies texture/model requests stay healt
   await expect(canvas).toBeVisible();
 
   for (const themeId of selectedThemeIds) {
-    await themeSelect.selectOption(themeId);
-    await expect(themeSelect).toHaveValue(themeId);
+    const activeThemeSelect = await waitForThemeOption(page, themeId);
+    await activeThemeSelect.selectOption(themeId);
+    await expect(page.locator("#theme-select")).toHaveValue(themeId);
     await page.waitForTimeout(750);
     await canvas.screenshot({
       path: path.join(captureDir, `theme-${themeId}.png`)

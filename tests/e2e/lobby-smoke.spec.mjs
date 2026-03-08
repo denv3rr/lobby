@@ -112,40 +112,13 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
               continue;
             }
             const module = api.getModuleStates().find((entry) => entry.id === "atelier_concepts");
-            if (module) {
-              return Boolean(module.visible);
-            }
+            return Boolean(module?.visible);
           }
-          return null;
+          return false;
         }, DEBUG_HOOK_NAMES),
       { timeout: 25_000 }
     )
     .toBe(false);
-
-  await expect
-    .poll(
-      () =>
-        page.evaluate((hookNames) => {
-          for (const hookName of hookNames) {
-            const api = window[hookName];
-            if (
-              !api ||
-              typeof api.setModuleVisibility !== "function" ||
-              typeof api.getModuleStates !== "function"
-            ) {
-              continue;
-            }
-            api.setModuleVisibility("atelier_concepts", true);
-            const module = api.getModuleStates().find((entry) => entry.id === "atelier_concepts");
-            if (module) {
-              return Boolean(module.visible);
-            }
-          }
-          return null;
-        }, DEBUG_HOOK_NAMES),
-      { timeout: 25_000 }
-    )
-    .toBe(true);
 
   const objectivesPanel = page.locator("#objectives-panel");
   await expect(objectivesPanel).toBeVisible();

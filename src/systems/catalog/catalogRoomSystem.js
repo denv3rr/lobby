@@ -13,6 +13,9 @@ const DEFAULT_ROOM_LINKS = {
 const SCREENING_ROOM_ID = "videos";
 const SCREENING_FALLBACK_LABEL = "Select A Video";
 const LONGFORM_FEED_SOURCE = "videos-long";
+const tempColliderBox = new THREE.Box3();
+const tempColliderCenter = new THREE.Vector3();
+const tempColliderSize = new THREE.Vector3();
 
 function toColor(value, fallback) {
   try {
@@ -85,6 +88,11 @@ function getSideTangent(side) {
     default:
       return { x: 1, z: 0 };
   }
+}
+
+function normalizeRoomRotationY(value) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? THREE.MathUtils.degToRad(numericValue) : 0;
 }
 
 function normalizeItems(feed) {
@@ -1453,6 +1461,41 @@ export class CatalogRoomSystem {
     });
   }
 
+  addColliderFromObject(roomId, roomIndex, object, minThickness = 0.42) {
+    if (!object) {
+      return false;
+    }
+
+    object.updateWorldMatrix?.(true, true);
+    tempColliderBox.setFromObject(object);
+    if (tempColliderBox.isEmpty()) {
+      return false;
+    }
+
+    tempColliderBox.getCenter(tempColliderCenter);
+    tempColliderBox.getSize(tempColliderSize);
+    const thickness = Math.max(0.12, Number(minThickness) || 0.42);
+    const minY = tempColliderBox.min.y + 0.02;
+    const maxY = Math.max(minY + 0.1, tempColliderBox.max.y - 0.02);
+    this.addCollider(
+      roomId,
+      roomIndex,
+      tempColliderCenter.x,
+      tempColliderCenter.z,
+      Math.max(tempColliderSize.x, thickness),
+      Math.max(tempColliderSize.z, thickness),
+      minY,
+      maxY
+    );
+    return true;
+  }
+
+  addCollidersFromObjects(roomId, roomIndex, objects, minThickness = 0.42) {
+    for (const object of Array.isArray(objects) ? objects : [objects]) {
+      this.addColliderFromObject(roomId, roomIndex, object, minThickness);
+    }
+  }
+
   createWallPanel(
     roomGroup,
     geometryArgs,
@@ -1461,6 +1504,7 @@ export class CatalogRoomSystem {
     rotationY,
     doorway = null
   ) {
+    const panels = [];
     const [panelWidth, panelHeight] = geometryArgs;
     if (!doorway) {
       const full = new THREE.Mesh(
@@ -1470,7 +1514,8 @@ export class CatalogRoomSystem {
       full.position.copy(position);
       full.rotation.y = rotationY;
       roomGroup.add(full);
-      return;
+      panels.push(full);
+      return panels;
     }
 
     const openingWidth = clamp(doorway.width ?? 2.5, 1.4, panelWidth - 0.8);
@@ -1486,6 +1531,7 @@ export class CatalogRoomSystem {
     top.position.y += openingHeight * 0.5 + topHeight * 0.5;
     top.rotation.y = rotationY;
     roomGroup.add(top);
+    panels.push(top);
 
     const left = new THREE.Mesh(
       new THREE.PlaneGeometry(sideSegment, openingHeight),
@@ -1496,6 +1542,7 @@ export class CatalogRoomSystem {
     left.position.z += Math.sin(rotationY) * (openingWidth * 0.5 + sideSegment * 0.5);
     left.rotation.y = rotationY;
     roomGroup.add(left);
+    panels.push(left);
 
     const right = new THREE.Mesh(
       new THREE.PlaneGeometry(sideSegment, openingHeight),
@@ -1506,6 +1553,8 @@ export class CatalogRoomSystem {
     right.position.z -= Math.sin(rotationY) * (openingWidth * 0.5 + sideSegment * 0.5);
     right.rotation.y = rotationY;
     roomGroup.add(right);
+    panels.push(right);
+    return panels;
   }
 
   createRoomShell(roomId, config, roomIndex, totalRooms) {
@@ -1521,15 +1570,18 @@ export class CatalogRoomSystem {
       roomId === "shop" ? "east" : "west"
     );
     const wallThickness = 0.42;
+    const rotationY = normalizeRoomRotationY(config.rotationY);
     const origin = config.origin || [0, 0, 0];
     const step = Array.isArray(config.expansion?.step)
       ? config.expansion.step
       : [0, 0, -(depth + 2.2)];
+    const showEntryFrame = config.showEntryFrame !== false;
     group.position.set(
       (origin[0] || 0) + (step[0] || 0) * roomIndex,
       (origin[1] || 0) + (step[1] || 0) * roomIndex,
       (origin[2] || 0) + (step[2] || 0) * roomIndex
     );
+    group.rotation.y = rotationY;
 
     const accent = toColor(config.accentColor, roomId === "shop" ? "#8ec8d3" : "#ba9de2");
     const titleColor = toColor(config.titleColor, "#f5f5f0");
@@ -1594,149 +1646,119 @@ export class CatalogRoomSystem {
     outerWall.rotation.y = entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5;
     outerWall.position.set(outerWallDirection * width * 0.5, height * 0.5, 0);
     group.add(outerWall);
-    this.addCollider(
-      roomId,
-      roomIndex,
-      group.position.x + outerWallDirection * width * 0.5,
-      group.position.z,
-      wallThickness,
-      depth,
-      group.position.y + 0.02,
-      group.position.y + height - 0.04
-    );
 
     const connectorDoor = {
       width: clamp(config.connectorDoor?.width ?? 2.4, 1.4, width - 1),
       height: clamp(config.connectorDoor?.height ?? 3, 2, height - 0.4)
     };
-    const needsFrontConnector = roomIndex > 0;
-    const needsBackConnector = roomIndex < totalRooms - 1;
+    const connectorConfig = isObject(config.connectors) ? config.connectors : {};
+    const resolveConnector = (side, autoEnabled) => {
+      const sideConfigRaw = connectorConfig[side];
+      if (sideConfigRaw === false) {
+        return null;
+      }
+      const sideConfig =
+        sideConfigRaw === true ? { enabled: true } : isObject(sideConfigRaw) ? sideConfigRaw : {};
+      const enabled =
+        sideConfig.enabled === false ? false : autoEnabled || sideConfig.enabled === true;
+      if (!enabled) {
+        return null;
+      }
+      return {
+        width: clamp(sideConfig.width ?? connectorDoor.width, 1.4, width - 1),
+        height: clamp(sideConfig.height ?? connectorDoor.height, 2, height - 0.4)
+      };
+    };
+    const frontConnector = resolveConnector("front", roomIndex > 0);
+    const backConnector = resolveConnector("back", roomIndex < totalRooms - 1);
 
-    this.createWallPanel(
+    const backWallPanels = this.createWallPanel(
       group,
       [width, height],
       wallMaterial,
       new THREE.Vector3(0, height * 0.5, -depth * 0.5),
       0,
-      needsBackConnector ? connectorDoor : null
+      backConnector
     );
-    this.createWallPanel(
+    const frontWallPanels = this.createWallPanel(
       group,
       [width, height],
       wallMaterial,
       new THREE.Vector3(0, height * 0.5, depth * 0.5),
       Math.PI,
-      needsFrontConnector ? connectorDoor : null
+      frontConnector
     );
 
-    const addDepthWallColliders = (zLocal, hasDoor) => {
-      const minY = group.position.y + 0.02;
-      const maxY = group.position.y + connectorDoor.height;
-      const worldZ = group.position.z + zLocal;
-      if (!hasDoor) {
-        this.addCollider(
-          roomId,
-          roomIndex,
-          group.position.x,
-          worldZ,
-          width,
-          wallThickness,
-          minY,
-          maxY
+    if (showEntryFrame) {
+      const entranceFrameMaterial = new SurfaceMaterial(
+        basicMode
+          ? {
+              color: trimColor
+            }
+          : {
+              color: trimColor,
+              roughness: 0.58,
+              metalness: 0.18,
+              emissive: accent,
+              emissiveIntensity: 0.14
+            }
+      );
+      const frameDepth = 0.24;
+      const frameHeight = clamp(height * 0.86, 2.9, 4.2);
+      const frameWidth = clamp(width * 0.58, 2.4, 4.1);
+      const frameDirection = entrySide === "east" ? 1 : -1;
+      const frameCenterX = frameDirection * (width * 0.5 - 0.18);
+
+      const frameTop = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, 0.2, frameWidth),
+        entranceFrameMaterial
+      );
+      frameTop.position.set(frameCenterX, frameHeight, 0);
+      group.add(frameTop);
+
+      const framePillar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.18, frameHeight, frameDepth),
+        entranceFrameMaterial
+      );
+      framePillar.position.set(frameCenterX, frameHeight * 0.5, frameWidth * 0.5 - frameDepth * 0.5);
+      group.add(framePillar);
+      const secondPillar = framePillar.clone();
+      secondPillar.position.z = -(frameWidth * 0.5 - frameDepth * 0.5);
+      group.add(secondPillar);
+
+      const title = makeLabelPlane(
+        [trimTitle(config.label || (roomId === "shop" ? "Gift Shop" : "Projects"), 24)],
+        [2.8, 0.75],
+        {
+          border: `#${titleColor.getHexString()}`,
+          background: "rgba(13, 16, 16, 0.82)"
+        }
+      );
+      if (title) {
+        title.position.set(frameCenterX + frameDirection * 0.44, frameHeight + 0.42, 0);
+        title.rotation.set(0, entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5, 0);
+        group.add(title);
+      }
+
+      if (!basicMode) {
+        const accentLight = new THREE.PointLight(
+          accent,
+          0.45,
+          8
         );
-        return;
+        accentLight.position.set(frameCenterX + frameDirection * 0.55, height - 0.6, 0);
+        group.add(accentLight);
       }
-
-      const segmentWidth = Math.max(0.18, (width - connectorDoor.width) * 0.5);
-      const leftCenter = -connectorDoor.width * 0.5 - segmentWidth * 0.5;
-      const rightCenter = connectorDoor.width * 0.5 + segmentWidth * 0.5;
-      this.addCollider(
-        roomId,
-        roomIndex,
-        group.position.x + leftCenter,
-        worldZ,
-        segmentWidth,
-        wallThickness,
-        minY,
-        maxY
-      );
-      this.addCollider(
-        roomId,
-        roomIndex,
-        group.position.x + rightCenter,
-        worldZ,
-        segmentWidth,
-        wallThickness,
-        minY,
-        maxY
-      );
-    };
-    addDepthWallColliders(-depth * 0.5, needsBackConnector);
-    addDepthWallColliders(depth * 0.5, needsFrontConnector);
-
-    const entranceFrameMaterial = new SurfaceMaterial(
-      basicMode
-        ? {
-            color: trimColor
-          }
-        : {
-            color: trimColor,
-            roughness: 0.58,
-            metalness: 0.18,
-            emissive: accent,
-            emissiveIntensity: 0.14
-          }
-    );
-    const frameDepth = 0.24;
-    const frameHeight = clamp(height * 0.86, 2.9, 4.2);
-    const frameWidth = clamp(width * 0.58, 2.4, 4.1);
-    const frameDirection = entrySide === "east" ? 1 : -1;
-    const frameCenterX = frameDirection * (width * 0.5 - 0.18);
-
-    const frameTop = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.2, frameWidth),
-      entranceFrameMaterial
-    );
-    frameTop.position.set(frameCenterX, frameHeight, 0);
-    group.add(frameTop);
-
-    const framePillar = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, frameHeight, frameDepth),
-      entranceFrameMaterial
-    );
-    framePillar.position.set(frameCenterX, frameHeight * 0.5, frameWidth * 0.5 - frameDepth * 0.5);
-    group.add(framePillar);
-    const secondPillar = framePillar.clone();
-    secondPillar.position.z = -(frameWidth * 0.5 - frameDepth * 0.5);
-    group.add(secondPillar);
-
-    const title = makeLabelPlane(
-      [trimTitle(config.label || (roomId === "shop" ? "Gift Shop" : "Projects"), 24)],
-      [2.8, 0.75],
-      {
-        border: `#${titleColor.getHexString()}`,
-        background: "rgba(13, 16, 16, 0.82)"
-      }
-    );
-    if (title) {
-      title.position.set(frameCenterX + frameDirection * 0.44, frameHeight + 0.42, 0);
-      title.rotation.set(0, entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5, 0);
-      group.add(title);
-    }
-
-    if (!basicMode) {
-      const accentLight = new THREE.PointLight(
-        accent,
-        0.45,
-        8
-      );
-      accentLight.position.set(frameCenterX + frameDirection * 0.55, height - 0.6, 0);
-      group.add(accentLight);
     }
 
     const cardsGroup = new THREE.Group();
     cardsGroup.name = `${roomId}Cards`;
     group.add(cardsGroup);
+
+    group.updateWorldMatrix(true, true);
+    this.addColliderFromObject(roomId, roomIndex, outerWall, wallThickness);
+    this.addCollidersFromObjects(roomId, roomIndex, backWallPanels, wallThickness);
+    this.addCollidersFromObjects(roomId, roomIndex, frontWallPanels, wallThickness);
 
     this.root.add(group);
     const node = {

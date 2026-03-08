@@ -43,43 +43,12 @@
     },
     "frontEntrance": {
       "enabled": true,
-      "width": 4.2,
+      "width": 11.4,
       "height": 3.4,
       "centerX": 0
     },
     "floorplan": {
-      "annexes": [
-        {
-          "id": "prototype_atelier_room",
-          "size": [
-            9.4,
-            4.8,
-            10.8
-          ],
-          "position": [
-            -18.8,
-            0,
-            38.8
-          ],
-          "openSide": "south",
-          "navigationInset": 0.92,
-          "floorMaterial": {
-            "color": "#242b31",
-            "roughness": 0.9,
-            "metalness": 0.08
-          },
-          "wallMaterial": {
-            "color": "#313b44",
-            "roughness": 0.86,
-            "metalness": 0.12
-          },
-          "ceilingMaterial": {
-            "color": "#4a5863",
-            "roughness": 0.84,
-            "metalness": 0.08
-          }
-        }
-      ]
+      "annexes": []
     }
   },
   "spawn": {
@@ -444,7 +413,7 @@
       ],
       "rotation": [
         0,
-        16,
+        15,
         0
       ],
       "scale": [
@@ -463,7 +432,7 @@
       "position": [
         0,
         0.02,
-        39
+        40.5
       ],
       "rotation": [
         -90,
@@ -472,7 +441,7 @@
       ],
       "scale": [
         40,
-        34,
+        31,
         1
       ],
       "material": {
@@ -493,7 +462,7 @@
       "position": [
         0,
         0.03,
-        24
+        29.8
       ],
       "rotation": [
         -90,
@@ -502,7 +471,7 @@
       ],
       "scale": [
         6.2,
-        18,
+        8.4,
         1
       ],
       "material": {
@@ -523,10 +492,10 @@
       "position": [
         0,
         0.08,
-        15.1
+        24.4
       ],
       "scale": [
-        4.8,
+        6.8,
         0.16,
         1.3
       ],
@@ -580,14 +549,14 @@
       "type": "primitive",
       "primitive": "cylinder",
       "position": [
-        18.2,
-        1.35,
-        30.6
+        19.4,
+        1.3,
+        29.8
       ],
       "scale": [
-        0.75,
-        2.7,
-        0.75
+        0.7,
+        2.6,
+        0.7
       ],
       "material": {
         "color": "#2e2621",
@@ -599,14 +568,14 @@
       "type": "primitive",
       "primitive": "sphere",
       "position": [
-        18.2,
-        4.4,
-        30.6
+        19.4,
+        4.3,
+        29.8
       ],
       "scale": [
-        2.6,
-        3.1,
-        2.6
+        2.4,
+        2.9,
+        2.4
       ],
       "material": {
         "color": "#161b1a",
@@ -658,9 +627,9 @@
       "type": "primitive",
       "primitive": "cylinder",
       "position": [
-        18.4,
+        24.6,
         1.45,
-        45.2
+        45.6
       ],
       "scale": [
         0.8,
@@ -677,9 +646,9 @@
       "type": "primitive",
       "primitive": "sphere",
       "position": [
-        18.4,
+        24.6,
         4.8,
-        45.2
+        45.6
       ],
       "scale": [
         2.8,
@@ -736,9 +705,9 @@
       "type": "primitive",
       "primitive": "cylinder",
       "position": [
-        18.7,
+        6.5,
         1.35,
-        52.2
+        50
       ],
       "scale": [
         0.72,
@@ -755,9 +724,9 @@
       "type": "primitive",
       "primitive": "sphere",
       "position": [
-        18.7,
+        6.5,
         4.5,
-        52.2
+        50
       ],
       "scale": [
         2.6,
@@ -948,555 +917,6 @@
       }
     },
     {
-      "id": "district_console_plinth",
-      "type": "primitive",
-      "primitive": "box",
-      "position": [
-        -4.8,
-        0.95,
-        33.4
-      ],
-      "rotation": [
-        0,
-        22,
-        0
-      ],
-      "scale": [
-        2.2,
-        1.9,
-        1.2
-      ],
-      "interactable": {
-        "label": "District Console",
-        "title": "Expansion Console",
-        "description": "A modular control plinth for staging future spaces, reveals, portals, and mini-experiences in the outdoor district.",
-        "tags": [
-          "Expandable",
-          "District Logic",
-          "Scene Modules"
-        ],
-        "actions": [
-          {
-            "label": "Reveal Atelier Concepts",
-            "type": "show-module",
-            "moduleId": "atelier_concepts",
-            "message": "Prototype Atelier concepts revealed."
-          },
-          {
-            "label": "Stow Concepts",
-            "type": "hide-module",
-            "moduleId": "atelier_concepts",
-            "message": "Prototype Atelier concepts tucked away."
-          },
-          {
-            "label": "Shift To Neon",
-            "type": "theme",
-            "theme": "neon"
-          }
-        ]
-      },
-      "material": {
-        "color": "#3a4651",
-        "roughness": 0.74,
-        "metalness": 0.16,
-        "emissiveColor": "#8ec9ff",
-        "emissiveIntensity": 0.12
-      }
-    },
-    {
-      "id": "district_console_orb",
-      "type": "primitive",
-      "primitive": "sphere",
-      "position": [
-        -4.8,
-        2.3,
-        33.4
-      ],
-      "scale": [
-        0.62,
-        0.62,
-        0.62
-      ],
-      "collider": false,
-      "hoverMotion": {
-        "axis": "y",
-        "amplitude": 0.16,
-        "speed": 1.2
-      },
-      "material": {
-        "color": "#d8f3ff",
-        "emissiveColor": "#9edcff",
-        "emissiveIntensity": 0.42,
-        "roughness": 0.24,
-        "metalness": 0.08
-      }
-    },
-    {
-      "id": "district_branch_path_west",
-      "type": "primitive",
-      "primitive": "plane",
-      "allowCatalogOverlap": true,
-      "position": [
-        -9.6,
-        0.03,
-        34.8
-      ],
-      "rotation": [
-        -90,
-        0,
-        0
-      ],
-      "scale": [
-        6.2,
-        9.4,
-        1
-      ],
-      "collider": false,
-      "material": {
-        "color": "#364048",
-        "roughness": 0.9,
-        "metalness": 0.04,
-        "procedural": "concrete",
-        "textureRepeat": [
-          2,
-          5
-        ]
-      }
-    },
-    {
-      "id": "district_branch_path_east",
-      "type": "primitive",
-      "primitive": "plane",
-      "allowCatalogOverlap": true,
-      "position": [
-        9.6,
-        0.03,
-        34.8
-      ],
-      "rotation": [
-        -90,
-        0,
-        0
-      ],
-      "scale": [
-        6.2,
-        9.4,
-        1
-      ],
-      "collider": false,
-      "material": {
-        "color": "#364048",
-        "roughness": 0.9,
-        "metalness": 0.04,
-        "procedural": "concrete",
-        "textureRepeat": [
-          2,
-          5
-        ]
-      }
-    },
-    {
-      "id": "atelier_wayfinder",
-      "type": "primitive",
-      "primitive": "box",
-      "position": [
-        -7.4,
-        1.25,
-        34.4
-      ],
-      "rotation": [
-        0,
-        90,
-        0
-      ],
-      "scale": [
-        0.28,
-        2.5,
-        1.25
-      ],
-      "interactable": {
-        "label": "Prototype Atelier",
-        "title": "Prototype Atelier",
-        "description": "A mirrored outdoor wing built to keep future project rooms, playable ideas, and object-driven reveals modular.",
-        "tags": [
-          "Outdoor Wing",
-          "Projects Feed",
-          "Expansion Ready"
-        ],
-        "actions": [
-          {
-            "label": "Teleport To Atelier",
-            "type": "teleport",
-            "position": [
-              -12.8,
-              1.7,
-              38.2
-            ],
-            "yaw": -90,
-            "message": "Prototype Atelier entrance aligned."
-          },
-          {
-            "label": "Open Projects",
-            "url": "https://github.com/denv3rr"
-          },
-          {
-            "label": "Reveal Concepts",
-            "type": "show-module",
-            "moduleId": "atelier_concepts",
-            "message": "Prototype Atelier concepts revealed."
-          }
-        ]
-      },
-      "material": {
-        "color": "#5a6972",
-        "roughness": 0.78,
-        "metalness": 0.1
-      }
-    },
-    {
-      "id": "screening_hall_wayfinder",
-      "type": "primitive",
-      "primitive": "box",
-      "position": [
-        7.4,
-        1.25,
-        34.4
-      ],
-      "rotation": [
-        0,
-        -90,
-        0
-      ],
-      "scale": [
-        0.28,
-        2.5,
-        1.25
-      ],
-      "interactable": {
-        "label": "Screening Hall",
-        "title": "YouTube Screening Hall",
-        "description": "A feed-driven room dedicated to recent uploads from youtube.com/@seperet.",
-        "tags": [
-          "Workflow Synced",
-          "YouTube RSS",
-          "Outdoor Wing"
-        ],
-        "actions": [
-          {
-            "label": "Open Channel",
-            "url": "https://youtube.com/@seperet"
-          }
-        ]
-      },
-      "material": {
-        "color": "#6d5f58",
-        "roughness": 0.78,
-        "metalness": 0.1
-      }
-    },
-    {
-      "id": "atelier_signal_console",
-      "type": "primitive",
-      "primitive": "box",
-      "allowCatalogOverlap": true,
-      "position": [
-        -15.4,
-        1.05,
-        41.2
-      ],
-      "rotation": [
-        0,
-        38,
-        0
-      ],
-      "scale": [
-        1.2,
-        2.1,
-        0.72
-      ],
-      "interactable": {
-        "label": "Signal Console",
-        "title": "Prototype Signal Console",
-        "description": "This console demonstrates the new object-action pipeline: props can now switch themes, open portals, and reveal modular scene sets without hardcoded one-off logic.",
-        "tags": [
-          "Object Actions",
-          "Theme Routing",
-          "Module Reveal"
-        ],
-        "actions": [
-          {
-            "label": "Launch Neon Stage",
-            "steps": [
-              {
-                "type": "theme",
-                "theme": "neon"
-              },
-              {
-                "type": "show-module",
-                "moduleId": "atelier_concepts"
-              },
-              {
-                "type": "message",
-                "message": "Prototype neon stage live."
-              }
-            ]
-          },
-          {
-            "label": "Open Projects",
-            "type": "portal",
-            "url": "https://github.com/denv3rr"
-          },
-          {
-            "label": "Jump To Lobby Core",
-            "type": "teleport",
-            "position": [
-              0,
-              1.7,
-              11
-            ],
-            "yaw": 180,
-            "message": "Returned to the lobby core."
-          },
-          {
-            "label": "Release East Archive",
-            "secretId": "east_archive_annex",
-            "message": "East Archive Area unlocked."
-          }
-        ]
-      },
-      "material": {
-        "color": "#3e4e57",
-        "roughness": 0.66,
-        "metalness": 0.18,
-        "emissiveColor": "#9dd2ff",
-        "emissiveIntensity": 0.16
-      }
-    },
-    {
-      "id": "atelier_return_beacon_base",
-      "type": "primitive",
-      "primitive": "cylinder",
-      "position": [
-        -21.1,
-        0.55,
-        35.9
-      ],
-      "scale": [
-        1.45,
-        1.1,
-        1.45
-      ],
-      "material": {
-        "color": "#38444d",
-        "roughness": 0.74,
-        "metalness": 0.18
-      }
-    },
-    {
-      "id": "atelier_return_beacon_core",
-      "type": "primitive",
-      "primitive": "sphere",
-      "position": [
-        -21.1,
-        1.78,
-        35.9
-      ],
-      "scale": [
-        0.6,
-        0.6,
-        0.6
-      ],
-      "collider": false,
-      "hoverMotion": {
-        "axis": "y",
-        "amplitude": 0.14,
-        "speed": 1.3
-      },
-      "interactable": {
-        "label": "Return Beacon",
-        "title": "Return Beacon",
-        "description": "Direct teleport anchors like this keep new playable rooms and future mini-game exits modular instead of adding bespoke movement code for each space.",
-        "tags": [
-          "Teleport",
-          "Fast Travel",
-          "Room Flow"
-        ],
-        "interaction": {
-          "type": "teleport",
-          "position": [
-            0,
-            1.7,
-            11
-          ],
-          "yaw": 180,
-          "message": "Back in the lobby core."
-        }
-      },
-      "material": {
-        "color": "#e4f5ff",
-        "emissiveColor": "#89d4ff",
-        "emissiveIntensity": 0.42,
-        "roughness": 0.2,
-        "metalness": 0.08
-      }
-    },
-    {
-      "id": "atelier_archive_latch",
-      "type": "primitive",
-      "primitive": "box",
-      "position": [
-        -21.35,
-        1.18,
-        42.2
-      ],
-      "rotation": [
-        0,
-        -24,
-        0
-      ],
-      "scale": [
-        0.8,
-        2.1,
-        0.65
-      ],
-      "interactable": {
-        "label": "Archive Latch",
-        "title": "Archive Latch",
-        "description": "A physical latch wired into the secret-space system. New rooms can unlock other rooms through scene config and shared interaction handlers instead of custom boot-time logic.",
-        "tags": [
-          "Unlock",
-          "Secret Space",
-          "Prototype System"
-        ],
-        "interaction": {
-          "type": "unlock-secret",
-          "secretId": "east_archive_annex",
-          "message": "East Archive Area unlocked."
-        }
-      },
-      "material": {
-        "color": "#55636e",
-        "roughness": 0.7,
-        "metalness": 0.22,
-        "emissiveColor": "#92d8ff",
-        "emissiveIntensity": 0.14
-      }
-    },
-    {
-      "id": "atelier_concept_table",
-      "type": "primitive",
-      "primitive": "box",
-      "allowCatalogOverlap": true,
-      "modules": ["atelier_concepts"],
-      "initiallyHidden": true,
-      "position": [
-        -14.6,
-        0.76,
-        38.6
-      ],
-      "scale": [
-        2.2,
-        0.16,
-        1.4
-      ],
-      "material": {
-        "color": "#495863",
-        "roughness": 0.72,
-        "metalness": 0.16
-      }
-    },
-    {
-      "id": "atelier_concept_core",
-      "type": "primitive",
-      "primitive": "torus",
-      "allowCatalogOverlap": true,
-      "modules": ["atelier_concepts"],
-      "initiallyHidden": true,
-      "position": [
-        -14.6,
-        1.58,
-        38.6
-      ],
-      "rotation": [
-        90,
-        0,
-        0
-      ],
-      "scale": [
-        0.86,
-        0.86,
-        0.4
-      ],
-      "collider": false,
-      "hoverMotion": {
-        "axis": "y",
-        "amplitude": 0.12,
-        "speed": 1.4
-      },
-      "interactable": {
-        "label": "Concept Core",
-        "title": "Expandable Concept Core",
-        "description": "Future rooms and mini-game hooks can be revealed as scene modules from interactions like this one instead of being hardcoded into boot logic.",
-        "tags": [
-          "Module Seed",
-          "Future Mini-Games",
-          "Data Driven"
-        ],
-        "actions": [
-          {
-            "label": "Open Lobby Repo",
-            "url": "https://github.com/denv3rr/lobby"
-          },
-          {
-            "label": "Shift To Roman",
-            "type": "theme",
-            "theme": "roman"
-          }
-        ]
-      },
-      "material": {
-        "color": "#f0fafb",
-        "emissiveColor": "#9fdfff",
-        "emissiveIntensity": 0.36,
-        "roughness": 0.22,
-        "metalness": 0.12
-      }
-    },
-    {
-      "id": "atelier_concept_backdrop",
-      "type": "primitive",
-      "primitive": "plane",
-      "allowCatalogOverlap": true,
-      "modules": ["atelier_concepts"],
-      "initiallyHidden": true,
-      "position": [
-        -17.55,
-        2.15,
-        38.6
-      ],
-      "rotation": [
-        0,
-        90,
-        0
-      ],
-      "scale": [
-        2.8,
-        1.8,
-        1
-      ],
-      "collider": false,
-      "material": {
-        "color": "#cfe5f2",
-        "transparent": true,
-        "opacity": 0.82,
-        "doubleSided": true,
-        "emissiveColor": "#85cfff",
-        "emissiveIntensity": 0.12,
-        "roughness": 0.88,
-        "metalness": 0.02
-      }
-    },
-    {
       "id": "treeline_silhouette_north",
       "type": "primitive",
       "primitive": "box",
@@ -1598,12 +1018,12 @@
       "position": [
         0,
         0,
-        39
+        40.5
       ],
       "size": [
         40,
         2,
-        34
+        31
       ]
     }
   ]

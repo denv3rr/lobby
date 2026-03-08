@@ -192,7 +192,37 @@ async function activatePortalThroughDebugApi(page) {
 async function clickCenterCanvas(page) {
   const canvas = page.locator("#viewport canvas");
   await expect(canvas).toBeVisible();
-  await canvas.click({ position: { x: 640, y: 360 } });
+  const bounds = await canvas.boundingBox();
+  expect(bounds).toBeTruthy();
+  const neutralSpot =
+    (await page.evaluate((hookNames) => {
+      const samples = [
+        { x: -0.72, y: 0.78 },
+        { x: -0.52, y: 0.72 },
+        { x: -0.32, y: 0.68 },
+        { x: 0.32, y: 0.68 },
+        { x: 0.52, y: 0.72 },
+        { x: 0.72, y: 0.78 }
+      ];
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.pickTargetAt !== "function") {
+          continue;
+        }
+        for (const sample of samples) {
+          if (!api.pickTargetAt(sample.x, sample.y)) {
+            return sample;
+          }
+        }
+      }
+      return null;
+    }, DEBUG_HOOK_NAMES)) || { x: 0, y: 0.82 };
+  await canvas.click({
+    position: {
+      x: ((neutralSpot.x + 1) * 0.5) * bounds.width,
+      y: ((1 - neutralSpot.y) * 0.5) * bounds.height
+    }
+  });
 }
 
 async function ensurePointerLock(page) {
@@ -218,8 +248,7 @@ async function primePortalView(page) {
 }
 
 async function activateAnyPortal(page) {
-  await clickCenterCanvas(page);
-  await ensurePointerLock(page);
+  await lockCanvas(page);
   await primePortalView(page);
   return activatePortalThroughDebugApi(page);
 }
@@ -231,7 +260,9 @@ async function ensureCanvasReady(page) {
 }
 
 async function lockCanvas(page) {
-  await clickCenterCanvas(page);
+  await page.evaluate(() => {
+    document.querySelector("#viewport canvas")?.requestPointerLock?.();
+  });
   await ensurePointerLock(page);
 }
 
@@ -377,6 +408,9 @@ test("rapid theme switching leaves no stale props and controls/portals still res
   await expect
     .poll(async () => themeSelect.locator("option").count(), { timeout: 30_000 })
     .toBeGreaterThanOrEqual(3);
+  await expect(page.locator("#status-text")).toContainText(/scene ready/i, {
+    timeout: 30_000
+  });
 
   await expect
     .poll(async () => (await readDebugStats(page)).hookName, { timeout: 30_000 })

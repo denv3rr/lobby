@@ -1193,36 +1193,43 @@ async function boot() {
 
     const origin = Array.isArray(roomConfig.origin) ? roomConfig.origin : [0, 0, 0];
     const size = Array.isArray(roomConfig.size) ? roomConfig.size : [8.6, 4.6, 9.6];
+    const rotationDeg = Number(roomConfig.rotationY) || 0;
+    const rotationRad = THREE.MathUtils.degToRad(rotationDeg);
     const safeDistance = Math.max(1.4, Number(distance) || 4.2);
     const playerY = sceneContext?.player?.position?.y || 1.7;
     const normalizedWall = typeof wall === "string" ? wall.trim().toLowerCase() : "front";
+    let localX = 0;
+    let localZ = size[2] * 0.5 - safeDistance;
+    let yawDeg = 180;
 
     switch (normalizedWall) {
       case "back":
-        return teleportPlayer(
-          [origin[0], playerY, origin[2] - size[2] * 0.5 + safeDistance],
-          0,
-          0
-        );
+        localZ = -size[2] * 0.5 + safeDistance;
+        yawDeg = 0;
+        break;
       case "left":
-        return teleportPlayer(
-          [origin[0] - size[0] * 0.5 + safeDistance, playerY, origin[2]],
-          -90,
-          0
-        );
+        localX = -size[0] * 0.5 + safeDistance;
+        localZ = 0;
+        yawDeg = -90;
+        break;
       case "right":
-        return teleportPlayer(
-          [origin[0] + size[0] * 0.5 - safeDistance, playerY, origin[2]],
-          90,
-          0
-        );
+        localX = size[0] * 0.5 - safeDistance;
+        localZ = 0;
+        yawDeg = 90;
+        break;
       default:
-        return teleportPlayer(
-          [origin[0], playerY, origin[2] + size[2] * 0.5 - safeDistance],
-          180,
-          0
-        );
+        break;
     }
+
+    const rotatedOffset = new THREE.Vector3(localX, 0, localZ).applyAxisAngle(
+      new THREE.Vector3(0, 1, 0),
+      rotationRad
+    );
+    return teleportPlayer(
+      [origin[0] + rotatedOffset.x, playerY, origin[2] + rotatedOffset.z],
+      yawDeg + rotationDeg,
+      0
+    );
   }
 
   function activateCenterArtifactTarget() {
