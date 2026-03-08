@@ -36,13 +36,6 @@
         "width": 2.4,
         "height": 3
       },
-      "connectors": {
-        "back": {
-          "enabled": true,
-          "width": 2.5,
-          "height": 3
-        }
-      },
       "card": {
         "width": 1.45,
         "height": 1.9
@@ -59,26 +52,23 @@
       }
     },
     "atelier": {
-      "enabled": false,
-      "label": "Prototype Atelier",
+      "enabled": true,
+      "label": "Reserved Wing",
       "feedSource": "atelier",
       "defaultUrl": "https://github.com/denv3rr/lobby",
       "origin": [-19.3, 0, -10.2],
       "size": [8.6, 4.8, 10.8],
       "entrySide": "east",
-      "showEntryFrame": true,
+      "showEntryFrame": false,
+      "allowEmpty": true,
+      "filter": {
+        "itemIds": ["__reserved__"]
+      },
       "accentColor": "#92b8c8",
       "titleColor": "#eef8ff",
       "connectorDoor": {
         "width": 2.5,
         "height": 3.1
-      },
-      "connectors": {
-        "front": {
-          "enabled": true,
-          "width": 2.5,
-          "height": 3.1
-        }
       },
       "card": {
         "width": 1.48,
@@ -98,10 +88,9 @@
     "videos": {
       "label": "Screening Hall",
       "feedSource": "videos",
-      "origin": [0, 0, 19.3],
+      "origin": [19.3, 0, -10.2],
       "size": [8.6, 4.8, 10.8],
-      "entrySide": "east",
-      "rotationY": 90,
+      "entrySide": "west",
       "showEntryFrame": false,
       "accentColor": "#d99b94",
       "titleColor": "#fff0eb",
@@ -135,7 +124,7 @@
         "itemLimit": 28
       },
       "expansion": {
-        "step": [-13, 0, 0]
+        "step": [0, 0, -10.8]
       },
       "layout": {
         "maxItems": 6,

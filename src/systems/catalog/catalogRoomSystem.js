@@ -304,7 +304,8 @@ function disposeObjectResources(root) {
 function normalizeFilter(filter = {}) {
   return {
     itemIds: Array.isArray(filter.itemIds) ? filter.itemIds : [],
-    tagsAny: Array.isArray(filter.tagsAny) ? filter.tagsAny : []
+    tagsAny: Array.isArray(filter.tagsAny) ? filter.tagsAny : [],
+    allowEmpty: filter.allowEmpty === true
   };
 }
 
@@ -327,7 +328,7 @@ function filterItems(items, filter, maxItems) {
     );
   }
 
-  if (!selected.length) {
+  if (!selected.length && !normalized.allowEmpty) {
     selected = safeItems;
   }
 
@@ -2112,8 +2113,14 @@ export class CatalogRoomSystem {
     this.clearRoomCards(roomId);
 
     const sourceItems = this.getRoomItems(roomId);
-    const roomFilter = themeSpec?.[roomId] || {};
     const roomConfig = this.catalogConfig.rooms?.[roomId] || {};
+    const roomFilter = {
+      ...(themeSpec?.[roomId] || {}),
+      ...(isObject(roomConfig.filter) ? roomConfig.filter : {})
+    };
+    if (roomConfig.allowEmpty === true) {
+      roomFilter.allowEmpty = true;
+    }
     const maxItems = roomConfig.layout?.maxItems || sourceItems.length || 1;
     const filtered = filterItems(sourceItems, roomFilter, maxItems);
     const items = filtered;

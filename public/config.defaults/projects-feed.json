@@ -66,9 +66,9 @@
     },
     {
       "id": "south-padre-island",
-      "title": "South Padre Island (Arma Reforger Mod)",
-      "url": "https://reforger.armaplatform.com/workshop",
-      "image": null,
+      "title": "South Padre Island - Arma Reforger",
+      "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland",
+      "image": "https://ar-gcp-cdn.bistudio.com/image/9c2a/01a6a5b560f65134ea2c7701edde98fa3f2d87061fc2d3a2db7b867f288a/144149.jpg",
       "price": null,
       "currency": null,
       "tags": [
@@ -76,7 +76,12 @@
         "workshop",
         "core"
       ],
-      "artwork": []
+      "artwork": [
+        {
+          "url": "https://ar-gcp-cdn.bistudio.com/image/9c2a/01a6a5b560f65134ea2c7701edde98fa3f2d87061fc2d3a2db7b867f288a/144149.jpg",
+          "title": "Screenshot"
+        }
+      ]
     }
   ]
 }

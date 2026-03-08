@@ -1112,19 +1112,13 @@ async function boot() {
     if (!targetUrl) {
       return false;
     }
+    document.exitPointerLock?.();
     const popup = window.open(targetUrl, "_blank", "noopener,noreferrer");
     if (popup) {
-      document.exitPointerLock?.();
       return true;
     }
-    try {
-      document.exitPointerLock?.();
-      window.location.assign(targetUrl);
-      return true;
-    } catch {
-      showPopupBlockedMessage();
-      return false;
-    }
+    showPopupBlockedMessage();
+    return false;
   }
 
   async function unlockSecretById(secretId, options = {}) {

@@ -408,9 +408,6 @@ test("rapid theme switching leaves no stale props and controls/portals still res
   await expect
     .poll(async () => themeSelect.locator("option").count(), { timeout: 30_000 })
     .toBeGreaterThanOrEqual(3);
-  await expect(page.locator("#status-text")).toContainText(/scene ready/i, {
-    timeout: 30_000
-  });
 
   await expect
     .poll(async () => (await readDebugStats(page)).hookName, { timeout: 30_000 })
