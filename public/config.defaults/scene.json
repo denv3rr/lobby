@@ -26,6 +26,9 @@
     },
     "wallMaterial": {
       "color": "#7b7a6f",
+      "procedural": "concrete",
+      "roughness": 0.92,
+      "metalness": 0.04,
       "textureRepeat": [
         6,
         2
@@ -47,8 +50,75 @@
       "height": 3.4,
       "centerX": 0
     },
+    "rearEntrance": {
+      "enabled": true,
+      "width": 11.2,
+      "height": 3.4,
+      "centerX": 0
+    },
     "floorplan": {
-      "annexes": []
+      "annexes": [
+        {
+          "id": "rear_main_hall",
+          "size": [
+            10.8,
+            4.6,
+            15.2
+          ],
+          "position": [
+            0,
+            0,
+            -25.2
+          ],
+          "openSide": "south",
+          "navigationInset": 0.95
+        },
+        {
+          "id": "rear_west_gallery",
+          "size": [
+            8.4,
+            4.4,
+            9.2
+          ],
+          "position": [
+            -9.6,
+            0,
+            -28.2
+          ],
+          "openSide": "east",
+          "navigationInset": 0.9
+        },
+        {
+          "id": "rear_east_media",
+          "size": [
+            8.4,
+            4.4,
+            9.2
+          ],
+          "position": [
+            9.6,
+            0,
+            -28.2
+          ],
+          "openSide": "west",
+          "navigationInset": 0.9
+        },
+        {
+          "id": "rear_north_chamber",
+          "size": [
+            10.2,
+            4.6,
+            8.8
+          ],
+          "position": [
+            0,
+            0,
+            -37.2
+          ],
+          "openSide": "south",
+          "navigationInset": 0.95
+        }
+      ]
     }
   },
   "spawn": {
@@ -172,7 +242,7 @@
       "position": [
         -9,
         1.5,
-        -11.6
+        -13.8
       ],
       "rotation": [
         0,
@@ -193,7 +263,7 @@
       "position": [
         0,
         1.5,
-        -11.6
+        -13.8
       ],
       "rotation": [
         0,
@@ -214,7 +284,7 @@
       "position": [
         9,
         1.5,
-        -11.6
+        -13.8
       ],
       "rotation": [
         0,
@@ -235,7 +305,7 @@
       "position": [
         -13.8,
         1.5,
-        -5.6
+        -7.8
       ],
       "rotation": [
         0,
@@ -256,7 +326,7 @@
       "position": [
         13.8,
         1.5,
-        -5.6
+        -7.8
       ],
       "rotation": [
         0,
@@ -423,6 +493,1002 @@
       ],
       "material": {
         "color": "#4a453a"
+      }
+    },
+    {
+      "id": "rear_hall_runner",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        0,
+        0.031,
+        -25.2
+      ],
+      "rotation": [
+        -90,
+        0,
+        0
+      ],
+      "scale": [
+        3.8,
+        14.2,
+        1
+      ],
+      "collider": false,
+      "material": {
+        "color": "#b8b1a4",
+        "procedural": "marble",
+        "textureRepeat": [
+          2,
+          6
+        ],
+        "roughness": 0.88,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "rear_hall_directory",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        0,
+        1.3,
+        -19.8
+      ],
+      "scale": [
+        1.2,
+        2.6,
+        0.22
+      ],
+      "interactable": {
+        "label": "Directory",
+        "title": "Coming Soon",
+        "description": "Additional spaces are being prepared behind the lobby.",
+        "tags": [
+          "Expansion",
+          "Preview"
+        ],
+        "actions": [
+          {
+            "label": "Enter Left Wing",
+            "type": "teleport",
+            "position": [
+              -9.6,
+              1.7,
+              -28.2
+            ],
+            "yaw": 90
+          },
+          {
+            "label": "Enter Right Wing",
+            "type": "teleport",
+            "position": [
+              9.6,
+              1.7,
+              -28.2
+            ],
+            "yaw": -90
+          },
+          {
+            "label": "Enter End Hall",
+            "type": "teleport",
+            "position": [
+              0,
+              1.7,
+              -37.2
+            ],
+            "yaw": 180
+          }
+        ]
+      },
+      "material": {
+        "color": "#6a6256",
+        "roughness": 0.82,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "rear_hall_light_left",
+      "type": "primitive",
+      "primitive": "sphere",
+      "position": [
+        -4.1,
+        3.05,
+        -23.2
+      ],
+      "scale": [
+        0.22,
+        0.22,
+        0.22
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f2e2c2",
+        "emissiveColor": "#f2e2c2",
+        "emissiveIntensity": 0.62,
+        "roughness": 0.32,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "rear_hall_light_right",
+      "type": "primitive",
+      "primitive": "sphere",
+      "position": [
+        4.1,
+        3.05,
+        -23.2
+      ],
+      "scale": [
+        0.22,
+        0.22,
+        0.22
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f2e2c2",
+        "emissiveColor": "#f2e2c2",
+        "emissiveIntensity": 0.62,
+        "roughness": 0.32,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "rear_hall_light_north",
+      "type": "primitive",
+      "primitive": "sphere",
+      "position": [
+        0,
+        3.05,
+        -30.8
+      ],
+      "scale": [
+        0.24,
+        0.24,
+        0.24
+      ],
+      "collider": false,
+      "material": {
+        "color": "#d8e0f2",
+        "emissiveColor": "#d8e0f2",
+        "emissiveIntensity": 0.55,
+        "roughness": 0.28,
+        "metalness": 0.06
+      }
+    },
+    {
+      "id": "hallway_banner_left",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -5.16,
+        2.25,
+        -23.6
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        2.2,
+        1.4,
+        1
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Coming Soon",
+        "title": "Coming Soon",
+        "description": "A future room is being prepared here.",
+        "tags": [
+          "Preview"
+        ]
+      },
+      "material": {
+        "color": "#c9b69a",
+        "roughness": 0.78,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "hallway_banner_right",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        5.16,
+        2.25,
+        -23.6
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        2.2,
+        1.4,
+        1
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Coming Soon",
+        "title": "Coming Soon",
+        "description": "A future room is being prepared here.",
+        "tags": [
+          "Preview"
+        ]
+      },
+      "material": {
+        "color": "#b7c7d7",
+        "roughness": 0.78,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "hallway_waypoint_ring",
+      "type": "primitive",
+      "primitive": "torus",
+      "position": [
+        0,
+        1.85,
+        -24.9
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        0.08
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#d4c39c",
+        "emissiveColor": "#d4c39c",
+        "emissiveIntensity": 0.34,
+        "roughness": 0.52,
+        "metalness": 0.18
+      }
+    },
+    {
+      "id": "hallway_bench_center",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        0,
+        0.34,
+        -27.15
+      ],
+      "scale": [
+        2.8,
+        0.68,
+        1.08
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#4d4740",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          1
+        ],
+        "roughness": 0.83,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "hallway_light_rail_left",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -4.65,
+        2.6,
+        -27.1
+      ],
+      "scale": [
+        0.18,
+        1.5,
+        4.2
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#d7c9ad",
+        "emissiveColor": "#d7c9ad",
+        "emissiveIntensity": 0.32,
+        "roughness": 0.34,
+        "metalness": 0.12
+      }
+    },
+    {
+      "id": "hallway_light_rail_right",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        4.65,
+        2.6,
+        -27.1
+      ],
+      "scale": [
+        0.18,
+        1.5,
+        4.2
+      ],
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#c6d4df",
+        "emissiveColor": "#c6d4df",
+        "emissiveIntensity": 0.3,
+        "roughness": 0.34,
+        "metalness": 0.12
+      }
+    },
+    {
+      "id": "hallway_planter_left",
+      "type": "model",
+      "model": "/assets/models/props/lobby_planter.glb",
+      "position": [
+        -4.3,
+        0,
+        -29
+      ],
+      "rotation": [
+        0,
+        24,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "modelFallback": "cylinder",
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true
+    },
+    {
+      "id": "hallway_planter_right",
+      "type": "model",
+      "model": "/assets/models/props/lobby_planter.glb",
+      "position": [
+        4.3,
+        0,
+        -29
+      ],
+      "rotation": [
+        0,
+        -24,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "modelFallback": "cylinder",
+      "moduleId": "hallway-core",
+      "initiallyHidden": true,
+      "deferLoad": true
+    },
+    {
+      "id": "west_gallery_plinth",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -9.6,
+        0.55,
+        -28.2
+      ],
+      "scale": [
+        2.6,
+        1.1,
+        2
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Coming Soon",
+        "title": "Coming Soon",
+        "description": "This space is reserved for a future reveal.",
+        "tags": [
+          "Preview"
+        ]
+      },
+      "material": {
+        "color": "#5b5248",
+        "roughness": 0.86,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "west_gallery_frame",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -13.72,
+        2.3,
+        -28.2
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        2.5,
+        1.6,
+        1
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#bda98a",
+        "roughness": 0.72,
+        "metalness": 0.1
+      }
+    },
+    {
+      "id": "west_gallery_frame_north",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -9.6,
+        2.3,
+        -32.72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        3.2,
+        1.65,
+        1
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#d9cbb2",
+        "roughness": 0.74,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "west_gallery_pillar_south",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -6.7,
+        1.55,
+        -26.05
+      ],
+      "scale": [
+        0.68,
+        3.1,
+        0.68
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#5a5248",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          2
+        ],
+        "roughness": 0.84,
+        "metalness": 0.06
+      }
+    },
+    {
+      "id": "west_gallery_pillar_north",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -6.7,
+        1.55,
+        -30.35
+      ],
+      "scale": [
+        0.68,
+        3.1,
+        0.68
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#5a5248",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          2
+        ],
+        "roughness": 0.84,
+        "metalness": 0.06
+      }
+    },
+    {
+      "id": "west_gallery_planter_corner",
+      "type": "model",
+      "model": "/assets/models/props/lobby_planter.glb",
+      "position": [
+        -12.4,
+        0,
+        -30.7
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "modelFallback": "cylinder",
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true
+    },
+    {
+      "id": "west_gallery_light_frame",
+      "type": "primitive",
+      "primitive": "torus",
+      "position": [
+        -9.6,
+        2.35,
+        -28.2
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1.08,
+        1.08,
+        0.08
+      ],
+      "moduleId": "west-gallery-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#dbc8a7",
+        "emissiveColor": "#dbc8a7",
+        "emissiveIntensity": 0.28,
+        "roughness": 0.48,
+        "metalness": 0.18
+      }
+    },
+    {
+      "id": "east_media_console",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        9.6,
+        0.55,
+        -28.2
+      ],
+      "scale": [
+        2.6,
+        1.1,
+        2
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Coming Soon",
+        "title": "Coming Soon",
+        "description": "This space is reserved for a future reveal.",
+        "tags": [
+          "Preview"
+        ]
+      },
+      "material": {
+        "color": "#495561",
+        "roughness": 0.84,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "east_media_frame",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        13.72,
+        2.3,
+        -28.2
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        2.5,
+        1.6,
+        1
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#9eb6c9",
+        "roughness": 0.72,
+        "metalness": 0.1
+      }
+    },
+    {
+      "id": "east_media_frame_north",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        9.6,
+        2.3,
+        -32.72
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        3.2,
+        1.65,
+        1
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#c9d8e4",
+        "roughness": 0.74,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "east_media_bench",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        9.6,
+        0.32,
+        -30.6
+      ],
+      "scale": [
+        2.9,
+        0.64,
+        0.92
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#49525a",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          1
+        ],
+        "roughness": 0.82,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "east_media_planter_corner",
+      "type": "model",
+      "model": "/assets/models/props/lobby_planter.glb",
+      "position": [
+        12.4,
+        0,
+        -30.7
+      ],
+      "rotation": [
+        0,
+        -45,
+        0
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "modelFallback": "cylinder",
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true
+    },
+    {
+      "id": "east_media_light_frame",
+      "type": "primitive",
+      "primitive": "torus",
+      "position": [
+        9.6,
+        2.35,
+        -28.2
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1.08,
+        1.08,
+        0.08
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#b8d2e0",
+        "emissiveColor": "#b8d2e0",
+        "emissiveIntensity": 0.28,
+        "roughness": 0.48,
+        "metalness": 0.18
+      }
+    },
+    {
+      "id": "east_media_ceiling_bar",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        9.6,
+        3.42,
+        -28.2
+      ],
+      "scale": [
+        3.6,
+        0.12,
+        0.32
+      ],
+      "moduleId": "east-media-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#dce8ef",
+        "emissiveColor": "#dce8ef",
+        "emissiveIntensity": 0.24,
+        "roughness": 0.3,
+        "metalness": 0.12
+      }
+    },
+    {
+      "id": "north_chamber_dais",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        0,
+        0.48,
+        -37.2
+      ],
+      "scale": [
+        3.2,
+        0.96,
+        3.2
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#4a4642",
+        "roughness": 0.88,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "north_chamber_ring",
+      "type": "primitive",
+      "primitive": "torus",
+      "position": [
+        0,
+        2,
+        -37.2
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1.2,
+        1.2,
+        0.09
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#ccb789",
+        "emissiveColor": "#ccb789",
+        "emissiveIntensity": 0.38,
+        "roughness": 0.54,
+        "metalness": 0.22
+      }
+    },
+    {
+      "id": "north_chamber_banner",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        0,
+        2.35,
+        -41.55
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4.2,
+        1.85,
+        1
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Coming Soon",
+        "title": "Coming Soon",
+        "description": "The end chamber is reserved for a future reveal.",
+        "tags": [
+          "Preview"
+        ]
+      },
+      "material": {
+        "color": "#d6c29b",
+        "roughness": 0.7,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "north_chamber_obelisk_left",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -3.3,
+        1.65,
+        -37.2
+      ],
+      "scale": [
+        0.9,
+        3.3,
+        0.9
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#585149",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          2
+        ],
+        "roughness": 0.82,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "north_chamber_obelisk_right",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        3.3,
+        1.65,
+        -37.2
+      ],
+      "scale": [
+        0.9,
+        3.3,
+        0.9
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "material": {
+        "color": "#585149",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          2
+        ],
+        "roughness": 0.82,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "north_chamber_halo",
+      "type": "primitive",
+      "primitive": "torus",
+      "position": [
+        0,
+        3.48,
+        -37.2
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1.65,
+        1.65,
+        0.08
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#e0cfaa",
+        "emissiveColor": "#e0cfaa",
+        "emissiveIntensity": 0.36,
+        "roughness": 0.42,
+        "metalness": 0.2
+      }
+    },
+    {
+      "id": "north_chamber_backlight",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        0,
+        2.3,
+        -41.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        4.7,
+        2.3,
+        1
+      ],
+      "moduleId": "north-chamber-core",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#b29e79",
+        "emissiveColor": "#b29e79",
+        "emissiveIntensity": 0.14,
+        "roughness": 0.62,
+        "metalness": 0.06,
+        "opacity": 0.92
       }
     },
     {
@@ -938,6 +2004,44 @@
       }
     }
   ],
+  "moduleTriggers": [
+    {
+      "id": "hallway-core-trigger",
+      "zoneId": "rear_hall_entry_zone",
+      "moduleIds": [
+        "hallway-core"
+      ],
+      "visible": true,
+      "exitVisible": false
+    },
+    {
+      "id": "west-gallery-trigger",
+      "zoneId": "rear_west_gallery_zone",
+      "moduleIds": [
+        "west-gallery-core"
+      ],
+      "visible": true,
+      "exitVisible": false
+    },
+    {
+      "id": "east-media-trigger",
+      "zoneId": "rear_east_media_zone",
+      "moduleIds": [
+        "east-media-core"
+      ],
+      "visible": true,
+      "exitVisible": false
+    },
+    {
+      "id": "north-chamber-trigger",
+      "zoneId": "rear_north_chamber_zone",
+      "moduleIds": [
+        "north-chamber-core"
+      ],
+      "visible": true,
+      "exitVisible": false
+    }
+  ],
   "secretUnlocks": [
     {
       "id": "east_archive_annex",
@@ -1009,6 +2113,62 @@
         14,
         1,
         10
+      ]
+    },
+    {
+      "id": "rear_hall_entry_zone",
+      "shape": "box",
+      "position": [
+        0,
+        1.7,
+        -21
+      ],
+      "size": [
+        10.4,
+        4,
+        6.8
+      ]
+    },
+    {
+      "id": "rear_west_gallery_zone",
+      "shape": "box",
+      "position": [
+        -9.6,
+        1.7,
+        -28.2
+      ],
+      "size": [
+        8,
+        4,
+        8.8
+      ]
+    },
+    {
+      "id": "rear_east_media_zone",
+      "shape": "box",
+      "position": [
+        9.6,
+        1.7,
+        -28.2
+      ],
+      "size": [
+        8,
+        4,
+        8.8
+      ]
+    },
+    {
+      "id": "rear_north_chamber_zone",
+      "shape": "box",
+      "position": [
+        0,
+        1.7,
+        -37.2
+      ],
+      "size": [
+        9.8,
+        4,
+        8.2
       ]
     },
     {

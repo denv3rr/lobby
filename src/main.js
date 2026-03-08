@@ -734,6 +734,71 @@ function normalizeSecretUnlocks(rawUnlocks, zones, unlockedIdSet) {
   return normalized;
 }
 
+function normalizeModuleTriggerIds(value) {
+  const source = Array.isArray(value) ? value : value ? [value] : [];
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of source) {
+    const id = typeof entry === "string" ? entry.trim() : "";
+    if (!id || seen.has(id)) {
+      continue;
+    }
+    seen.add(id);
+    normalized.push(id);
+  }
+  return normalized;
+}
+
+function normalizeModuleTriggers(rawTriggers, zones) {
+  // Rear-hall staging uses generic public labels in-scene, so module ids remain the stable
+  // internal handles for future agents to identify which hidden space each trigger controls.
+  const normalized = [];
+  const seen = new Set();
+  for (const entry of Array.isArray(rawTriggers) ? rawTriggers : []) {
+    if (!isObject(entry)) {
+      continue;
+    }
+
+    const zoneId = typeof entry.zoneId === "string" ? entry.zoneId.trim() : "";
+    const zone = findZoneById(zones, zoneId);
+    const moduleIds = normalizeModuleTriggerIds(
+      entry.moduleIds || entry.moduleId || entry.modules
+    );
+    if (!zone || !moduleIds.length) {
+      continue;
+    }
+
+    const id =
+      typeof entry.id === "string" && entry.id.trim()
+        ? entry.id.trim()
+        : `${zoneId}:${moduleIds.join(",")}`;
+    if (!id || seen.has(id)) {
+      continue;
+    }
+
+    normalized.push({
+      id,
+      zoneId,
+      zone,
+      moduleIds,
+      enterVisible: entry.visible !== false,
+      exitVisible:
+        entry.exitVisible == null ? null : Boolean(entry.exitVisible),
+      message:
+        typeof entry.message === "string" && entry.message.trim() ? entry.message.trim() : "",
+      exitMessage:
+        typeof entry.exitMessage === "string" && entry.exitMessage.trim()
+          ? entry.exitMessage.trim()
+          : "",
+      once: entry.once === true,
+      active: true,
+      wasInside: false
+    });
+    seen.add(id);
+  }
+  return normalized;
+}
+
 function normalizeThemeEntries(entries, themesConfig) {
   const seen = new Set();
   const output = [];
@@ -854,6 +919,7 @@ async function boot() {
   const centerArtifactPrimaryColor = new THREE.Color("#ffffff");
   const centerArtifactSecondaryColor = new THREE.Color("#ffffff");
   let secretUnlocks = [];
+  let moduleTriggers = [];
   const secretUnlockedIds = new Set(getUnlockedSecretIds());
 
   function getMixedAmbientMap() {
@@ -1298,6 +1364,38 @@ async function boot() {
     }
   }
 
+  function updateModuleTriggers() {
+    if (!moduleTriggers.length || !sceneContext?.player?.position) {
+      return;
+    }
+
+    for (const trigger of moduleTriggers) {
+      if (trigger.active === false) {
+        continue;
+      }
+
+      const inside = isPositionInsideBoxZone(trigger.zone, sceneContext.player.position);
+      if (inside && !trigger.wasInside) {
+        const updated =
+          sceneContext?.setPropModulesVisible?.(trigger.moduleIds, trigger.enterVisible) || [];
+        if (updated.length && trigger.message) {
+          showTransientPrompt(trigger.message);
+        }
+        if (trigger.once) {
+          trigger.active = false;
+        }
+      } else if (!inside && trigger.wasInside && trigger.exitVisible != null) {
+        const updated =
+          sceneContext?.setPropModulesVisible?.(trigger.moduleIds, trigger.exitVisible) || [];
+        if (updated.length && trigger.exitMessage) {
+          showTransientPrompt(trigger.exitMessage);
+        }
+      }
+
+      trigger.wasInside = inside;
+    }
+  }
+
   async function tryEnableAudioFromInteraction() {
     if (audioReady || !audioSystem) {
       return audioReady;
@@ -1456,6 +1554,10 @@ async function boot() {
     sceneContext?.zones || sceneConfig?.zones || [],
     secretUnlockedIds
   );
+  moduleTriggers = normalizeModuleTriggers(
+    sceneConfig.moduleTriggers,
+    sceneContext?.zones || sceneConfig?.zones || []
+  );
   ui.setLoadingState({
     message: "Linking portals and systems."
   });
@@ -1519,7 +1621,8 @@ async function boot() {
     catalogFeeds,
     domElement: rendererContext.renderer.domElement,
     qualityProfile,
-    wallMaterialSource: sceneContext.roomMaterials?.wall || null
+    wallMaterialSource: sceneContext.roomMaterials?.wall || null,
+    floorMaterialSource: sceneContext.roomMaterials?.floor || null
   });
   let catalogReady = false;
   const catalogInitPromise = catalogSystem
@@ -1703,6 +1806,13 @@ async function boot() {
         : null,
       props: propStats,
       modules: moduleStates,
+      moduleTriggers: moduleTriggers.map((entry) => ({
+        id: entry.id,
+        zoneId: entry.zoneId,
+        moduleIds: [...entry.moduleIds],
+        wasInside: entry.wasInside,
+        active: entry.active !== false
+      })),
       themeParticles: themeSystem?.particles?.effect
         ? {
             type: themeSystem.particles.effect.type || null,
@@ -1812,6 +1922,7 @@ async function boot() {
     }
     updateCenterArtifact(elapsed);
     updateSecretUnlocks(performance.now());
+    updateModuleTriggers();
 
     const surface = getSurfaceAtPosition(sceneContext.zones, sceneContext.player.position);
     audioSystem?.setSurface(surface);

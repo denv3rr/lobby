@@ -670,6 +670,31 @@ function createProtectedFloorplanZones({
     });
   }
 
+  const rearEntrance = roomConfig.rearEntrance || {};
+  if (rearEntrance.enabled) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      rearEntrance.width ?? 5.2,
+      1.6,
+      Math.max(1.6, width - 1.6)
+    );
+    const centerX = THREE.MathUtils.clamp(
+      rearEntrance.centerX ?? 0,
+      -width * 0.5 + doorwayWidth * 0.5 + 0.4,
+      width * 0.5 - doorwayWidth * 0.5 - 0.4
+    );
+    const pathHalfWidth = Math.max(doorwayWidth * 0.5 + 1.2, floorplanSafety.rearPathHalfWidth ?? 3.2);
+    const pathEndZ = -depth * 0.5 + 0.8;
+    const pathDepth = Math.max(8, floorplanSafety.rearPathDepth ?? 16);
+
+    zones.push({
+      id: "rear-hall-path-clearance",
+      minX: centerX - pathHalfWidth,
+      maxX: centerX + pathHalfWidth,
+      minZ: pathEndZ - pathDepth,
+      maxZ: pathEndZ
+    });
+  }
+
   const protectedZonePattern = /(outdoor|courtyard|front[_-]?yard|plaza)/i;
   const sceneZones = Array.isArray(sceneConfig?.zones) ? sceneConfig.zones : [];
   for (const zone of sceneZones) {
@@ -884,6 +909,28 @@ function createPropSafetyZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneC
     });
   }
 
+  const rearEntrance = roomConfig.rearEntrance || {};
+  if (rearEntrance.enabled) {
+    const doorwayWidth = THREE.MathUtils.clamp(
+      rearEntrance.width ?? 5.2,
+      1.6,
+      Math.max(1.6, width - 1.6)
+    );
+    const centerX = THREE.MathUtils.clamp(
+      rearEntrance.centerX ?? 0,
+      -width * 0.5 + doorwayWidth * 0.5 + 0.4,
+      width * 0.5 - doorwayWidth * 0.5 - 0.4
+    );
+    zones.push({
+      id: "rear-entrance",
+      kind: "doorway",
+      minX: centerX - doorwayWidth * 0.5 - 1.05,
+      maxX: centerX + doorwayWidth * 0.5 + 1.05,
+      minZ: -depth * 0.5 - 1,
+      maxZ: -depth * 0.5 + 2.4
+    });
+  }
+
   for (const portal of Array.isArray(sceneConfig?.portals) ? sceneConfig.portals : []) {
     const [px, py, pz] = portal.position || [0, 0, 0];
     const [sx, sy, sz] = portal.size || [2.2, 2.8, 0.4];
@@ -1033,18 +1080,96 @@ export async function loadScene({
   ceiling.position.y = floorY + height;
   roomGroup.add(ceiling);
 
-  const northWall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), wallMaterial);
-  northWall.position.set(0, floorY + height * 0.5, -depth * 0.5);
-  roomGroup.add(northWall);
-  addColliderRect({
-    centerX: 0,
-    centerZ: -depth * 0.5,
-    sizeX: width,
-    sizeZ: wallThickness,
-    minY: floorY + 0.02,
-    maxY: floorY + height - 0.04,
-    id: "north_wall"
-  });
+  const rearEntrance = roomConfig.rearEntrance || {};
+  const rearEntranceEnabled = Boolean(rearEntrance.enabled);
+  const rearDoorWidth = THREE.MathUtils.clamp(
+    rearEntrance.width ?? 5.2,
+    1.6,
+    Math.max(1.6, width - 1.6)
+  );
+  const rearDoorHeight = THREE.MathUtils.clamp(
+    rearEntrance.height ?? 3.4,
+    2.2,
+    Math.max(2.2, height - 0.4)
+  );
+  const rearDoorCenterX = THREE.MathUtils.clamp(
+    rearEntrance.centerX ?? 0,
+    -width * 0.5 + rearDoorWidth * 0.5 + 0.4,
+    width * 0.5 - rearDoorWidth * 0.5 - 0.4
+  );
+
+  if (!rearEntranceEnabled) {
+    const northWall = new THREE.Mesh(new THREE.PlaneGeometry(width, height), wallMaterial);
+    northWall.position.set(0, floorY + height * 0.5, -depth * 0.5);
+    roomGroup.add(northWall);
+    addColliderRect({
+      centerX: 0,
+      centerZ: -depth * 0.5,
+      sizeX: width,
+      sizeZ: wallThickness,
+      minY: floorY + 0.02,
+      maxY: floorY + height - 0.04,
+      id: "north_wall"
+    });
+  } else {
+    const topHeight = Math.max(0.2, height - rearDoorHeight);
+    const leftWidth = Math.max(
+      0.2,
+      rearDoorCenterX - rearDoorWidth * 0.5 - (-width * 0.5)
+    );
+    const rightWidth = Math.max(
+      0.2,
+      width * 0.5 - (rearDoorCenterX + rearDoorWidth * 0.5)
+    );
+
+    const topSegment = new THREE.Mesh(
+      new THREE.PlaneGeometry(width, topHeight),
+      wallMaterial
+    );
+    topSegment.position.set(0, floorY + rearDoorHeight + topHeight * 0.5, -depth * 0.5);
+    roomGroup.add(topSegment);
+
+    const leftSegment = new THREE.Mesh(
+      new THREE.PlaneGeometry(leftWidth, rearDoorHeight),
+      wallMaterial
+    );
+    leftSegment.position.set(
+      -width * 0.5 + leftWidth * 0.5,
+      floorY + rearDoorHeight * 0.5,
+      -depth * 0.5
+    );
+    roomGroup.add(leftSegment);
+
+    const rightSegment = new THREE.Mesh(
+      new THREE.PlaneGeometry(rightWidth, rearDoorHeight),
+      wallMaterial
+    );
+    rightSegment.position.set(
+      rearDoorCenterX + rearDoorWidth * 0.5 + rightWidth * 0.5,
+      floorY + rearDoorHeight * 0.5,
+      -depth * 0.5
+    );
+    roomGroup.add(rightSegment);
+
+    addColliderRect({
+      centerX: -width * 0.5 + leftWidth * 0.5,
+      centerZ: -depth * 0.5,
+      sizeX: leftWidth,
+      sizeZ: wallThickness,
+      minY: floorY + 0.02,
+      maxY: floorY + rearDoorHeight - 0.02,
+      id: "north_wall_left"
+    });
+    addColliderRect({
+      centerX: rearDoorCenterX + rearDoorWidth * 0.5 + rightWidth * 0.5,
+      centerZ: -depth * 0.5,
+      sizeX: rightWidth,
+      sizeZ: wallThickness,
+      minY: floorY + 0.02,
+      maxY: floorY + rearDoorHeight - 0.02,
+      id: "north_wall_right"
+    });
+  }
 
   const frontEntrance = roomConfig.frontEntrance || {};
   const frontEntranceEnabled = Boolean(frontEntrance.enabled);
@@ -1641,11 +1766,13 @@ export async function loadScene({
   }
 
   const propRecords = [];
+  const propRecordsById = new Map();
   const propInteractionTargets = [];
   const propModules = new Map();
   const animatedTextures = [];
   const dynamicProps = [];
   const visibilityEntries = [];
+  let activePropMaterialOverrideIds = new Set();
   let glowLightCount = 0;
   const maxGlowLights = Number.isFinite(qualityProfile?.sceneGlowLightBudget)
     ? Math.max(0, Number(qualityProfile.sceneGlowLightBudget))
@@ -1826,6 +1953,22 @@ export async function loadScene({
     return true;
   }
 
+  function getOrCreateModuleRecord(moduleId, initialVisible = true) {
+    let record = propModules.get(moduleId);
+    if (!record) {
+      record = {
+        id: moduleId,
+        visible: initialVisible,
+        members: [],
+        deferredEntries: []
+      };
+      propModules.set(moduleId, record);
+    } else if (!initialVisible) {
+      record.visible = false;
+    }
+    return record;
+  }
+
   function syncModuleMemberVisibility(member) {
     if (!member) {
       return false;
@@ -1863,22 +2006,75 @@ export async function loadScene({
 
     member.moduleIds = ids;
     for (const moduleId of ids) {
-      let record = propModules.get(moduleId);
-      if (!record) {
-        record = {
-          id: moduleId,
-          visible: initialVisible,
-          members: []
-        };
-        propModules.set(moduleId, record);
-      } else if (!initialVisible) {
-        record.visible = false;
-      }
+      const record = getOrCreateModuleRecord(moduleId, initialVisible);
       record.members.push(member);
     }
     syncModuleMemberVisibility(member);
     syncModuleColliderVisibility();
     return ids;
+  }
+
+  function registerDeferredModuleProp(moduleIds, entry, initialVisible = false) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length || !entry) {
+      return ids;
+    }
+
+    entry.moduleIds = ids;
+    entry.status = "queued";
+    entry.promise = null;
+    for (const moduleId of ids) {
+      const record = getOrCreateModuleRecord(moduleId, initialVisible);
+      record.deferredEntries.push(entry);
+    }
+    return ids;
+  }
+
+  function instantiateDeferredModuleEntry(entry) {
+    if (!entry || entry.status === "loaded" || entry.status === "loading" || entry.status === "failed") {
+      return entry?.promise || null;
+    }
+
+    entry.status = "loading";
+    entry.promise = instantiateProp(entry.prop, entry.tag, {
+      shouldCancel: entry.shouldCancel,
+      skipDeferred: true
+    })
+      .then((result) => {
+        entry.status = result ? "loaded" : "failed";
+        entry.promise = null;
+        return result;
+      })
+      .catch((error) => {
+        entry.status = "failed";
+        entry.promise = null;
+        console.error(`[sceneLoader] Deferred module prop failed: ${entry?.prop?.id || "unnamed"}`, error);
+        return null;
+      });
+
+    return entry.promise;
+  }
+
+  function ensureDeferredModuleMembersLoaded(moduleIds) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length) {
+      return;
+    }
+
+    const touchedEntries = new Set();
+    for (const moduleId of ids) {
+      const record = propModules.get(moduleId);
+      if (!record?.deferredEntries?.length) {
+        continue;
+      }
+      for (const entry of record.deferredEntries) {
+        touchedEntries.add(entry);
+      }
+    }
+
+    for (const entry of touchedEntries) {
+      instantiateDeferredModuleEntry(entry);
+    }
   }
 
   function setPropModulesVisible(moduleIds, visible) {
@@ -1890,24 +2086,21 @@ export async function loadScene({
     const touchedMembers = new Set();
     const updated = [];
     for (const moduleId of ids) {
-      let record = propModules.get(moduleId);
-      if (!record) {
-        record = {
-          id: moduleId,
-          visible: Boolean(visible),
-          members: []
-        };
-        propModules.set(moduleId, record);
-      }
+      const record = getOrCreateModuleRecord(moduleId, Boolean(visible));
       record.visible = Boolean(visible);
       updated.push({
         id: moduleId,
         visible: record.visible,
-        memberCount: record.members.length
+        memberCount: record.members.length,
+        deferredCount: record.deferredEntries?.filter((entry) => entry?.status !== "loaded").length || 0
       });
       for (const member of record.members) {
         touchedMembers.add(member);
       }
+    }
+
+    if (visible) {
+      ensureDeferredModuleMembersLoaded(ids);
     }
 
     for (const member of touchedMembers) {
@@ -1936,13 +2129,15 @@ export async function loadScene({
       return {
         id,
         visible: true,
-        memberCount: 0
+        memberCount: 0,
+        deferredCount: 0
       };
     }
     return {
       id,
       visible: record.visible !== false,
-      memberCount: record.members.length
+      memberCount: record.members.length,
+      deferredCount: record.deferredEntries?.filter((entry) => entry?.status !== "loaded").length || 0
     };
   }
 
@@ -1950,7 +2145,8 @@ export async function loadScene({
     return [...propModules.values()].map((record) => ({
       id: record.id,
       visible: record.visible !== false,
-      memberCount: record.members.length
+      memberCount: record.members.length,
+      deferredCount: record.deferredEntries?.filter((entry) => entry?.status !== "loaded").length || 0
     }));
   }
 
@@ -2203,7 +2399,18 @@ export async function loadScene({
   async function instantiateProp(prop, tag = "base", options = {}) {
     const shouldCancel =
       typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
+    const skipDeferred = options.skipDeferred === true;
     if (shouldCancel()) {
+      return null;
+    }
+
+    const moduleIds = normalizeModuleIds(prop.moduleIds || prop.moduleId || prop.modules);
+    if (!skipDeferred && moduleIds.length && prop.initiallyHidden && prop.deferLoad === true) {
+      registerDeferredModuleProp(moduleIds, {
+        prop: cloneConfig(prop),
+        tag,
+        shouldCancel
+      });
       return null;
     }
 
@@ -2212,6 +2419,9 @@ export async function loadScene({
     wrapper.userData.themeTag = tag;
     wrapper.userData.billboard = Boolean(prop.billboard);
     wrapper.userData.billboardAxis = prop.billboardAxis || "all";
+    wrapper.userData.propId = prop.id || "";
+    wrapper.userData.baseMaterialConfig = cloneConfig(prop.material || {});
+    wrapper.userData.materialManaged = prop.type !== "model";
     wrapper.position.copy(toVector3(prop.position || [0, 0, 0]));
     wrapper.rotation.set(
       degToRad(prop.rotation?.[0] || 0),
@@ -2270,7 +2480,9 @@ export async function loadScene({
     scene.add(wrapper);
     wrapper.updateMatrixWorld(true);
     propRecords.push(wrapper);
-    const moduleIds = normalizeModuleIds(prop.moduleIds || prop.moduleId || prop.modules);
+    if (wrapper.userData.propId) {
+      propRecordsById.set(wrapper.userData.propId, wrapper);
+    }
     const initialModuleVisible = !prop.initiallyHidden;
     registerPropCollider(wrapper, prop, tag, moduleIds);
     const interactionTarget = createPropInteractionTarget(wrapper, prop, tag);
@@ -2336,11 +2548,66 @@ export async function loadScene({
     return created;
   }
 
+  async function applyPropMaterialConfig(wrapper, materialConfig = null) {
+    if (!wrapper?.userData?.materialManaged) {
+      return false;
+    }
+
+    const resolvedConfig = cloneConfig(materialConfig || wrapper.userData.baseMaterialConfig || {});
+    const tasks = [];
+    wrapper.traverse((child) => {
+      if (!child?.isMesh || !child.userData?.disposeManagedResources) {
+        return;
+      }
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material?.isMaterial) {
+          continue;
+        }
+        tasks.push(applyPrimitiveMaterial(material, resolvedConfig, cache, animatedTextures, wrapper));
+      }
+    });
+
+    if (!tasks.length) {
+      return false;
+    }
+    await Promise.all(tasks);
+    return true;
+  }
+
+  async function applyPropMaterialOverrides(overrides = null) {
+    const normalizedOverrides = isObject(overrides) ? overrides : {};
+    const nextIds = new Set(Object.keys(normalizedOverrides));
+    const affectedIds = new Set([...activePropMaterialOverrideIds, ...nextIds]);
+
+    for (const propId of affectedIds) {
+      const wrapper = propRecordsById.get(propId);
+      if (!wrapper) {
+        continue;
+      }
+      const baseConfig = wrapper.userData?.baseMaterialConfig || {};
+      const overrideConfig = normalizedOverrides[propId];
+      const mergedConfig = isObject(overrideConfig)
+        ? {
+            ...cloneConfig(baseConfig),
+            ...cloneConfig(overrideConfig)
+          }
+        : baseConfig;
+      await applyPropMaterialConfig(wrapper, mergedConfig);
+    }
+
+    activePropMaterialOverrideIds = nextIds;
+  }
+
   function removePropsByTag(tag) {
     removeCollidersByTag(tag);
     for (let i = propRecords.length - 1; i >= 0; i -= 1) {
       const item = propRecords[i];
       if (item.userData.themeTag === tag) {
+        if (item.userData?.propId) {
+          propRecordsById.delete(item.userData.propId);
+          activePropMaterialOverrideIds.delete(item.userData.propId);
+        }
         item.traverse((child) => {
           if (child.isPointLight && child.userData?.fromPropGlow) {
             glowLightCount = Math.max(0, glowLightCount - 1);
@@ -2372,8 +2639,14 @@ export async function loadScene({
         }
         for (const [moduleId, record] of propModules.entries()) {
           record.members = record.members.filter((member) => member.object !== item);
+          record.deferredEntries = (record.deferredEntries || []).filter(
+            (entry) => entry?.prop?.id !== item.userData?.propId
+          );
           if (!record.members.length) {
-            propModules.delete(moduleId);
+            const hasDeferredEntries = Array.isArray(record.deferredEntries) && record.deferredEntries.length;
+            if (!hasDeferredEntries) {
+              propModules.delete(moduleId);
+            }
           }
         }
       }
@@ -2464,6 +2737,7 @@ export async function loadScene({
       floorplan: cloneConfig(floorplanBaseConfig || {}),
       sideDoorways: cloneConfig(roomConfig.sideDoorways || {}),
       frontEntrance: cloneConfig(roomConfig.frontEntrance || {}),
+      rearEntrance: cloneConfig(roomConfig.rearEntrance || {}),
       wallMaterial: cloneMaterialConfig(roomConfig.wallMaterial || {}),
       floorMaterial: cloneMaterialConfig(roomConfig.floorMaterial || {}),
       ceilingMaterial: cloneMaterialConfig(roomConfig.ceilingMaterial || {})
@@ -2491,6 +2765,7 @@ export async function loadScene({
     resetThemeFloorplan,
     addProps,
     removePropsByTag,
+    applyPropMaterialOverrides,
     setPropModulesVisible,
     togglePropModulesVisible,
     getPropModuleState,

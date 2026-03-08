@@ -318,6 +318,23 @@ function createSharedWallMaterial(sourceMaterial, fallbackColor) {
   });
 }
 
+function createSharedFloorMaterial(sourceMaterial, fallbackColor) {
+  if (sourceMaterial?.isMaterial) {
+    const clone = sourceMaterial.clone();
+    clone.side = THREE.DoubleSide;
+    return clone;
+  }
+
+  const resolvedColor =
+    fallbackColor?.isColor === true ? fallbackColor.clone() : toColor(fallbackColor, "#777777");
+  return new THREE.MeshStandardMaterial({
+    color: resolvedColor,
+    roughness: 0.9,
+    metalness: 0.05,
+    side: THREE.DoubleSide
+  });
+}
+
 function normalizeFilter(filter = {}) {
   return {
     itemIds: Array.isArray(filter.itemIds) ? filter.itemIds : [],
@@ -361,7 +378,8 @@ export class CatalogRoomSystem {
     catalogFeeds,
     domElement,
     qualityProfile = null,
-    wallMaterialSource = null
+    wallMaterialSource = null,
+    floorMaterialSource = null
   }) {
     this.scene = scene;
     this.cache = cache;
@@ -374,6 +392,7 @@ export class CatalogRoomSystem {
     this.domElement = domElement || window;
     this.qualityProfile = qualityProfile || { quality: "medium" };
     this.wallMaterialSource = wallMaterialSource || null;
+    this.floorMaterialSource = floorMaterialSource || null;
     this.activeThemeName = null;
     this.root = new THREE.Group();
     this.root.name = "CatalogRooms";
@@ -1617,15 +1636,7 @@ export class CatalogRoomSystem {
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(width, depth),
-      new SurfaceMaterial({
-        color: wallColor.clone().offsetHSL(0, 0, -0.07),
-        ...(basicMode
-          ? {}
-          : {
-              roughness: 0.92,
-              metalness: 0.03
-            })
-      })
+      createSharedFloorMaterial(this.floorMaterialSource, wallColor.clone().offsetHSL(0, 0, -0.07))
     );
     floor.rotation.x = -Math.PI * 0.5;
     floor.receiveShadow = true;
@@ -2192,11 +2203,18 @@ export class CatalogRoomSystem {
       return;
     }
 
-    this.activeThemeName = themeName || "default";
+    const nextThemeName = themeName || "default";
+    const themeChanged = this.activeThemeName !== nextThemeName;
+    this.activeThemeName = nextThemeName;
     const token = ++this.applyToken;
     const themeSpec = this.getThemeSpec(this.activeThemeName);
     const roomIds = this.getConfiguredRoomIds();
     const activeRoomIds = new Set(roomIds);
+    if (themeChanged) {
+      for (const existingRoomId of [...this.roomNodes.keys()]) {
+        this.removeRoom(existingRoomId);
+      }
+    }
     for (const existingRoomId of [...this.roomNodes.keys()]) {
       if (!activeRoomIds.has(existingRoomId)) {
         this.removeRoom(existingRoomId);

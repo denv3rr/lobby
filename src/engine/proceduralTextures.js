@@ -120,6 +120,76 @@ function createConcrete() {
   return canvas;
 }
 
+function createDirt() {
+  const size = 512;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, "#6f5a41");
+  gradient.addColorStop(0.55, "#5b4732");
+  gradient.addColorStop(1, "#473724");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  drawNoise(ctx, size, 0.18);
+
+  ctx.globalAlpha = 0.32;
+  for (let i = 0; i < 180; i += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 10 + 2;
+    ctx.fillStyle = i % 3 === 0 ? "#7f684b" : i % 2 === 0 ? "#4f3d28" : "#8d7657";
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+  return canvas;
+}
+
+function createGrass() {
+  const size = 512;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, "#59724f");
+  gradient.addColorStop(0.5, "#44613f");
+  gradient.addColorStop(1, "#344d31");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  drawNoise(ctx, size, 0.12);
+
+  ctx.globalAlpha = 0.38;
+  ctx.strokeStyle = "#7ba267";
+  ctx.lineWidth = 2;
+  for (let i = 0; i < 320; i += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const height = Math.random() * 12 + 4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.random() * 4 - 2, y - height);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#2d4129";
+  ctx.globalAlpha = 0.18;
+  for (let i = 0; i < 140; i += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const width = Math.random() * 10 + 4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width, y + Math.random() * 6 - 3);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  return canvas;
+}
+
 function createMarble() {
   const size = 512;
   const canvas = createCanvas(size);
@@ -395,6 +465,10 @@ export function createProceduralTexture(name) {
     canvas = createCheckerboard();
   } else if (name === "checkerboard-bw") {
     canvas = createCheckerboardBw();
+  } else if (name === "dirt") {
+    canvas = createDirt();
+  } else if (name === "grass") {
+    canvas = createGrass();
   } else if (name === "pompeii-fresco") {
     canvas = createPompeiiFresco();
   } else if (name === "mosaic") {

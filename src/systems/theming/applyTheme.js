@@ -26,6 +26,202 @@ function formatThemeLabel(id) {
     .replace(/\b\w/g, (char) => char.toUpperCase());
 }
 
+const DEFAULT_OUTDOOR_SURFACES_BY_THEME = {
+  lobby: {
+    ground: {
+      color: "#5f6a58",
+      procedural: "grass",
+      textureRepeat: [9, 8],
+      roughness: 0.98,
+      metalness: 0.01
+    },
+    path: {
+      color: "#76624c",
+      procedural: "dirt",
+      textureRepeat: [3, 7],
+      roughness: 0.94,
+      metalness: 0.03
+    },
+    threshold: {
+      color: "#72675b",
+      procedural: "concrete",
+      textureRepeat: [2, 1],
+      roughness: 0.88,
+      metalness: 0.06
+    }
+  },
+  backrooms: {
+    ground: {
+      color: "#777168",
+      procedural: "concrete",
+      textureRepeat: [9, 8],
+      roughness: 0.97,
+      metalness: 0.01
+    },
+    path: {
+      color: "#8f8779",
+      procedural: "concrete",
+      textureRepeat: [3, 7],
+      roughness: 0.92,
+      metalness: 0.04
+    }
+  },
+  roman: {
+    ground: {
+      color: "#6e7958",
+      procedural: "grass",
+      textureRepeat: [9, 8],
+      roughness: 0.97,
+      metalness: 0.01
+    },
+    path: {
+      color: "#b08f67",
+      procedural: "dirt",
+      textureRepeat: [3, 7],
+      roughness: 0.9,
+      metalness: 0.03
+    }
+  },
+  inferno: {
+    ground: {
+      color: "#4b2215",
+      procedural: "dirt",
+      textureRepeat: [9, 8],
+      roughness: 0.95,
+      metalness: 0.02
+    },
+    path: {
+      color: "#6c3120",
+      procedural: "flame",
+      textureRepeat: [3, 7],
+      roughness: 0.82,
+      metalness: 0.04
+    }
+  },
+  purgatory: {
+    ground: {
+      color: "#7f7f74",
+      procedural: "dirt",
+      textureRepeat: [9, 8],
+      roughness: 0.96,
+      metalness: 0.02
+    },
+    path: {
+      color: "#c1c0b2",
+      procedural: "marble",
+      textureRepeat: [3, 7],
+      roughness: 0.9,
+      metalness: 0.03
+    }
+  },
+  neon: {
+    ground: {
+      color: "#1f2629",
+      procedural: "concrete",
+      textureRepeat: [9, 8],
+      roughness: 0.95,
+      metalness: 0.02
+    },
+    path: {
+      color: "#172126",
+      procedural: "neon-grid",
+      textureRepeat: [2, 6],
+      roughness: 0.72,
+      metalness: 0.09
+    }
+  },
+  winter: {
+    ground: {
+      color: "#dfe6ec",
+      procedural: "marble",
+      textureRepeat: [9, 8],
+      roughness: 0.98,
+      metalness: 0.01
+    },
+    path: {
+      color: "#9a9ca2",
+      procedural: "concrete",
+      textureRepeat: [3, 7],
+      roughness: 0.9,
+      metalness: 0.04
+    }
+  },
+  deadmall: {
+    ground: {
+      color: "#5e6456",
+      procedural: "grass",
+      textureRepeat: [9, 8],
+      roughness: 0.97,
+      metalness: 0.01
+    },
+    path: {
+      color: "#6f5d49",
+      procedural: "dirt",
+      textureRepeat: [3, 7],
+      roughness: 0.93,
+      metalness: 0.03
+    }
+  },
+  poolrooms: {
+    ground: {
+      color: "#8cb7c2",
+      procedural: "water",
+      textureRepeat: [8, 7],
+      roughness: 0.42,
+      metalness: 0.08
+    },
+    path: {
+      color: "#c0cbc4",
+      procedural: "concrete",
+      textureRepeat: [3, 7],
+      roughness: 0.88,
+      metalness: 0.05
+    }
+  },
+  stormyard: {
+    ground: {
+      color: "#55625a",
+      procedural: "grass",
+      textureRepeat: [9, 8],
+      roughness: 0.98,
+      metalness: 0.01
+    },
+    path: {
+      color: "#6a5f52",
+      procedural: "dirt",
+      textureRepeat: [3, 7],
+      roughness: 0.94,
+      metalness: 0.03
+    }
+  }
+};
+
+function buildThemePropMaterialOverrides(themeName, theme) {
+  const overrides = isObject(theme?.propMaterialOverrides)
+    ? cloneConfig(theme.propMaterialOverrides)
+    : {};
+  const outdoorSurface =
+    isObject(theme?.outdoorSurface)
+      ? theme.outdoorSurface
+      : DEFAULT_OUTDOOR_SURFACES_BY_THEME[themeName] || DEFAULT_OUTDOOR_SURFACES_BY_THEME.lobby;
+
+  if (outdoorSurface?.enabled === false) {
+    return Object.keys(overrides).length ? overrides : null;
+  }
+
+  if (isObject(outdoorSurface?.ground)) {
+    overrides.outdoor_ground = cloneConfig(outdoorSurface.ground);
+  }
+  if (isObject(outdoorSurface?.path)) {
+    overrides.outdoor_path = cloneConfig(outdoorSurface.path);
+  }
+  if (isObject(outdoorSurface?.threshold)) {
+    overrides.outdoor_threshold = cloneConfig(outdoorSurface.threshold);
+  }
+
+  return Object.keys(overrides).length ? overrides : null;
+}
+
 function mergeRoomConfig(baseConfig, roomOverrides = {}) {
   const merged = cloneRoomConfig(baseConfig);
   for (const key of Object.keys(roomOverrides)) {
@@ -193,6 +389,24 @@ function computeDoorClearanceZones(roomConfig = {}) {
       maxX: centerX + xHalf,
       minZ: depth * 0.5 - 2.4,
       maxZ: depth * 0.5 + 0.62
+    });
+  }
+
+  const rearEntrance = roomConfig.rearEntrance || {};
+  if (rearEntrance.enabled) {
+    const doorwayWidth = clamp(rearEntrance.width ?? 5.2, 1.6, Math.max(1.6, width - 1.6));
+    const centerX = clamp(
+      rearEntrance.centerX ?? 0,
+      -width * 0.5 + doorwayWidth * 0.5 + 0.4,
+      width * 0.5 - doorwayWidth * 0.5 - 0.4
+    );
+    const xHalf = doorwayWidth * 0.5 + 1.2;
+    zones.push({
+      id: "rearEntrance",
+      minX: centerX - xHalf,
+      maxX: centerX + xHalf,
+      minZ: -depth * 0.5 - 0.62,
+      maxZ: -depth * 0.5 + 2.4
     });
   }
 
@@ -385,16 +599,16 @@ export function resolveInitialThemeName(themesConfig) {
     return queryTheme;
   }
 
+  if (themesConfig.defaultTheme && themesConfig.themes[themesConfig.defaultTheme]) {
+    return themesConfig.defaultTheme;
+  }
+
   if (themesConfig.autoThemeByMonth?.enabled) {
     const month = new Date().getMonth() + 1;
     const mapped = themesConfig.autoThemeByMonth?.map?.[String(month)];
     if (mapped && themesConfig.themes[mapped]) {
       return mapped;
     }
-  }
-
-  if (themesConfig.defaultTheme && themesConfig.themes[themesConfig.defaultTheme]) {
-    return themesConfig.defaultTheme;
   }
 
   return themeNames[0];
@@ -567,6 +781,7 @@ export class ThemeSystem {
       this.scene.background = new THREE.Color(fog.color);
     }
 
+    this.sceneContext.applyPropMaterialOverrides?.(null);
     for (const portal of this.sceneContext.portals || []) {
       portal.resetStyle?.();
     }
@@ -699,6 +914,13 @@ export class ThemeSystem {
       });
       if (token !== this.applyToken) {
         this.sceneContext.removePropsByTag("theme-extra");
+        return false;
+      }
+
+      await this.sceneContext.applyPropMaterialOverrides?.(
+        buildThemePropMaterialOverrides(themeName, theme)
+      );
+      if (token !== this.applyToken) {
         return false;
       }
 
