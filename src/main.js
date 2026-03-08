@@ -1618,6 +1618,7 @@ async function boot() {
     camera: rendererContext.camera,
     targets: getInteractionTargets(),
     isPointerLocked: () => controls?.isPointerLocked?.() || false,
+    syncMatrices: () => rendererContext.scene?.updateMatrixWorld?.(true),
     onHover: (target) => {
       ui.setPortalPrompt(target);
     },
@@ -1630,6 +1631,49 @@ async function boot() {
   });
   if (catalogReady) {
     interactionSystem.setTargets(getInteractionTargets());
+  }
+
+  const debugTargetBounds = new THREE.Box3();
+  const debugTargetCenter = new THREE.Vector3();
+  const debugTargetNdc = new THREE.Vector3();
+
+  function getInteractionTargetById(targetId) {
+    const normalizedTargetId = typeof targetId === "string" ? targetId.trim() : "";
+    if (!normalizedTargetId) {
+      return null;
+    }
+    return getInteractionTargets().find((entry) => entry?.id === normalizedTargetId) || null;
+  }
+
+  function projectInteractionTarget(targetId) {
+    const target = getInteractionTargetById(targetId);
+    const camera = rendererContext?.camera;
+    if (!target?.hitbox || !camera) {
+      return null;
+    }
+
+    rendererContext.scene?.updateMatrixWorld?.(true);
+    debugTargetBounds.setFromObject(target.hitbox);
+    if (debugTargetBounds.isEmpty()) {
+      debugTargetCenter.setFromMatrixPosition(target.hitbox.matrixWorld);
+    } else {
+      debugTargetBounds.getCenter(debugTargetCenter);
+    }
+
+    debugTargetNdc.copy(debugTargetCenter).project(camera);
+    return {
+      id: target.id,
+      label: target.label || null,
+      ndc: {
+        x: Number(debugTargetNdc.x.toFixed(4)),
+        y: Number(debugTargetNdc.y.toFixed(4)),
+        z: Number(debugTargetNdc.z.toFixed(4))
+      },
+      distance: Number(camera.position.distanceTo(debugTargetCenter).toFixed(4)),
+      withinViewport: Math.abs(debugTargetNdc.x) <= 1 && Math.abs(debugTargetNdc.y) <= 1,
+      inFrontOfCamera: debugTargetNdc.z >= -1 && debugTargetNdc.z <= 1,
+      pickedAtProjection: interactionSystem?.debugPickAtNdc?.(debugTargetNdc.x, debugTargetNdc.y)?.id || null
+    };
   }
 
   function getDebugStats(options = {}) {
@@ -1721,6 +1765,11 @@ async function boot() {
     activateCenterArtifact: () => activateCenterArtifactTarget(),
     teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
     focusCatalogRoomWall: (roomId, wall, distance) => focusCatalogRoomWall(roomId, wall, distance),
+    getInteractionTargetIds: () =>
+      getInteractionTargets()
+        .map((target) => (typeof target?.id === "string" ? target.id.trim() : ""))
+        .filter(Boolean),
+    projectInteractionTarget: (targetId) => projectInteractionTarget(targetId),
     getPortalIds: () =>
       (sceneContext?.portals || [])
         .map((portal) => (typeof portal?.id === "string" ? portal.id.trim() : ""))
@@ -1746,12 +1795,13 @@ async function boot() {
     const delta = Math.min(clock.getDelta(), 0.05);
     const elapsed = clock.elapsedTime;
     controls?.update(delta);
-    interactionSystem?.update();
     for (const portal of sceneContext.portals || []) {
       portal.update?.(delta, elapsed);
     }
     sceneContext.updateDynamicProps?.(elapsed, rendererContext.camera);
     catalogSystem?.update(delta, elapsed, rendererContext.camera);
+    rendererContext.scene?.updateMatrixWorld?.(true);
+    interactionSystem?.update();
     themeSystem?.update(delta);
     if (driftSystem?.config?.enabled) {
       driftSnapshot = driftSystem.update(delta);

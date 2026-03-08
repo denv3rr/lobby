@@ -124,7 +124,7 @@
         "maxItems": 6,
         "displayY": 2.62,
         "horizontalGap": 0.44,
-        "wallMargin": 0.76,
+        "wallMargin": 0.3,
         "cardOffset": 0.08
       }
     }

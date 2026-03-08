@@ -28,6 +28,7 @@ export class PortalInteractionSystem {
     camera,
     targets,
     isPointerLocked,
+    syncMatrices,
     onHover,
     onActivate
   }) {
@@ -35,6 +36,7 @@ export class PortalInteractionSystem {
     this.camera = camera;
     this.targets = [];
     this.isPointerLocked = isPointerLocked || (() => false);
+    this.syncMatrices = typeof syncMatrices === "function" ? syncMatrices : null;
     this.onHover = onHover;
     this.onActivate = onActivate;
 
@@ -58,6 +60,15 @@ export class PortalInteractionSystem {
     this.domElement.addEventListener("pointerdown", this.boundPointerDown);
     this.domElement.addEventListener("click", this.boundClick);
     window.addEventListener("keydown", this.boundKeyDown);
+  }
+
+  syncRaycastTransforms() {
+    this.syncMatrices?.();
+    if (typeof this.camera?.updateWorldMatrix === "function") {
+      this.camera.updateWorldMatrix(true, false);
+    } else {
+      this.camera?.updateMatrixWorld?.(true);
+    }
   }
 
   onPointerMove(event) {
@@ -280,6 +291,7 @@ export class PortalInteractionSystem {
     }
     this.lastPickAt = now;
 
+    this.syncRaycastTransforms();
     const sample = this.isPointerLocked() ? { x: 0, y: 0 } : this.pointer;
     this.raycaster.setFromCamera(sample, this.camera);
 
@@ -302,6 +314,7 @@ export class PortalInteractionSystem {
       return null;
     }
 
+    this.syncRaycastTransforms();
     this.raycaster.setFromCamera({ x, y }, this.camera);
     const hits = this.raycaster.intersectObjects(this.hitboxes, false);
     if (!hits.length) {

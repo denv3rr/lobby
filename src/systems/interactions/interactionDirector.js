@@ -17,6 +17,15 @@ function normalizeModuleIds(value) {
   return ids;
 }
 
+function looksLikeSceneTarget(value) {
+  return Boolean(
+    value?.hitbox ||
+      typeof value?.setHovered === "function" ||
+      value?.inspectData ||
+      value?.userData?.owner
+  );
+}
+
 function normalizeActionLikeInteraction(value) {
   if (!isObject(value)) {
     return null;
@@ -25,7 +34,8 @@ function normalizeActionLikeInteraction(value) {
   const normalized = {
     ...value
   };
-  const explicitType = typeof value.type === "string" ? value.type.trim() : "";
+  const explicitType =
+    looksLikeSceneTarget(value) || typeof value.type !== "string" ? "" : value.type.trim();
   const url = typeof value.url === "string" ? value.url.trim() : "";
   const theme = typeof value.theme === "string" ? value.theme.trim() : "";
   const portalId = typeof value.portalId === "string" ? value.portalId.trim() : "";

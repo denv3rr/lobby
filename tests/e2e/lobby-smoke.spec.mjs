@@ -8,6 +8,43 @@ const DEBUG_HOOK_NAMES = [
   "__SEPERET_LOBBY_DEBUG__"
 ];
 const LOBBY_PATH = (process.env.PLAYWRIGHT_BASE_PATH || "/").replace(/\/?$/, "/");
+const CENTER_ARTIFACT_TARGET_ID = "prop:center_hover_gif";
+
+async function projectTarget(page, targetId) {
+  return page.evaluate(
+    ([hookNames, requestedTargetId]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.projectInteractionTarget !== "function") {
+          continue;
+        }
+        const projection = api.projectInteractionTarget(requestedTargetId);
+        if (projection) {
+          return projection;
+        }
+      }
+
+      return null;
+    },
+    [DEBUG_HOOK_NAMES, targetId]
+  );
+}
+
+async function teleportDebug(page, position, yaw = null, pitch = null) {
+  return page.evaluate(
+    ([hookNames, nextPosition, nextYaw, nextPitch]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.teleport !== "function") {
+          continue;
+        }
+        return Boolean(api.teleport(nextPosition, nextYaw, nextPitch));
+      }
+      return false;
+    },
+    [DEBUG_HOOK_NAMES, position, yaw, pitch]
+  );
+}
 
 test("boots lobby in WebGL mode and supports a basic theme switch", async ({ page }) => {
   const assetResponses = [];
@@ -119,21 +156,34 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
     .toBe(1);
 
   await expect
-    .poll(
-      () =>
-        page.evaluate((hookNames) => {
-          for (const hookName of hookNames) {
-            const api = window[hookName];
-            if (!api || typeof api.activateCenterArtifact !== "function") {
-              continue;
-            }
-            return Boolean(api.activateCenterArtifact());
-          }
-          return false;
-        }, DEBUG_HOOK_NAMES),
-      { timeout: 25_000 }
-    )
+    .poll(() => teleportDebug(page, [0, 1.7, 4.8], 0, 0), {
+      timeout: 25_000
+    })
+    .toBe(true);
+  await expect
+    .poll(() => projectTarget(page, CENTER_ARTIFACT_TARGET_ID), {
+      timeout: 25_000
+    })
     .toBeTruthy();
+  await expect
+    .poll(async () => {
+      const projection = await projectTarget(page, CENTER_ARTIFACT_TARGET_ID);
+      return Boolean(projection?.withinViewport);
+    }, {
+      timeout: 25_000
+    })
+    .toBe(true);
+  const artifactProjection = await projectTarget(page, CENTER_ARTIFACT_TARGET_ID);
+  expect(artifactProjection).toBeTruthy();
+  expect(artifactProjection.withinViewport).toBe(true);
+  const canvasBox = await canvas.boundingBox();
+  expect(canvasBox).toBeTruthy();
+  await canvas.click({
+    position: {
+      x: ((artifactProjection.ndc.x + 1) * 0.5) * canvasBox.width,
+      y: ((1 - artifactProjection.ndc.y) * 0.5) * canvasBox.height
+    }
+  });
   await expect
     .poll(async () => page.locator("#objectives-list .objectives-item.is-complete").count(), {
       timeout: 25_000

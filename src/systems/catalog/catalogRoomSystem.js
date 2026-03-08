@@ -504,7 +504,10 @@ export class CatalogRoomSystem {
     const roomConfig = roomNode.config;
     const cardWidth = roomConfig.card?.width || 1.45;
     const horizontalGap = roomConfig.layout?.horizontalGap ?? 0.42;
-    const blockerPadding = cardWidth * 0.56 + horizontalGap * 0.45;
+    const blockerPadding =
+      roomId === SCREENING_ROOM_ID
+        ? cardWidth * 0.34 + horizontalGap * 0.18
+        : cardWidth * 0.56 + horizontalGap * 0.45;
     const playlistWall = this.getPlaylistWallConfig(roomId, roomConfig, roomNode.index);
     if (playlistWall) {
       blockers.push({
