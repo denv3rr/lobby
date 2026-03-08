@@ -194,7 +194,7 @@ function readDurationText(item = {}) {
 function trimTitle(title, max = 26) {
   const clean = String(title || "").trim();
   if (!clean) {
-    return "Untitled";
+    return "▶︎";
   }
   return clean.length <= max ? clean : `${clean.slice(0, max - 1)}…`;
 }
@@ -774,7 +774,7 @@ export class CatalogRoomSystem {
       const meta = document.createElement("span");
       meta.className = "screening-playlist-item-meta";
       const durationText = readDurationText(item);
-      meta.textContent = durationText || "Play on wall";
+      meta.textContent = durationText || "";
 
       button.appendChild(title);
       button.appendChild(meta);
@@ -2050,7 +2050,7 @@ export class CatalogRoomSystem {
       item.price != null && Number.isFinite(item.price)
         ? `${item.currency || "USD"} ${item.price.toFixed(2)}`
         : isScreeningRoom
-          ? "Play On Wall"
+          ? ""
         : roomId === "shop"
           ? "Open In Shop"
           : "Open Project";

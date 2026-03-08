@@ -53,7 +53,7 @@
     },
     "atelier": {
       "enabled": true,
-      "label": "Reserved Wing",
+      "label": "Coming Soon",
       "feedSource": "atelier",
       "defaultUrl": "https://github.com/denv3rr/lobby",
       "origin": [-19.3, 0, -5.1],
