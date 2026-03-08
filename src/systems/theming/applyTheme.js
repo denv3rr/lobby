@@ -76,6 +76,33 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function getSideDoorCenters(sideDoorways = {}, side = "east", depth = 30, doorwayWidth = 3.8) {
+  const centersBySide = isObject(sideDoorways?.centersBySide) ? sideDoorways.centersBySide : {};
+  const configuredCenters = Array.isArray(centersBySide[side]) ? centersBySide[side] : [];
+  const fallbackCenters = Array.isArray(sideDoorways?.centers) ? sideDoorways.centers : [];
+  const source =
+    configuredCenters.length
+      ? configuredCenters
+      : fallbackCenters.length
+        ? fallbackCenters
+        : [sideDoorways?.centerZ ?? 0];
+  const minCenter = -depth * 0.5 + doorwayWidth * 0.5 + 0.4;
+  const maxCenter = depth * 0.5 - doorwayWidth * 0.5 - 0.4;
+  const normalized = [];
+  for (const value of source) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      continue;
+    }
+    const clamped = clamp(numeric, minCenter, maxCenter);
+    if (!normalized.some((existing) => Math.abs(existing - clamped) < 0.05)) {
+      normalized.push(clamped);
+    }
+  }
+  normalized.sort((a, b) => a - b);
+  return normalized.length ? normalized : [0];
+}
+
 function rangesOverlap(minA, maxA, minB, maxB) {
   return minA <= maxB && maxA >= minB;
 }
@@ -129,23 +156,26 @@ function computeDoorClearanceZones(roomConfig = {}) {
   const sideDoorways = roomConfig.sideDoorways || {};
   if (sideDoorways.enabled !== false) {
     const doorwayWidth = clamp(sideDoorways.width ?? 3.8, 1.5, Math.max(1.5, depth - 1));
-    const centerZ = sideDoorways.centerZ ?? 0;
     const zHalf = doorwayWidth * 0.5 + 1.05;
     const xBand = 2.25;
-    zones.push({
-      id: "eastDoorway",
-      minX: width * 0.5 - xBand,
-      maxX: width * 0.5 + 0.42,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
-    zones.push({
-      id: "westDoorway",
-      minX: -width * 0.5 - 0.42,
-      maxX: -width * 0.5 + xBand,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
+    for (const centerZ of getSideDoorCenters(sideDoorways, "east", depth, doorwayWidth)) {
+      zones.push({
+        id: `eastDoorway-${centerZ.toFixed(2)}`,
+        minX: width * 0.5 - xBand,
+        maxX: width * 0.5 + 0.42,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
+    for (const centerZ of getSideDoorCenters(sideDoorways, "west", depth, doorwayWidth)) {
+      zones.push({
+        id: `westDoorway-${centerZ.toFixed(2)}`,
+        minX: -width * 0.5 - 0.42,
+        maxX: -width * 0.5 + xBand,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
   }
 
   const frontEntrance = roomConfig.frontEntrance || {};

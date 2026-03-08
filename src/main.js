@@ -1518,7 +1518,8 @@ async function boot() {
     catalogConfig: catalogConfig || {},
     catalogFeeds,
     domElement: rendererContext.renderer.domElement,
-    qualityProfile
+    qualityProfile,
+    wallMaterialSource: sceneContext.roomMaterials?.wall || null
   });
   let catalogReady = false;
   const catalogInitPromise = catalogSystem

@@ -3,7 +3,7 @@
   "rooms": {
     "shop": {
       "label": "Gift Shop",
-      "origin": [-19.3, 0, 0],
+      "origin": [-19.3, 0, 5.1],
       "size": [8.6, 4.6, 9.6],
       "accentColor": "#8ec8d3",
       "titleColor": "#e8f6f8",
@@ -16,7 +16,7 @@
         "height": 1.9
       },
       "expansion": {
-        "step": [0, 0, -9.6]
+        "step": [0, 0, 9.6]
       },
       "layout": {
         "maxItems": 120,
@@ -28,7 +28,7 @@
     },
     "projects": {
       "label": "Projects",
-      "origin": [19.3, 0, 0],
+      "origin": [19.3, 0, 5.1],
       "size": [8.6, 4.6, 9.6],
       "accentColor": "#b9a2d8",
       "titleColor": "#f2eaff",
@@ -41,7 +41,7 @@
         "height": 1.9
       },
       "expansion": {
-        "step": [0, 0, -9.6]
+        "step": [0, 0, 9.6]
       },
       "layout": {
         "maxItems": 120,
@@ -56,10 +56,10 @@
       "label": "Reserved Wing",
       "feedSource": "atelier",
       "defaultUrl": "https://github.com/denv3rr/lobby",
-      "origin": [-19.3, 0, -10.2],
-      "size": [8.6, 4.8, 10.8],
+      "origin": [-19.3, 0, -5.1],
+      "size": [8.6, 4.6, 9.6],
       "entrySide": "east",
-      "showEntryFrame": false,
+      "showEntryFrame": true,
       "allowEmpty": true,
       "filter": {
         "itemIds": ["__reserved__"]
@@ -67,19 +67,19 @@
       "accentColor": "#92b8c8",
       "titleColor": "#eef8ff",
       "connectorDoor": {
-        "width": 2.5,
-        "height": 3.1
+        "width": 2.4,
+        "height": 3
       },
       "card": {
         "width": 1.48,
         "height": 1.92
       },
       "expansion": {
-        "step": [0, 0, -10.8]
+        "step": [0, 0, -9.6]
       },
       "layout": {
         "maxItems": 6,
-        "displayY": 2.62,
+        "displayY": 2.55,
         "horizontalGap": 0.44,
         "wallMargin": 0.76,
         "cardOffset": 0.08
@@ -88,15 +88,15 @@
     "videos": {
       "label": "Screening Hall",
       "feedSource": "videos",
-      "origin": [19.3, 0, -10.2],
-      "size": [8.6, 4.8, 10.8],
+      "origin": [19.3, 0, -5.1],
+      "size": [8.6, 4.6, 9.6],
       "entrySide": "west",
-      "showEntryFrame": false,
+      "showEntryFrame": true,
       "accentColor": "#d99b94",
       "titleColor": "#fff0eb",
       "connectorDoor": {
-        "width": 2.5,
-        "height": 3.1
+        "width": 2.4,
+        "height": 3
       },
       "card": {
         "width": 1.55,
@@ -107,7 +107,7 @@
         "wall": "front",
         "width": 3.58,
         "aspectRatio": 1.7777777778,
-        "displayY": 2.62,
+        "displayY": 2.55,
         "offset": 0.08,
         "label": "Now Screening",
         "idleLabel": "Select A Video"
@@ -117,18 +117,18 @@
         "wall": "back",
         "width": 3.28,
         "height": 3.02,
-        "displayY": 2.28,
+        "displayY": 2.2,
         "offset": 0.08,
         "label": "Longform Archive",
         "feedSource": "videos-long",
         "itemLimit": 28
       },
       "expansion": {
-        "step": [0, 0, -10.8]
+        "step": [0, 0, -9.6]
       },
       "layout": {
         "maxItems": 6,
-        "displayY": 2.62,
+        "displayY": 2.55,
         "horizontalGap": 0.44,
         "wallMargin": 0.3,
         "cardOffset": 0.08

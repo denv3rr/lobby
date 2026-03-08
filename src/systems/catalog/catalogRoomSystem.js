@@ -301,6 +301,23 @@ function disposeObjectResources(root) {
   });
 }
 
+function createSharedWallMaterial(sourceMaterial, fallbackColor) {
+  if (sourceMaterial?.isMaterial) {
+    const clone = sourceMaterial.clone();
+    clone.side = THREE.DoubleSide;
+    return clone;
+  }
+
+  const resolvedColor =
+    fallbackColor?.isColor === true ? fallbackColor.clone() : toColor(fallbackColor, "#777777");
+  return new THREE.MeshStandardMaterial({
+    color: resolvedColor,
+    roughness: 0.88,
+    metalness: 0.08,
+    side: THREE.DoubleSide
+  });
+}
+
 function normalizeFilter(filter = {}) {
   return {
     itemIds: Array.isArray(filter.itemIds) ? filter.itemIds : [],
@@ -337,7 +354,15 @@ function filterItems(items, filter, maxItems) {
 }
 
 export class CatalogRoomSystem {
-  constructor({ scene, cache, catalogConfig, catalogFeeds, domElement, qualityProfile = null }) {
+  constructor({
+    scene,
+    cache,
+    catalogConfig,
+    catalogFeeds,
+    domElement,
+    qualityProfile = null,
+    wallMaterialSource = null
+  }) {
     this.scene = scene;
     this.cache = cache;
     this.catalogConfig = catalogConfig || {};
@@ -348,6 +373,7 @@ export class CatalogRoomSystem {
     }
     this.domElement = domElement || window;
     this.qualityProfile = qualityProfile || { quality: "medium" };
+    this.wallMaterialSource = wallMaterialSource || null;
     this.activeThemeName = null;
     this.root = new THREE.Group();
     this.root.name = "CatalogRooms";
@@ -1621,27 +1647,11 @@ export class CatalogRoomSystem {
     ceiling.position.y = height;
     group.add(ceiling);
 
-    const wallMaterial = new SurfaceMaterial({
-      color: wallColor,
-      ...(basicMode
-        ? {}
-        : {
-            roughness: 0.88,
-            metalness: 0.08
-          })
-    });
+    const wallMaterial = createSharedWallMaterial(this.wallMaterialSource, wallColor);
 
     const outerWall = new THREE.Mesh(
       new THREE.PlaneGeometry(depth, height),
-      new SurfaceMaterial({
-        color: wallColor.clone().offsetHSL(0, 0, -0.03),
-        ...(basicMode
-          ? {}
-          : {
-              roughness: 0.9,
-              metalness: 0.04
-            })
-      })
+      createSharedWallMaterial(this.wallMaterialSource, wallColor.clone().offsetHSL(0, 0, -0.03))
     );
     const outerWallDirection = entrySide === "east" ? -1 : 1;
     outerWall.rotation.y = entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5;

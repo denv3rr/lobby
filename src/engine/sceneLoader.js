@@ -623,24 +623,26 @@ function createProtectedFloorplanZones({
       1.5,
       Math.max(1.5, depth - 1)
     );
-    const centerZ = sideDoorways.centerZ ?? 0;
     const zHalf = doorwayWidth * 0.5 + 1.15;
     const outwardDepth = Math.max(3.5, floorplanSafety.sideDoorDepth ?? 6.5);
-
-    zones.push({
-      id: "east-doorway-clearance",
-      minX: width * 0.5 - 0.8,
-      maxX: width * 0.5 + outwardDepth,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
-    zones.push({
-      id: "west-doorway-clearance",
-      minX: -width * 0.5 - outwardDepth,
-      maxX: -width * 0.5 + 0.8,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
+    for (const centerZ of getSideDoorCenters(sideDoorways, "east", depth, doorwayWidth)) {
+      zones.push({
+        id: `east-doorway-clearance-${centerZ.toFixed(2)}`,
+        minX: width * 0.5 - 0.8,
+        maxX: width * 0.5 + outwardDepth,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
+    for (const centerZ of getSideDoorCenters(sideDoorways, "west", depth, doorwayWidth)) {
+      zones.push({
+        id: `west-doorway-clearance-${centerZ.toFixed(2)}`,
+        minX: -width * 0.5 - outwardDepth,
+        maxX: -width * 0.5 + 0.8,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
   }
 
   const frontEntrance = roomConfig.frontEntrance || {};
@@ -744,6 +746,86 @@ function createProtectedFloorplanZones({
   );
 }
 
+function getSideDoorCenters(sideDoorways = {}, side = "east", depth = 30, doorwayWidth = 3.8) {
+  const centersBySide = isObject(sideDoorways?.centersBySide) ? sideDoorways.centersBySide : {};
+  const configuredCenters = Array.isArray(centersBySide[side]) ? centersBySide[side] : [];
+  const fallbackCenters = Array.isArray(sideDoorways?.centers) ? sideDoorways.centers : [];
+  const source =
+    configuredCenters.length
+      ? configuredCenters
+      : fallbackCenters.length
+        ? fallbackCenters
+        : [sideDoorways?.centerZ ?? 0];
+  const minCenter = -depth * 0.5 + doorwayWidth * 0.5 + 0.4;
+  const maxCenter = depth * 0.5 - doorwayWidth * 0.5 - 0.4;
+  const normalized = [];
+  for (const value of source) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      continue;
+    }
+    const clamped = THREE.MathUtils.clamp(numeric, minCenter, maxCenter);
+    if (!normalized.some((existing) => Math.abs(existing - clamped) < 0.05)) {
+      normalized.push(clamped);
+    }
+  }
+  normalized.sort((a, b) => a - b);
+  return normalized.length ? normalized : [0];
+}
+
+function deriveCatalogSideDoorways(roomConfig = {}, catalogConfig = null) {
+  const sideDoorways = cloneConfig(roomConfig.sideDoorways || {});
+  if (sideDoorways.enabled === false) {
+    return sideDoorways;
+  }
+
+  const catalogRooms = isObject(catalogConfig?.rooms) ? catalogConfig.rooms : {};
+  const roomEntries = Object.entries(catalogRooms);
+  if (!roomEntries.length) {
+    return sideDoorways;
+  }
+
+  const roomSize = Array.isArray(roomConfig.size) ? roomConfig.size : [30, 8, 30];
+  const depth = Math.max(1, Number(roomSize[2]) || 30);
+  const doorwayWidth = THREE.MathUtils.clamp(
+    sideDoorways.width ?? 3.8,
+    1.5,
+    Math.max(1.5, depth - 1)
+  );
+  const derivedCenters = {
+    east: [],
+    west: []
+  };
+
+  for (const [roomId, config] of roomEntries) {
+    if (!isObject(config) || config.enabled === false) {
+      continue;
+    }
+    const defaultOriginX = roomId === "shop" ? -19.3 : 19.3;
+    const origin = Array.isArray(config.origin) ? config.origin : [defaultOriginX, 0, 0];
+    const centerX = Number(origin[0]);
+    const centerZ = Number(origin[2]);
+    if (!Number.isFinite(centerX) || !Number.isFinite(centerZ)) {
+      continue;
+    }
+    if (centerX > 0) {
+      derivedCenters.east.push(centerZ);
+    } else if (centerX < 0) {
+      derivedCenters.west.push(centerZ);
+    }
+  }
+
+  if (!derivedCenters.east.length && !derivedCenters.west.length) {
+    return sideDoorways;
+  }
+
+  sideDoorways.centersBySide = {
+    east: getSideDoorCenters({ ...sideDoorways, centersBySide: derivedCenters }, "east", depth, doorwayWidth),
+    west: getSideDoorCenters({ ...sideDoorways, centersBySide: derivedCenters }, "west", depth, doorwayWidth)
+  };
+  return sideDoorways;
+}
+
 function createPropSafetyZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneConfig = {} }) {
   const zones = [];
   const width = roomSize[0] || 30;
@@ -756,25 +838,28 @@ function createPropSafetyZones({ roomConfig = {}, roomSize = [30, 8, 30], sceneC
       1.5,
       Math.max(1.5, depth - 1)
     );
-    const centerZ = sideDoorways.centerZ ?? 0;
     const zHalf = doorwayWidth * 0.5 + 1.1;
     const xDepth = 2.4;
-    zones.push({
-      id: "side-door-east",
-      kind: "doorway",
-      minX: width * 0.5 - xDepth,
-      maxX: width * 0.5 + 0.8,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
-    zones.push({
-      id: "side-door-west",
-      kind: "doorway",
-      minX: -width * 0.5 - 0.8,
-      maxX: -width * 0.5 + xDepth,
-      minZ: centerZ - zHalf,
-      maxZ: centerZ + zHalf
-    });
+    for (const centerZ of getSideDoorCenters(sideDoorways, "east", depth, doorwayWidth)) {
+      zones.push({
+        id: `side-door-east-${centerZ.toFixed(2)}`,
+        kind: "doorway",
+        minX: width * 0.5 - xDepth,
+        maxX: width * 0.5 + 0.8,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
+    for (const centerZ of getSideDoorCenters(sideDoorways, "west", depth, doorwayWidth)) {
+      zones.push({
+        id: `side-door-west-${centerZ.toFixed(2)}`,
+        kind: "doorway",
+        minX: -width * 0.5 - 0.8,
+        maxX: -width * 0.5 + xDepth,
+        minZ: centerZ - zHalf,
+        maxZ: centerZ + zHalf
+      });
+    }
   }
 
   const frontEntrance = roomConfig.frontEntrance || {};
@@ -824,7 +909,8 @@ export async function loadScene({
   catalogConfig = null,
   catalogFeeds = {}
 }) {
-  const roomConfig = sceneConfig.room || {};
+  const roomConfig = cloneConfig(sceneConfig.room || {});
+  roomConfig.sideDoorways = deriveCatalogSideDoorways(roomConfig, catalogConfig);
   const roomSize = roomConfig.size || [30, 8, 30];
   const floorY = roomConfig.floorY || 0;
   const baseRoomBounds = getRoomBounds(roomSize, 1.4, roomConfig.navigationBounds);
@@ -1086,8 +1172,7 @@ export async function loadScene({
     const isEast = side === "east";
     const x = isEast ? width * 0.5 : -width * 0.5;
     const yaw = isEast ? -Math.PI * 0.5 : Math.PI * 0.5;
-    const doorCenterZ = sideDoorways.centerZ ?? 0;
-    const segmentWidth = (depth - doorwayWidth) * 0.5;
+    const doorCenters = getSideDoorCenters(sideDoorways, side, depth, doorwayWidth);
     const topHeight = Math.max(0.2, height - doorwayHeight);
 
     if (!doorwayEnabled) {
@@ -1115,47 +1200,58 @@ export async function loadScene({
     topSegment.position.set(x, floorY + doorwayHeight + topHeight * 0.5, 0);
     roomGroup.add(topSegment);
 
-    if (segmentWidth > 0.1) {
-      const frontSegment = new THREE.Mesh(
-        new THREE.PlaneGeometry(segmentWidth, doorwayHeight),
-        doorwayPanelMaterial
-      );
-      frontSegment.rotation.y = yaw;
-      frontSegment.position.set(
-        x,
-        floorY + doorwayHeight * 0.5,
-        doorCenterZ + doorwayWidth * 0.5 + segmentWidth * 0.5
-      );
-      roomGroup.add(frontSegment);
-      addColliderRect({
-        centerX: x,
-        centerZ: doorCenterZ + doorwayWidth * 0.5 + segmentWidth * 0.5,
-        sizeX: wallThickness,
-        sizeZ: segmentWidth,
-        minY: floorY + 0.02,
-        maxY: floorY + doorwayHeight - 0.02,
-        id: `${side}_wall_front`
-      });
+    let spanStart = -depth * 0.5;
+    for (let index = 0; index < doorCenters.length; index += 1) {
+      const centerZ = doorCenters[index];
+      const openingStart = centerZ - doorwayWidth * 0.5;
+      const openingEnd = centerZ + doorwayWidth * 0.5;
+      const segmentLength = openingStart - spanStart;
+      if (segmentLength > 0.1) {
+        const segment = new THREE.Mesh(
+          new THREE.PlaneGeometry(segmentLength, doorwayHeight),
+          doorwayPanelMaterial
+        );
+        segment.rotation.y = yaw;
+        segment.position.set(
+          x,
+          floorY + doorwayHeight * 0.5,
+          spanStart + segmentLength * 0.5
+        );
+        roomGroup.add(segment);
+        addColliderRect({
+          centerX: x,
+          centerZ: spanStart + segmentLength * 0.5,
+          sizeX: wallThickness,
+          sizeZ: segmentLength,
+          minY: floorY + 0.02,
+          maxY: floorY + doorwayHeight - 0.02,
+          id: `${side}_wall_segment_${index}`
+        });
+      }
+      spanStart = openingEnd;
+    }
 
-      const backSegment = new THREE.Mesh(
-        new THREE.PlaneGeometry(segmentWidth, doorwayHeight),
+    const trailingLength = depth * 0.5 - spanStart;
+    if (trailingLength > 0.1) {
+      const trailingSegment = new THREE.Mesh(
+        new THREE.PlaneGeometry(trailingLength, doorwayHeight),
         doorwayPanelMaterial
       );
-      backSegment.rotation.y = yaw;
-      backSegment.position.set(
+      trailingSegment.rotation.y = yaw;
+      trailingSegment.position.set(
         x,
         floorY + doorwayHeight * 0.5,
-        doorCenterZ - doorwayWidth * 0.5 - segmentWidth * 0.5
+        spanStart + trailingLength * 0.5
       );
-      roomGroup.add(backSegment);
+      roomGroup.add(trailingSegment);
       addColliderRect({
         centerX: x,
-        centerZ: doorCenterZ - doorwayWidth * 0.5 - segmentWidth * 0.5,
+        centerZ: spanStart + trailingLength * 0.5,
         sizeX: wallThickness,
-        sizeZ: segmentWidth,
+        sizeZ: trailingLength,
         minY: floorY + 0.02,
         maxY: floorY + doorwayHeight - 0.02,
-        id: `${side}_wall_back`
+        id: `${side}_wall_segment_tail`
       });
     }
   }
