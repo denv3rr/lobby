@@ -908,9 +908,34 @@
       "interactable": {
         "label": "Coming Soon",
         "title": "Coming Soon",
-        "description": "This space is reserved for a future reveal.",
+        "description": "A staged environment preview can be expanded from this display.",
         "tags": [
           "Preview"
+        ],
+        "interaction": {
+          "type": "sequence",
+          "steps": [
+            {
+              "type": "show-module",
+              "moduleIds": [
+                "west-gallery-detail"
+              ],
+              "message": "Preview expanded."
+            },
+            {
+              "type": "inspect"
+            }
+          ]
+        },
+        "actions": [
+          {
+            "label": "Open Workshop",
+            "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland"
+          },
+          {
+            "label": "Open GitHub",
+            "url": "https://github.com/denv3rr"
+          }
         ]
       },
       "material": {
@@ -1084,6 +1109,317 @@
         "emissiveIntensity": 0.28,
         "roughness": 0.48,
         "metalness": 0.18
+      }
+    },
+    {
+      "id": "west_gallery_showcase_totem",
+      "type": "model",
+      "model": "/assets/models/props/neon_holo_totem.glb",
+      "position": [
+        -9.6,
+        1.12,
+        -28.2
+      ],
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "scale": [
+        1.15,
+        1.15,
+        1.15
+      ],
+      "modelFallback": "cylinder",
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Preview Display",
+        "title": "Coming Soon",
+        "description": "A featured build study is staged here as the first streamed showcase room.",
+        "tags": [
+          "Preview",
+          "Environment",
+          "Modular"
+        ],
+        "actions": [
+          {
+            "label": "Open Workshop",
+            "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland"
+          },
+          {
+            "label": "Open Projects",
+            "url": "https://github.com/denv3rr"
+          }
+        ]
+      }
+    },
+    {
+      "id": "west_gallery_showcase_north_image",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -9.6,
+        2.32,
+        -32.64
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.82,
+        1.58,
+        1
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "interactable": {
+        "label": "Preview Display",
+        "title": "Coming Soon",
+        "description": "Environment capture wall for the featured build preview.",
+        "tags": [
+          "Preview",
+          "Screenshot"
+        ],
+        "actions": [
+          {
+            "label": "Open Workshop",
+            "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland"
+          }
+        ]
+      },
+      "material": {
+        "color": "#ffffff",
+        "texture": "/assets/images/Mod Screenshots/ArmaReforger_SPI/Workshop Screenshot Stage/Arma Reforger-2026_02_27-08-22-58.png",
+        "roughness": 0.68,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "west_gallery_showcase_west_image",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -13.64,
+        2.26,
+        -28.2
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        2.18,
+        1.42,
+        1
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "interactable": {
+        "label": "Preview Display",
+        "title": "Coming Soon",
+        "description": "Side-wall environment capture for the streamed showcase room.",
+        "tags": [
+          "Preview",
+          "Screenshot"
+        ],
+        "actions": [
+          {
+            "label": "Open Workshop",
+            "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland"
+          }
+        ]
+      },
+      "material": {
+        "color": "#ffffff",
+        "texture": "/assets/images/Mod Screenshots/ArmaReforger_SPI/Workshop Screenshot Stage/Arma Reforger-2026_02_27-05-20-18.png",
+        "roughness": 0.68,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "west_gallery_showcase_south_image",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -9.6,
+        2.24,
+        -23.76
+      ],
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "scale": [
+        2.76,
+        1.52,
+        1
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "interactable": {
+        "label": "Preview Display",
+        "title": "Coming Soon",
+        "description": "Entry-facing capture wall for the featured preview space.",
+        "tags": [
+          "Preview",
+          "Screenshot"
+        ],
+        "actions": [
+          {
+            "label": "Open Workshop",
+            "url": "https://reforger.armaplatform.com/workshop/685E33F0100B52FC-SouthPadreIsland"
+          }
+        ]
+      },
+      "material": {
+        "color": "#ffffff",
+        "texture": "/assets/images/Mod Screenshots/ArmaReforger_SPI/Workshop Screenshot Stage/Arma Reforger-2026_02_27-03-34-25.png",
+        "roughness": 0.68,
+        "metalness": 0.04
+      }
+    },
+    {
+      "id": "west_gallery_showcase_caption_north",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        -9.6,
+        1.14,
+        -32.56
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.4,
+        0.34,
+        1
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#171615",
+        "emissiveColor": "#171615",
+        "emissiveIntensity": 0.06,
+        "roughness": 0.82,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "west_gallery_showcase_uplight_left",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -12.62,
+        0.12,
+        -24.85
+      ],
+      "scale": [
+        0.42,
+        0.24,
+        0.42
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#dec99b",
+        "emissiveColor": "#dec99b",
+        "emissiveIntensity": 0.36,
+        "roughness": 0.3,
+        "metalness": 0.12
+      }
+    },
+    {
+      "id": "west_gallery_showcase_uplight_right",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -6.58,
+        0.12,
+        -31.72
+      ],
+      "scale": [
+        0.42,
+        0.24,
+        0.42
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "collider": false,
+      "material": {
+        "color": "#dbc9ae",
+        "emissiveColor": "#dbc9ae",
+        "emissiveIntensity": 0.34,
+        "roughness": 0.3,
+        "metalness": 0.12
+      }
+    },
+    {
+      "id": "west_gallery_showcase_side_console",
+      "type": "primitive",
+      "primitive": "box",
+      "position": [
+        -12.4,
+        0.58,
+        -25.2
+      ],
+      "scale": [
+        1.3,
+        1.16,
+        0.82
+      ],
+      "rotation": [
+        0,
+        35,
+        0
+      ],
+      "moduleId": "west-gallery-detail",
+      "initiallyHidden": true,
+      "deferLoad": true,
+      "interactable": {
+        "label": "Preview Console",
+        "title": "Coming Soon",
+        "description": "This console anchors the first streamed showcase room and will later drive richer scene interactions.",
+        "tags": [
+          "Preview",
+          "Console",
+          "Interaction"
+        ],
+        "actions": [
+          {
+            "label": "Open GitHub",
+            "url": "https://github.com/denv3rr"
+          }
+        ]
+      },
+      "material": {
+        "color": "#4b443b",
+        "procedural": "marble",
+        "textureRepeat": [
+          1,
+          1
+        ],
+        "roughness": 0.82,
+        "metalness": 0.08
       }
     },
     {
