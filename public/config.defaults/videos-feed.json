@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-08T10:31:52.191Z",
+    "fetchedAt": "2026-03-09T10:52:39.192Z",
     "count": 6,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "bgLSFxa1rFA",
+      "title": "How many seconds does it take to get to the center of a proper ambush location? #arma",
+      "url": "https://www.youtube.com/watch?v=bgLSFxa1rFA",
+      "image": "https://i3.ytimg.com/vi/bgLSFxa1rFA/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-09T06:23:38+00:00"
+    },
     {
       "id": "RbnqMO2_bms",
       "title": "Surrounded pilots refuse to give up #arma #funnymoments #gamingclips #armareforger #fps #thisisarma",
@@ -83,21 +98,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-05T02:49:49+00:00"
-    },
-    {
-      "id": "BONauiCvkvg",
-      "title": "He actually did see it coming #cannon",
-      "url": "https://www.youtube.com/watch?v=BONauiCvkvg",
-      "image": "https://i3.ytimg.com/vi/BONauiCvkvg/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-04T03:49:38+00:00"
     }
   ]
 }
