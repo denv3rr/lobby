@@ -3,12 +3,42 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-09T10:52:39.192Z",
+    "fetchedAt": "2026-03-10T10:50:13.411Z",
     "count": 6,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "mtjIForabIs",
+      "title": "All these happened within like 5 minutes lmao (pt. 3) #arma #armareforger",
+      "url": "https://www.youtube.com/watch?v=mtjIForabIs",
+      "image": "https://i2.ytimg.com/vi/mtjIForabIs/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-10T00:07:05+00:00"
+    },
+    {
+      "id": "GAb_C6gSroM",
+      "title": "Kinda took a while for his guys to look that way for some reason #armareforger #gaming #conflict",
+      "url": "https://www.youtube.com/watch?v=GAb_C6gSroM",
+      "image": "https://i4.ytimg.com/vi/GAb_C6gSroM/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-09T18:23:39+00:00"
+    },
     {
       "id": "bgLSFxa1rFA",
       "title": "How many seconds does it take to get to the center of a proper ambush location? #arma",
@@ -68,36 +98,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-05T23:16:37+00:00"
-    },
-    {
-      "id": "q7i6y1paLu8",
-      "title": "Fireworks experiment nearly claims a man #arma #conflict #fps",
-      "url": "https://www.youtube.com/watch?v=q7i6y1paLu8",
-      "image": "https://i2.ytimg.com/vi/q7i6y1paLu8/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-05T03:42:44+00:00"
-    },
-    {
-      "id": "NAnA6Kxyv3o",
-      "title": "ngl almost ran out there 😂 #arma #gaming",
-      "url": "https://www.youtube.com/watch?v=NAnA6Kxyv3o",
-      "image": "https://i3.ytimg.com/vi/NAnA6Kxyv3o/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-05T02:49:49+00:00"
     }
   ]
 }
