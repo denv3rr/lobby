@@ -578,14 +578,36 @@ function normalizeDisplayPanelConfig(config = {}) {
 }
 
 function expandScenePropGroups(sceneConfig = {}) {
-  const flatProps = Array.isArray(sceneConfig?.props) ? cloneConfig(sceneConfig.props) : [];
+  function annotateScenePropSource(prop, { sourceConfigFile = "scene.json", sourcePath = "", sourceGroupId = "" } = {}) {
+    if (!isObject(prop)) {
+      return null;
+    }
+    const annotated = cloneConfig(prop) || {};
+    annotated.sourceConfigFile = readText(annotated.sourceConfigFile, sourceConfigFile);
+    annotated.sourcePath = readText(annotated.sourcePath, sourcePath);
+    const normalizedGroupId = readText(sourceGroupId, "");
+    if (normalizedGroupId) {
+      annotated.sourceGroupId = readText(annotated.sourceGroupId, normalizedGroupId);
+    }
+    return annotated;
+  }
+
+  const flatProps = (Array.isArray(sceneConfig?.props) ? sceneConfig.props : [])
+    .map((prop, index) =>
+      annotateScenePropSource(prop, {
+        sourcePath: `props[${index}]`
+      })
+    )
+    .filter(Boolean);
   const groups = Array.isArray(sceneConfig?.propGroups) ? sceneConfig.propGroups : [];
 
-  for (const group of groups) {
+  for (let groupIndex = 0; groupIndex < groups.length; groupIndex += 1) {
+    const group = groups[groupIndex];
     if (!isObject(group) || !Array.isArray(group.props) || !group.props.length) {
       continue;
     }
 
+    const groupId = readText(group.id, `prop-group-${groupIndex + 1}`);
     const groupPosition = toVector3(group.position || [0, 0, 0]);
     const groupQuaternion = new THREE.Quaternion().setFromEuler(
       toRotationEuler(group.rotation || [0, 0, 0])
@@ -594,7 +616,8 @@ function expandScenePropGroups(sceneConfig = {}) {
     const groupModuleIds = normalizeModuleIds(group.moduleIds || group.moduleId || group.modules);
     const groupDefaults = isObject(group.defaults) ? cloneConfig(group.defaults) : {};
 
-    for (const prop of group.props) {
+    for (let propIndex = 0; propIndex < group.props.length; propIndex += 1) {
+      const prop = group.props[propIndex];
       if (!isObject(prop)) {
         continue;
       }
@@ -630,7 +653,13 @@ function expandScenePropGroups(sceneConfig = {}) {
         merged.deferLoad = Boolean(group.deferLoad);
       }
 
-      flatProps.push(merged);
+      const annotatedMerged = annotateScenePropSource(merged, {
+        sourcePath: `propGroups[${groupIndex}].props[${propIndex}]`,
+        sourceGroupId: groupId
+      });
+      if (annotatedMerged) {
+        flatProps.push(annotatedMerged);
+      }
     }
   }
 
@@ -3187,6 +3216,9 @@ export async function loadScene({
     wrapper.userData.billboard = Boolean(prop.billboard);
     wrapper.userData.billboardAxis = prop.billboardAxis || "all";
     wrapper.userData.propId = prop.id || "";
+    wrapper.userData.sourceConfigFile = readText(prop.sourceConfigFile, "");
+    wrapper.userData.sourcePath = readText(prop.sourcePath, "");
+    wrapper.userData.sourceGroupId = readText(prop.sourceGroupId, "");
     wrapper.userData.baseMaterialConfig = cloneConfig(prop.material || {});
     wrapper.userData.materialManaged = prop.type !== "model" && prop.type !== "composite";
     wrapper.position.copy(toVector3(prop.position || [0, 0, 0]));
@@ -3760,6 +3792,10 @@ export async function loadScene({
       id,
       visible: object.visible !== false,
       moduleIds,
+      sourceConfigFile: readText(object.userData?.sourceConfigFile, ""),
+      sourcePath: readText(object.userData?.sourcePath, ""),
+      sourceGroupId: readText(object.userData?.sourceGroupId, ""),
+      localTransform: serializeEditableTransform(object),
       worldPosition: [
         Number(worldPosition.x.toFixed(4)),
         Number(worldPosition.y.toFixed(4)),

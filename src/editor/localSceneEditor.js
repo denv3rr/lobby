@@ -134,11 +134,15 @@ export function createLocalSceneEditor({
     <div class="editor-panel-row editor-transform-row" data-ui>
       <code id="editor-transform-readout" data-ui>Nothing selected.</code>
     </div>
+    <div class="editor-panel-row editor-source-row" data-ui>
+      <code id="editor-source-readout" data-ui>No source path.</code>
+    </div>
     <div class="editor-panel-row editor-actions-row" data-ui>
       <button id="editor-refresh-btn" type="button" data-ui>Refresh</button>
       <button id="editor-save-btn" type="button" data-ui>Save Local</button>
       <button id="editor-load-btn" type="button" data-ui>Load Local</button>
       <button id="editor-clear-btn" type="button" data-ui>Clear Local</button>
+      <button id="editor-copy-path-btn" type="button" data-ui>Copy Path</button>
       <button id="editor-copy-btn" type="button" data-ui>Copy JSON</button>
     </div>
     <p id="editor-status" class="editor-status" data-ui></p>
@@ -151,9 +155,11 @@ export function createLocalSceneEditor({
   const saveButton = root.querySelector("#editor-save-btn");
   const loadButton = root.querySelector("#editor-load-btn");
   const clearButton = root.querySelector("#editor-clear-btn");
+  const copyPathButton = root.querySelector("#editor-copy-path-btn");
   const copyButton = root.querySelector("#editor-copy-btn");
   const statusLabel = root.querySelector("#editor-status");
   const readout = root.querySelector("#editor-transform-readout");
+  const sourceReadout = root.querySelector("#editor-source-readout");
   const modeButtons = [...root.querySelectorAll("[data-mode]")];
 
   const transformControls = new TransformControls(camera, domElement);
@@ -165,6 +171,9 @@ export function createLocalSceneEditor({
   let selectedPropId = "";
   let activeMode = "translate";
   let disposed = false;
+  let isTransformDragging = false;
+  const pickRaycaster = new THREE.Raycaster();
+  const pickPointer = new THREE.Vector2();
 
   function setStatus(text, tone = "muted") {
     if (!statusLabel) {
@@ -205,6 +214,13 @@ export function createLocalSceneEditor({
     return sceneContext.getEditablePropObject?.(selectedPropId) || null;
   }
 
+  function getSelectedPropState() {
+    if (!selectedPropId) {
+      return null;
+    }
+    return sceneContext.getPropState?.(selectedPropId) || null;
+  }
+
   function refreshTransformReadout() {
     if (!readout) {
       return;
@@ -212,6 +228,9 @@ export function createLocalSceneEditor({
     const transform = sceneContext.getEditablePropTransform?.(selectedPropId);
     if (!transform) {
       readout.textContent = "Nothing selected.";
+      if (sourceReadout) {
+        sourceReadout.textContent = "No source path.";
+      }
       return;
     }
     const [px, py, pz] = transform.position || [0, 0, 0];
@@ -221,6 +240,21 @@ export function createLocalSceneEditor({
       `P ${toRounded(px, 2)}, ${toRounded(py, 2)}, ${toRounded(pz, 2)} | ` +
       `R ${toRounded(rx, 1)}, ${toRounded(ry, 1)}, ${toRounded(rz, 1)} | ` +
       `S ${toRounded(sx, 2)}, ${toRounded(sy, 2)}, ${toRounded(sz, 2)}`;
+
+    if (!sourceReadout) {
+      return;
+    }
+    const state = getSelectedPropState();
+    const configFile = readText(state?.sourceConfigFile, "scene.json");
+    const sourcePath = readText(state?.sourcePath, "");
+    const sourceGroupId = readText(state?.sourceGroupId, "");
+    if (!sourcePath) {
+      sourceReadout.textContent = "Runtime-only object.";
+      return;
+    }
+    sourceReadout.textContent = sourceGroupId
+      ? `${configFile} :: ${sourcePath} | group ${sourceGroupId}`
+      : `${configFile} :: ${sourcePath}`;
   }
 
   function detachSelection() {
@@ -340,6 +374,24 @@ export function createLocalSceneEditor({
     }
   }
 
+  async function copySelectedPathToClipboard() {
+    const state = getSelectedPropState();
+    const sourcePath = readText(state?.sourcePath, "");
+    if (!selectedPropId || !sourcePath) {
+      setStatus("Select a scene prop with a JSON source path first.", "warn");
+      return false;
+    }
+    const text = `${readText(state?.sourceConfigFile, "scene.json")} :: ${sourcePath}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(`Copied source path for ${selectedPropId}.`, "success");
+      return true;
+    } catch {
+      setStatus("Clipboard unavailable. Source path is shown in the editor panel.", "warn");
+      return false;
+    }
+  }
+
   function suppressPointerLock() {
     if (typeof onSuppressPointerLock === "function") {
       onSuppressPointerLock();
@@ -351,10 +403,73 @@ export function createLocalSceneEditor({
     document.exitPointerLock?.();
   }
 
+  function resolvePickedPropId(object) {
+    let current = object;
+    while (current) {
+      const propId = readText(current.userData?.propId, "");
+      if (propId) {
+        return propId;
+      }
+      current = current.parent || null;
+    }
+    return "";
+  }
+
+  function pickPropIdAtClientPosition(clientX, clientY) {
+    const rect = domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return "";
+    }
+
+    pickPointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pickPointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    pickRaycaster.setFromCamera(pickPointer, camera);
+
+    const editableRoots = getEditableIds()
+      .map((id) => sceneContext.getEditablePropObject?.(id))
+      .filter((object) => object?.visible !== false);
+    if (!editableRoots.length) {
+      return "";
+    }
+
+    const hits = pickRaycaster.intersectObjects(editableRoots, true);
+    for (const hit of hits) {
+      const propId = resolvePickedPropId(hit.object);
+      if (propId) {
+        return propId;
+      }
+    }
+    return "";
+  }
+
+  function handleCanvasClick(event) {
+    if (disposed || isTransformDragging || event.defaultPrevented || event.button !== 0) {
+      return;
+    }
+    if (event.target !== domElement) {
+      return;
+    }
+    suppressPointerLock();
+    const pickedPropId = pickPropIdAtClientPosition(event.clientX, event.clientY);
+    if (!pickedPropId) {
+      return;
+    }
+    if (selectProp(pickedPropId)) {
+      const state = getSelectedPropState();
+      setStatus(
+        readText(state?.sourcePath, "")
+          ? `Selected ${pickedPropId} from ${state.sourcePath}.`
+          : `Selected ${pickedPropId}.`,
+        "muted"
+      );
+    }
+  }
+
   transformControls.addEventListener("dragging-changed", (event) => {
     if (disposed) {
       return;
     }
+    isTransformDragging = Boolean(event?.value);
     if (event?.value) {
       suppressPointerLock();
       return;
@@ -402,9 +517,13 @@ export function createLocalSceneEditor({
   clearButton?.addEventListener("click", () => {
     clearState();
   });
+  copyPathButton?.addEventListener("click", () => {
+    void copySelectedPathToClipboard();
+  });
   copyButton?.addEventListener("click", () => {
     void copyStateToClipboard();
   });
+  domElement.addEventListener("click", handleCanvasClick);
 
   setSnapEnabled(true);
   setMode("translate");
@@ -419,6 +538,7 @@ export function createLocalSceneEditor({
     clearState,
     getSnapshot: () => ({
       selectedPropId,
+      selectedSourcePath: readText(getSelectedPropState()?.sourcePath, ""),
       mode: activeMode,
       propCount: getEditableIds().length,
       hasStoredState: Boolean(readStoredState())
@@ -428,6 +548,7 @@ export function createLocalSceneEditor({
         return;
       }
       disposed = true;
+      domElement.removeEventListener("click", handleCanvasClick);
       transformControls.detach();
       scene.remove(transformControls);
       transformControls.dispose();

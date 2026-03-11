@@ -991,14 +991,25 @@ async function boot() {
   let driftSnapshot = null;
   let stabilitySystem = null;
   let centerArtifactActivated = false;
+  let centerArtifactSceneFxStrength = 0;
   let centerArtifactOwner = null;
   let centerArtifactLinkedRifleOwner = null;
+  let centerArtifactMoonDiscOwner = null;
+  let centerArtifactMoonHaloOwner = null;
   let centerArtifactLight = null;
   let detachAudioUnlock = () => {};
   const centerArtifactMaterials = [];
   const centerArtifactLinkedRifleMaterials = [];
+  const centerArtifactMoonDiscMaterials = [];
+  const centerArtifactMoonHaloMaterials = [];
   const centerArtifactPrimaryColor = new THREE.Color("#ffffff");
   const centerArtifactSecondaryColor = new THREE.Color("#ffffff");
+  const centerArtifactFogTargetColor = new THREE.Color("#f6da68");
+  const centerArtifactFogScratchColor = new THREE.Color("#444444");
+  const centerArtifactMoonDiscColor = new THREE.Color("#ba2024");
+  const centerArtifactMoonHaloColor = new THREE.Color("#6a0810");
+  const centerArtifactMoonPulseColor = new THREE.Color("#ef6533");
+  const centerArtifactMoonScratchColor = new THREE.Color("#ffffff");
   let secretUnlocks = [];
   let moduleTriggers = [];
   const secretUnlockedIds = new Set(getUnlockedSecretIds());
@@ -1036,7 +1047,26 @@ async function boot() {
     if (!rendererContext) {
       return;
     }
-    rendererContext.setPostProcessingOverrides(themePostProcessingBase);
+    const overrides = { ...(themePostProcessingBase || {}) };
+    const strength = clamp01(centerArtifactSceneFxStrength);
+    if (strength > 0.001) {
+      const baseBloomStrength = Number.isFinite(overrides.bloomStrength) ? overrides.bloomStrength : 0.45;
+      const baseBloomRadius = Number.isFinite(overrides.bloomRadius) ? overrides.bloomRadius : 0.72;
+      const baseBloomThreshold =
+        Number.isFinite(overrides.bloomThreshold) ? overrides.bloomThreshold : 0.3;
+      const baseVignetteDarkness =
+        Number.isFinite(overrides.vignetteDarkness) ? overrides.vignetteDarkness : 0.78;
+      const baseVignetteOffset =
+        Number.isFinite(overrides.vignetteOffset) ? overrides.vignetteOffset : 1.18;
+      overrides.bloomEnabled = true;
+      overrides.vignetteEnabled = true;
+      overrides.bloomStrength = baseBloomStrength + 0.22 * strength;
+      overrides.bloomRadius = baseBloomRadius + 0.12 * strength;
+      overrides.bloomThreshold = Math.max(0, baseBloomThreshold - 0.08 * strength);
+      overrides.vignetteDarkness = Math.min(2, baseVignetteDarkness + 0.06 * strength);
+      overrides.vignetteOffset = Math.min(2, baseVignetteOffset + 0.03 * strength);
+    }
+    rendererContext.setPostProcessingOverrides(overrides);
   }
 
   function captureThemeFogBase() {
@@ -1125,6 +1155,9 @@ async function boot() {
           continue;
         }
         material.userData = material.userData || {};
+        if (material.color?.isColor && !material.userData.centerArtifactBaseColor) {
+          material.userData.centerArtifactBaseColor = material.color.clone();
+        }
         if (!material.userData.centerArtifactBaseEmissive) {
           material.userData.centerArtifactBaseEmissive = material.emissive.clone();
         }
@@ -1134,6 +1167,36 @@ async function boot() {
         targetMaterials.push(material);
       }
     });
+  }
+
+  function findCenterArtifactMoonDiscOwner() {
+    if (centerArtifactMoonDiscOwner?.parent) {
+      return centerArtifactMoonDiscOwner;
+    }
+    if (!rendererContext?.scene) {
+      return null;
+    }
+    const owner = rendererContext.scene.getObjectByName("moon_disc");
+    if (!owner) {
+      return null;
+    }
+    centerArtifactMoonDiscOwner = owner;
+    return owner;
+  }
+
+  function findCenterArtifactMoonHaloOwner() {
+    if (centerArtifactMoonHaloOwner?.parent) {
+      return centerArtifactMoonHaloOwner;
+    }
+    if (!rendererContext?.scene) {
+      return null;
+    }
+    const owner = rendererContext.scene.getObjectByName("moon_halo");
+    if (!owner) {
+      return null;
+    }
+    centerArtifactMoonHaloOwner = owner;
+    return owner;
   }
 
   function findCenterArtifactLinkedRifleOwner() {
@@ -1188,6 +1251,83 @@ async function boot() {
     });
   }
 
+  function applyCenterArtifactAtmosphere(elapsed) {
+    const strength = clamp01(centerArtifactSceneFxStrength);
+    if (strength <= 0.001) {
+      return;
+    }
+
+    const fog = rendererContext?.scene?.fog;
+    const scene = rendererContext?.scene;
+    if (fog?.isFog && scene) {
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 2.9);
+      const hazeMix = (0.12 + pulse * 0.06) * strength;
+      const nearTarget = Math.max(0.01, fog.near * 0.84);
+      const farTarget = Math.max(nearTarget + 0.5, fog.far * 0.9);
+      fog.near = THREE.MathUtils.lerp(fog.near, nearTarget, 0.18 * strength);
+      fog.far = THREE.MathUtils.lerp(fog.far, farTarget, 0.22 * strength);
+      centerArtifactFogScratchColor
+        .copy(centerArtifactFogTargetColor)
+        .lerp(centerArtifactPrimaryColor, 0.16 + pulse * 0.08);
+      fog.color.lerp(centerArtifactFogScratchColor, hazeMix);
+      if (scene.background?.isColor) {
+        scene.background.copy(fog.color);
+      } else {
+        scene.background = fog.color.clone();
+      }
+    }
+
+    const discOwner = findCenterArtifactMoonDiscOwner();
+    if (discOwner && !centerArtifactMoonDiscMaterials.length) {
+      collectArtifactMaterials(discOwner, centerArtifactMoonDiscMaterials);
+    }
+    const haloOwner = findCenterArtifactMoonHaloOwner();
+    if (haloOwner && !centerArtifactMoonHaloMaterials.length) {
+      collectArtifactMaterials(haloOwner, centerArtifactMoonHaloMaterials);
+    }
+
+    const moonPulse = 0.5 + 0.5 * Math.sin(elapsed * 2.1 + 0.45);
+    const discLerp = 0.72 * strength;
+    const haloLerp = 0.86 * strength;
+    centerArtifactMoonScratchColor
+      .copy(centerArtifactMoonDiscColor)
+      .lerp(centerArtifactMoonPulseColor, 0.18 + moonPulse * 0.18);
+    for (const material of centerArtifactMoonDiscMaterials) {
+      if (!material?.emissive?.isColor) {
+        continue;
+      }
+      const baseColor = material.userData?.centerArtifactBaseColor;
+      if (baseColor?.isColor) {
+        material.color.copy(baseColor).lerp(centerArtifactMoonScratchColor, discLerp);
+      }
+      material.emissive.copy(centerArtifactMoonScratchColor);
+      const baseIntensity =
+        material.userData?.centerArtifactBaseEmissiveIntensity ?? material.emissiveIntensity ?? 0;
+      material.emissiveIntensity =
+        Math.max(baseIntensity + 0.35, 0.68 + moonPulse * 0.38) * strength;
+    }
+
+    centerArtifactMoonScratchColor
+      .copy(centerArtifactMoonHaloColor)
+      .lerp(centerArtifactMoonDiscColor, 0.22 + moonPulse * 0.12);
+    for (const material of centerArtifactMoonHaloMaterials) {
+      if (!material?.emissive?.isColor) {
+        continue;
+      }
+      const baseColor = material.userData?.centerArtifactBaseColor;
+      if (baseColor?.isColor) {
+        material.color.copy(baseColor).lerp(centerArtifactMoonScratchColor, haloLerp);
+      }
+      material.emissive.copy(centerArtifactMoonScratchColor);
+      const baseIntensity =
+        material.userData?.centerArtifactBaseEmissiveIntensity ?? material.emissiveIntensity ?? 0;
+      material.emissiveIntensity =
+        Math.max(baseIntensity + 0.12, 0.22 + moonPulse * 0.14) * strength;
+    }
+
+    applyThemePostProcessing();
+  }
+
   function activateCenterArtifact(target = null) {
     if (centerArtifactActivated) {
       return;
@@ -1203,7 +1343,14 @@ async function boot() {
     applyCenterArtifactLightingDominance();
   }
 
-  function updateCenterArtifact(elapsed) {
+  function updateCenterArtifact(delta, elapsed) {
+    centerArtifactSceneFxStrength = THREE.MathUtils.damp(
+      centerArtifactSceneFxStrength,
+      centerArtifactActivated ? 1 : 0,
+      3.4,
+      delta
+    );
+
     if (!centerArtifactActivated) {
       const owner = findCenterArtifactOwner();
       if (!owner) {
@@ -1277,6 +1424,7 @@ async function boot() {
     light.color.copy(centerArtifactPrimaryColor);
     light.intensity = 3.4 + pulse * 1.8;
     light.distance = 38;
+    applyCenterArtifactAtmosphere(elapsed);
   }
 
   function applySecretFloorplanOverrides(options = {}) {
@@ -2261,9 +2409,9 @@ async function boot() {
     if (driftSystem?.config?.enabled) {
       driftSnapshot = driftSystem.update(delta);
       applyThemeAmbientMix();
-      applyDriftFogPulse();
     }
-    updateCenterArtifact(elapsed);
+    applyDriftFogPulse();
+    updateCenterArtifact(delta, elapsed);
     updateSecretUnlocks(performance.now());
     updateModuleTriggers();
 

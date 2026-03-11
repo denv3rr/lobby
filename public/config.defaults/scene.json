@@ -92,6 +92,7 @@
             -5.1
           ],
           "openSide": "east",
+          "allowProtectedZoneOverlap": true,
           "navigationInset": 0.9
         }
       ]
@@ -237,18 +238,18 @@
       "label": "Contact",
       "url": "https://seperet.com/contact",
       "position": [
-        0,
+        -13.8,
         1.5,
-        -13.8
+        -7.8
       ],
       "rotation": [
         0,
-        0,
+        60,
         0
       ],
       "size": [
-        2.2,
-        2.9,
+        1.9,
+        2.4,
         0.4
       ],
       "color": "#cbb0ff"
@@ -273,27 +274,6 @@
         0.4
       ],
       "color": "#ff9f9f"
-    },
-    {
-      "id": "discord",
-      "label": "Discord",
-      "url": "https://discord.com",
-      "position": [
-        -13.8,
-        1.5,
-        -7.8
-      ],
-      "rotation": [
-        0,
-        60,
-        0
-      ],
-      "size": [
-        1.9,
-        2.4,
-        0.4
-      ],
-      "color": "#9aa7ff"
     },
     {
       "id": "github",
@@ -609,38 +589,6 @@
       }
     },
     {
-      "id": "east_media_bench",
-      "type": "primitive",
-      "primitive": "box",
-      "allowCatalogOverlap": true,
-      "allowDoorwayBlock": true,
-      "position": [
-        -16.58,
-        0.32,
-        -5.1
-      ],
-      "rotation": [
-        0,
-        -90,
-        0
-      ],
-      "scale": [
-        2.2,
-        0.64,
-        0.86
-      ],
-      "material": {
-        "color": "#474038",
-        "procedural": "marble",
-        "textureRepeat": [
-          1,
-          1
-        ],
-        "roughness": 0.82,
-        "metalness": 0.08
-      }
-    },
-    {
       "id": "east_media_planter_corner",
       "type": "model",
       "model": "/assets/models/props/lobby_planter.glb",
@@ -726,13 +674,13 @@
       "allowDoorwayBlock": true,
       "allowPortalBlock": true,
       "position": [
-        -14.88,
-        1.66,
-        -6.96
+        -15.18,
+        1.978,
+        -7.03
       ],
       "scale": [
-        0.16,
-        3.12,
+        0.18,
+        3.956,
         0.24
       ],
       "collider": false,
@@ -752,13 +700,13 @@
       "allowDoorwayBlock": true,
       "allowPortalBlock": true,
       "position": [
-        -14.88,
-        1.66,
-        -3.24
+        -15.18,
+        1.978,
+        -3.17
       ],
       "scale": [
-        0.16,
-        3.12,
+        0.18,
+        3.956,
         0.24
       ],
       "collider": false,
@@ -778,14 +726,14 @@
       "allowDoorwayBlock": true,
       "allowPortalBlock": true,
       "position": [
-        -14.88,
-        3.14,
+        -15.18,
+        3.956,
         -5.1
       ],
       "scale": [
-        0.16,
         0.18,
-        4.08
+        0.2,
+        4.1
       ],
       "collider": false,
       "material": {
@@ -804,14 +752,14 @@
       "allowDoorwayBlock": true,
       "allowPortalBlock": true,
       "position": [
-        -14.78,
-        2.98,
+        -15.08,
+        3.82,
         -5.1
       ],
       "scale": [
         0.05,
         0.08,
-        3.68
+        3.72
       ],
       "collider": false,
       "material": {
@@ -831,14 +779,14 @@
       "allowDoorwayBlock": true,
       "allowPortalBlock": true,
       "position": [
-        -14.5,
-        3.54,
+        -14.72,
+        4.28,
         -5.1
       ],
       "scale": [
-        0.28,
-        0.28,
-        0.28
+        0.24,
+        0.24,
+        0.24
       ],
       "collider": false,
       "material": {
