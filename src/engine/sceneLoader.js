@@ -18,11 +18,64 @@ function cloneMaterialConfig(config = {}) {
 }
 
 function cloneConfig(config = {}) {
-  return JSON.parse(JSON.stringify(config || {}));
+  if (config === undefined) {
+    return undefined;
+  }
+  return JSON.parse(JSON.stringify(config));
 }
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function toScaleVector3(values = [1, 1, 1]) {
+  return new THREE.Vector3(
+    values[0] == null ? 1 : values[0] || 1,
+    values[1] == null ? 1 : values[1] || 1,
+    values[2] == null ? 1 : values[2] || 1
+  );
+}
+
+function toRotationEuler(values = [0, 0, 0]) {
+  return new THREE.Euler(
+    degToRad(values[0] || 0),
+    degToRad(values[1] || 0),
+    degToRad(values[2] || 0)
+  );
+}
+
+function toRotationArray(euler) {
+  return [
+    THREE.MathUtils.radToDeg(euler.x),
+    THREE.MathUtils.radToDeg(euler.y),
+    THREE.MathUtils.radToDeg(euler.z)
+  ];
+}
+
+function mergeConfigObjects(baseValue, overrideValue) {
+  if (!isObject(baseValue)) {
+    return cloneConfig(overrideValue);
+  }
+  if (!isObject(overrideValue)) {
+    return cloneConfig(baseValue);
+  }
+
+  const merged = {};
+  const keys = new Set([...Object.keys(baseValue), ...Object.keys(overrideValue)]);
+  for (const key of keys) {
+    const baseEntry = baseValue[key];
+    const overrideEntry = overrideValue[key];
+    if (isObject(baseEntry) && isObject(overrideEntry)) {
+      merged[key] = mergeConfigObjects(baseEntry, overrideEntry);
+      continue;
+    }
+    if (overrideEntry !== undefined) {
+      merged[key] = cloneConfig(overrideEntry);
+      continue;
+    }
+    merged[key] = cloneConfig(baseEntry);
+  }
+  return merged;
 }
 
 function disposeManagedMaterial(material) {
@@ -250,6 +303,198 @@ function normalizeInteractableAction(action = {}) {
   };
 }
 
+function normalizePropAnimations(prop = {}) {
+  const source = Array.isArray(prop?.animations)
+    ? prop.animations
+    : isObject(prop?.animation)
+      ? [prop.animation]
+      : [];
+  const normalized = [];
+
+  for (const entry of source) {
+    if (!isObject(entry)) {
+      continue;
+    }
+
+    const type = readText(entry.type, "").toLowerCase();
+    if (!type) {
+      continue;
+    }
+
+    if (type === "spiny" || type === "spin-y" || type === "spin") {
+      normalized.push({
+        type: "spin",
+        axis: readText(entry.axis, "y").toLowerCase() || "y",
+        speed: Number(entry.speed) || 0.8,
+        phase: Number(entry.phase) || 0
+      });
+      continue;
+    }
+
+    if (type === "spinx" || type === "spin-x") {
+      normalized.push({
+        type: "spin",
+        axis: "x",
+        speed: Number(entry.speed) || 0.8,
+        phase: Number(entry.phase) || 0
+      });
+      continue;
+    }
+
+    if (type === "spinz" || type === "spin-z") {
+      normalized.push({
+        type: "spin",
+        axis: "z",
+        speed: Number(entry.speed) || 0.8,
+        phase: Number(entry.phase) || 0
+      });
+      continue;
+    }
+
+    if (type === "pulse") {
+      normalized.push({
+        type: "pulse",
+        speed: Number(entry.speed) || 1.2,
+        amplitude: THREE.MathUtils.clamp(Number(entry.amplitude) || 0.08, 0.01, 0.8),
+        phase: Number(entry.phase) || 0
+      });
+      continue;
+    }
+
+    if (type === "bob" || type === "hover") {
+      normalized.push({
+        type: "bob",
+        axis: readText(entry.axis, "y").toLowerCase() || "y",
+        speed: Number(entry.speed) || 1.1,
+        amplitude: Number(entry.amplitude) || 0.12,
+        phase: Number(entry.phase) || 0
+      });
+    }
+  }
+
+  return normalized;
+}
+
+function normalizeDisplayPanelConfig(config = {}) {
+  if (!isObject(config) || !Object.keys(config).length || config.enabled === false) {
+    return null;
+  }
+
+  const type = readText(config.type, "scroll-gallery").toLowerCase();
+  if (
+    type !== "scroll-gallery" &&
+    type !== "info-panel" &&
+    type !== "gallery-thumbnails" &&
+    type !== "gallery-preview"
+  ) {
+    return null;
+  }
+
+  const localSize = Array.isArray(config.localSize)
+    ? config.localSize
+        .slice(0, 2)
+        .map((value) => Math.max(0.2, Math.abs(Number(value) || 0)))
+    : null;
+  const cta = isObject(config.cta)
+    ? {
+        label: readText(config.cta.label, "Visit the project site"),
+        url: readText(config.cta.url, "")
+      }
+    : null;
+
+  const normalized = {
+    type,
+    title: readText(config.title, "Gallery"),
+    subtitle: readText(config.subtitle, ""),
+    cta,
+    galleryId: readText(config.galleryId, ""),
+    localSize: localSize?.length === 2 ? localSize : null,
+    projection: isObject(config.projection) ? cloneConfig(config.projection) : {}
+  };
+
+  if (type === "scroll-gallery" || type === "gallery-thumbnails" || type === "gallery-preview") {
+    return {
+      ...normalized,
+      emptyLabel: readText(config.emptyLabel, "Gallery images coming soon."),
+      images: Array.isArray(config.images)
+        ? config.images.map((entry) => readText(entry, "")).filter(Boolean)
+        : []
+    };
+  }
+
+  return {
+    ...normalized,
+    body: readText(config.body || config.description, ""),
+    tags: Array.isArray(config.tags)
+      ? config.tags.map((entry) => readText(entry, "")).filter(Boolean).slice(0, 8)
+      : [],
+    bullets: Array.isArray(config.bullets)
+      ? config.bullets.map((entry) => readText(entry, "")).filter(Boolean).slice(0, 6)
+      : [],
+    accent: readText(config.accent, "")
+  };
+}
+
+function expandScenePropGroups(sceneConfig = {}) {
+  const flatProps = Array.isArray(sceneConfig?.props) ? cloneConfig(sceneConfig.props) : [];
+  const groups = Array.isArray(sceneConfig?.propGroups) ? sceneConfig.propGroups : [];
+
+  for (const group of groups) {
+    if (!isObject(group) || !Array.isArray(group.props) || !group.props.length) {
+      continue;
+    }
+
+    const groupPosition = toVector3(group.position || [0, 0, 0]);
+    const groupQuaternion = new THREE.Quaternion().setFromEuler(
+      toRotationEuler(group.rotation || [0, 0, 0])
+    );
+    const groupScale = toScaleVector3(group.scale || [1, 1, 1]);
+    const groupModuleIds = normalizeModuleIds(group.moduleIds || group.moduleId || group.modules);
+    const groupDefaults = isObject(group.defaults) ? cloneConfig(group.defaults) : {};
+
+    for (const prop of group.props) {
+      if (!isObject(prop)) {
+        continue;
+      }
+
+      const merged = mergeConfigObjects(groupDefaults, prop) || {};
+      const localPosition = toVector3(merged.position || [0, 0, 0]);
+      const localQuaternion = new THREE.Quaternion().setFromEuler(
+        toRotationEuler(merged.rotation || [0, 0, 0])
+      );
+      const localScale = toScaleVector3(merged.scale || [1, 1, 1]);
+      const worldPosition = localPosition.multiply(groupScale).applyQuaternion(groupQuaternion).add(groupPosition);
+      const worldQuaternion = groupQuaternion.clone().multiply(localQuaternion);
+      const worldEuler = new THREE.Euler().setFromQuaternion(worldQuaternion, "XYZ");
+      const worldScale = localScale.multiply(groupScale);
+      const moduleIds = normalizeModuleIds([
+        ...groupModuleIds,
+        ...(normalizeModuleIds(merged.moduleIds || merged.moduleId || merged.modules) || [])
+      ]);
+
+      merged.position = [worldPosition.x, worldPosition.y, worldPosition.z];
+      merged.rotation = toRotationArray(worldEuler);
+      merged.scale = [worldScale.x, worldScale.y, worldScale.z];
+
+      if (moduleIds.length) {
+        merged.moduleIds = moduleIds;
+        delete merged.moduleId;
+        delete merged.modules;
+      }
+      if (merged.initiallyHidden == null && group.initiallyHidden != null) {
+        merged.initiallyHidden = Boolean(group.initiallyHidden);
+      }
+      if (merged.deferLoad == null && group.deferLoad != null) {
+        merged.deferLoad = Boolean(group.deferLoad);
+      }
+
+      flatProps.push(merged);
+    }
+  }
+
+  return flatProps;
+}
+
 async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
   const primitive = prop.primitive || "box";
   let geometry = null;
@@ -277,6 +522,32 @@ async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
   mesh.receiveShadow = true;
   await applyPrimitiveMaterial(material, prop.material, cache, animatedTextures, owner);
   return mesh;
+}
+
+async function createCompositeMesh(prop, cache, animatedTextures, owner) {
+  const group = new THREE.Group();
+  const partDefaults = isObject(prop?.partDefaults) ? cloneConfig(prop.partDefaults) : {};
+  const parts = Array.isArray(prop?.parts) ? prop.parts : [];
+
+  for (const part of parts) {
+    if (!isObject(part)) {
+      continue;
+    }
+
+    const merged = mergeConfigObjects(partDefaults, part) || {};
+    const mesh = await createPrimitiveMesh(merged, cache, animatedTextures, owner);
+    mesh.position.copy(toVector3(merged.position || [0, 0, 0]));
+    mesh.rotation.set(
+      degToRad(merged.rotation?.[0] || 0),
+      degToRad(merged.rotation?.[1] || 0),
+      degToRad(merged.rotation?.[2] || 0)
+    );
+    const scale = merged.scale || [1, 1, 1];
+    mesh.scale.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
+    group.add(mesh);
+  }
+
+  return group;
 }
 
 function normalizeModelFallbackConfig(prop = {}) {
@@ -720,7 +991,7 @@ function createProtectedFloorplanZones({
 
   for (const roomId of roomIds) {
     const config = isObject(catalogRooms[roomId]) ? catalogRooms[roomId] : null;
-    if (!config) {
+    if (!config || config.enabled === false) {
       continue;
     }
 
@@ -844,9 +1115,20 @@ function deriveCatalogSideDoorways(roomConfig = {}, catalogConfig = null) {
     return sideDoorways;
   }
 
+  const configuredCentersBySide = isObject(sideDoorways.centersBySide)
+    ? sideDoorways.centersBySide
+    : {};
+  const mergeCenters = (side) => {
+    const merged = [
+      ...(Array.isArray(configuredCentersBySide[side]) ? configuredCentersBySide[side] : []),
+      ...(Array.isArray(derivedCenters[side]) ? derivedCenters[side] : [])
+    ];
+    return getSideDoorCenters({ ...sideDoorways, centersBySide: { [side]: merged } }, side, depth, doorwayWidth);
+  };
+
   sideDoorways.centersBySide = {
-    east: getSideDoorCenters({ ...sideDoorways, centersBySide: derivedCenters }, "east", depth, doorwayWidth),
-    west: getSideDoorCenters({ ...sideDoorways, centersBySide: derivedCenters }, "west", depth, doorwayWidth)
+    east: mergeCenters("east"),
+    west: mergeCenters("west")
   };
   return sideDoorways;
 }
@@ -1449,7 +1731,7 @@ export async function loadScene({
     return material;
   }
 
-  function createAnnex(annexConfig, index, tag) {
+  function normalizeAnnexRecord(annexConfig, index) {
     const size = Array.isArray(annexConfig?.size) ? annexConfig.size : [8, 6, 8];
     const widthValue = Math.max(2.2, Number(size[0]) || 8);
     const heightValue = Math.max(2.2, Number(size[1]) || 6);
@@ -1458,19 +1740,160 @@ export async function loadScene({
     const centerX = Number(position[0]) || 0;
     const baseY = floorY + (Number(position[1]) || 0);
     const centerZ = Number(position[2]) || 0;
-    const openSide = normalizeOpenSide(annexConfig?.openSide);
-    const navigationInset = THREE.MathUtils.clamp(
-      annexConfig?.navigationInset ?? 1.05,
-      0.35,
-      Math.max(0.35, Math.min(widthValue, depthValue) * 0.45)
-    );
+
+    return {
+      id: readText(annexConfig?.id, `annex-${index + 1}`),
+      index,
+      config: annexConfig,
+      widthValue,
+      heightValue,
+      depthValue,
+      centerX,
+      centerZ,
+      baseY,
+      openSide: normalizeOpenSide(annexConfig?.openSide),
+      navigationInset: THREE.MathUtils.clamp(
+        annexConfig?.navigationInset ?? 1.05,
+        0.35,
+        Math.max(0.35, Math.min(widthValue, depthValue) * 0.45)
+      ),
+      minX: centerX - widthValue * 0.5,
+      maxX: centerX + widthValue * 0.5,
+      minZ: centerZ - depthValue * 0.5,
+      maxZ: centerZ + depthValue * 0.5
+    };
+  }
+
+  function addAnnexWallOpening(openingsByAnnex, annexId, side, minValue, maxValue) {
+    const id = readText(annexId, "");
+    const normalizedSide = normalizeOpenSide(side);
+    if (!id || !normalizedSide) {
+      return;
+    }
+
+    const min = Math.min(Number(minValue) || 0, Number(maxValue) || 0);
+    const max = Math.max(Number(minValue) || 0, Number(maxValue) || 0);
+    if (max - min <= 0.12) {
+      return;
+    }
+
+    let record = openingsByAnnex.get(id);
+    if (!record) {
+      record = {};
+      openingsByAnnex.set(id, record);
+    }
+    if (!Array.isArray(record[normalizedSide])) {
+      record[normalizedSide] = [];
+    }
+    record[normalizedSide].push({ min, max });
+  }
+
+  function buildAnnexWallOpenings(records = []) {
+    const openingsByAnnex = new Map();
+    const touchTolerance = Math.max(0.08, wallThickness + 0.08);
+
+    for (let index = 0; index < records.length; index += 1) {
+      const current = records[index];
+      for (let nextIndex = index + 1; nextIndex < records.length; nextIndex += 1) {
+        const other = records[nextIndex];
+
+        if (Math.abs(current.maxX - other.minX) <= touchTolerance) {
+          const overlapMin = Math.max(current.minZ, other.minZ);
+          const overlapMax = Math.min(current.maxZ, other.maxZ);
+          if (
+            overlapMax - overlapMin > 0.4 &&
+            (current.openSide === "east" || other.openSide === "west")
+          ) {
+            addAnnexWallOpening(openingsByAnnex, current.id, "east", overlapMin - current.centerZ, overlapMax - current.centerZ);
+            addAnnexWallOpening(openingsByAnnex, other.id, "west", overlapMin - other.centerZ, overlapMax - other.centerZ);
+          }
+        }
+
+        if (Math.abs(current.minX - other.maxX) <= touchTolerance) {
+          const overlapMin = Math.max(current.minZ, other.minZ);
+          const overlapMax = Math.min(current.maxZ, other.maxZ);
+          if (
+            overlapMax - overlapMin > 0.4 &&
+            (current.openSide === "west" || other.openSide === "east")
+          ) {
+            addAnnexWallOpening(openingsByAnnex, current.id, "west", overlapMin - current.centerZ, overlapMax - current.centerZ);
+            addAnnexWallOpening(openingsByAnnex, other.id, "east", overlapMin - other.centerZ, overlapMax - other.centerZ);
+          }
+        }
+
+        if (Math.abs(current.maxZ - other.minZ) <= touchTolerance) {
+          const overlapMin = Math.max(current.minX, other.minX);
+          const overlapMax = Math.min(current.maxX, other.maxX);
+          if (
+            overlapMax - overlapMin > 0.4 &&
+            (current.openSide === "south" || other.openSide === "north")
+          ) {
+            addAnnexWallOpening(openingsByAnnex, current.id, "south", overlapMin - current.centerX, overlapMax - current.centerX);
+            addAnnexWallOpening(openingsByAnnex, other.id, "north", overlapMin - other.centerX, overlapMax - other.centerX);
+          }
+        }
+
+        if (Math.abs(current.minZ - other.maxZ) <= touchTolerance) {
+          const overlapMin = Math.max(current.minX, other.minX);
+          const overlapMax = Math.min(current.maxX, other.maxX);
+          if (
+            overlapMax - overlapMin > 0.4 &&
+            (current.openSide === "north" || other.openSide === "south")
+          ) {
+            addAnnexWallOpening(openingsByAnnex, current.id, "north", overlapMin - current.centerX, overlapMax - current.centerX);
+            addAnnexWallOpening(openingsByAnnex, other.id, "south", overlapMin - other.centerX, overlapMax - other.centerX);
+          }
+        }
+      }
+    }
+
+    return openingsByAnnex;
+  }
+
+  function normalizeAnnexWallOpenings(openings = [], spanMin, spanMax) {
+    const normalized = [];
+    for (const opening of Array.isArray(openings) ? openings : []) {
+      const min = Math.max(spanMin, Math.min(spanMax, Number(opening?.min) || 0));
+      const max = Math.max(spanMin, Math.min(spanMax, Number(opening?.max) || 0));
+      if (max - min <= 0.12) {
+        continue;
+      }
+      normalized.push({ min, max });
+    }
+
+    normalized.sort((left, right) => left.min - right.min);
+    const merged = [];
+    for (const opening of normalized) {
+      const previous = merged[merged.length - 1];
+      if (previous && opening.min <= previous.max + 0.08) {
+        previous.max = Math.max(previous.max, opening.max);
+        continue;
+      }
+      merged.push({ ...opening });
+    }
+    return merged;
+  }
+
+  function createAnnex(annexRecord, tag, wallOpeningsBySide = {}) {
+    const {
+      config: annexConfig,
+      id,
+      widthValue,
+      heightValue,
+      depthValue,
+      centerX,
+      centerZ,
+      baseY,
+      openSide,
+      navigationInset
+    } = annexRecord;
 
     const floorMat = createFloorplanMaterial(floorMaterial, annexConfig?.floorMaterial);
     const wallMat = createFloorplanMaterial(wallMaterial, annexConfig?.wallMaterial);
     const ceilingMat = createFloorplanMaterial(ceilingMaterial, annexConfig?.ceilingMaterial);
 
     const group = new THREE.Group();
-    group.name = annexConfig?.id || `annex-${index + 1}`;
+    group.name = id;
     group.userData.floorplanTag = tag;
     group.position.set(centerX, baseY, centerZ);
 
@@ -1484,109 +1907,131 @@ export async function loadScene({
     ceiling.position.y = heightValue;
     group.add(ceiling);
 
-    function addWall(side) {
-      if (side === openSide) {
+    function addWallSegment(side, spanStart, spanEnd, segmentIndex) {
+      const segmentLength = spanEnd - spanStart;
+      if (segmentLength <= 0.12) {
         return;
       }
 
       let mesh = null;
       let wallBounds = null;
+      let collider = null;
       if (side === "north") {
+        const segmentCenter = centerX + spanStart + segmentLength * 0.5;
         wallBounds = {
-          minX: centerX - widthValue * 0.5,
-          maxX: centerX + widthValue * 0.5,
+          minX: centerX + spanStart,
+          maxX: centerX + spanEnd,
           minZ: centerZ - depthValue * 0.5 - wallThickness * 0.5,
           maxZ: centerZ - depthValue * 0.5 + wallThickness * 0.5
         };
-        if (wallBlockedByProtectedZone(wallBounds)) {
-          return;
-        }
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, heightValue), wallMat);
-        mesh.position.set(0, heightValue * 0.5, -depthValue * 0.5);
-        addColliderRect({
-          centerX,
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(segmentLength, heightValue), wallMat);
+        mesh.position.set(spanStart + segmentLength * 0.5, heightValue * 0.5, -depthValue * 0.5);
+        collider = {
+          centerX: segmentCenter,
           centerZ: centerZ - depthValue * 0.5,
-          sizeX: widthValue,
+          sizeX: segmentLength,
           sizeZ: wallThickness,
           minY: baseY + 0.02,
           maxY: baseY + heightValue - 0.04,
           tag,
-          id: `${group.name}_north`
-        });
+          id: `${group.name}_north_${segmentIndex}`
+        };
       } else if (side === "south") {
+        const segmentCenter = centerX + spanStart + segmentLength * 0.5;
         wallBounds = {
-          minX: centerX - widthValue * 0.5,
-          maxX: centerX + widthValue * 0.5,
+          minX: centerX + spanStart,
+          maxX: centerX + spanEnd,
           minZ: centerZ + depthValue * 0.5 - wallThickness * 0.5,
           maxZ: centerZ + depthValue * 0.5 + wallThickness * 0.5
         };
-        if (wallBlockedByProtectedZone(wallBounds)) {
-          return;
-        }
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(widthValue, heightValue), wallMat);
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(segmentLength, heightValue), wallMat);
         mesh.rotation.y = Math.PI;
-        mesh.position.set(0, heightValue * 0.5, depthValue * 0.5);
-        addColliderRect({
-          centerX,
+        mesh.position.set(spanStart + segmentLength * 0.5, heightValue * 0.5, depthValue * 0.5);
+        collider = {
+          centerX: segmentCenter,
           centerZ: centerZ + depthValue * 0.5,
-          sizeX: widthValue,
+          sizeX: segmentLength,
           sizeZ: wallThickness,
           minY: baseY + 0.02,
           maxY: baseY + heightValue - 0.04,
           tag,
-          id: `${group.name}_south`
-        });
+          id: `${group.name}_south_${segmentIndex}`
+        };
       } else if (side === "east") {
+        const segmentCenter = centerZ + spanStart + segmentLength * 0.5;
         wallBounds = {
           minX: centerX + widthValue * 0.5 - wallThickness * 0.5,
           maxX: centerX + widthValue * 0.5 + wallThickness * 0.5,
-          minZ: centerZ - depthValue * 0.5,
-          maxZ: centerZ + depthValue * 0.5
+          minZ: centerZ + spanStart,
+          maxZ: centerZ + spanEnd
         };
-        if (wallBlockedByProtectedZone(wallBounds)) {
-          return;
-        }
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(depthValue, heightValue), wallMat);
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(segmentLength, heightValue), wallMat);
         mesh.rotation.y = -Math.PI * 0.5;
-        mesh.position.set(widthValue * 0.5, heightValue * 0.5, 0);
-        addColliderRect({
+        mesh.position.set(widthValue * 0.5, heightValue * 0.5, spanStart + segmentLength * 0.5);
+        collider = {
           centerX: centerX + widthValue * 0.5,
-          centerZ,
+          centerZ: segmentCenter,
           sizeX: wallThickness,
-          sizeZ: depthValue,
+          sizeZ: segmentLength,
           minY: baseY + 0.02,
           maxY: baseY + heightValue - 0.04,
           tag,
-          id: `${group.name}_east`
-        });
+          id: `${group.name}_east_${segmentIndex}`
+        };
       } else if (side === "west") {
+        const segmentCenter = centerZ + spanStart + segmentLength * 0.5;
         wallBounds = {
           minX: centerX - widthValue * 0.5 - wallThickness * 0.5,
           maxX: centerX - widthValue * 0.5 + wallThickness * 0.5,
-          minZ: centerZ - depthValue * 0.5,
-          maxZ: centerZ + depthValue * 0.5
+          minZ: centerZ + spanStart,
+          maxZ: centerZ + spanEnd
         };
-        if (wallBlockedByProtectedZone(wallBounds)) {
-          return;
-        }
-        mesh = new THREE.Mesh(new THREE.PlaneGeometry(depthValue, heightValue), wallMat);
+        mesh = new THREE.Mesh(new THREE.PlaneGeometry(segmentLength, heightValue), wallMat);
         mesh.rotation.y = Math.PI * 0.5;
-        mesh.position.set(-widthValue * 0.5, heightValue * 0.5, 0);
-        addColliderRect({
+        mesh.position.set(-widthValue * 0.5, heightValue * 0.5, spanStart + segmentLength * 0.5);
+        collider = {
           centerX: centerX - widthValue * 0.5,
-          centerZ,
+          centerZ: segmentCenter,
           sizeX: wallThickness,
-          sizeZ: depthValue,
+          sizeZ: segmentLength,
           minY: baseY + 0.02,
           maxY: baseY + heightValue - 0.04,
           tag,
-          id: `${group.name}_west`
-        });
+          id: `${group.name}_west_${segmentIndex}`
+        };
       }
 
-      if (mesh) {
-        group.add(mesh);
+      if (!mesh || !wallBounds) {
+        return;
       }
+      if (annexConfig?.allowProtectedZoneOverlap !== true && wallBlockedByProtectedZone(wallBounds)) {
+        return;
+      }
+
+      group.add(mesh);
+      if (collider) {
+        addColliderRect(collider);
+      }
+    }
+
+    function addWall(side) {
+      if (side === openSide) {
+        return;
+      }
+
+      const spanMin = side === "north" || side === "south" ? -widthValue * 0.5 : -depthValue * 0.5;
+      const spanMax = side === "north" || side === "south" ? widthValue * 0.5 : depthValue * 0.5;
+      const openings = normalizeAnnexWallOpenings(wallOpeningsBySide?.[side], spanMin, spanMax);
+      let cursor = spanMin;
+      let segmentIndex = 0;
+
+      for (const opening of openings) {
+        addWallSegment(side, cursor, opening.min, segmentIndex);
+        cursor = Math.max(cursor, opening.max);
+        segmentIndex += 1;
+      }
+
+      addWallSegment(side, cursor, spanMax, segmentIndex);
     }
 
     addWall("north");
@@ -1608,16 +2053,24 @@ export async function loadScene({
   function buildFloorplanAnnexes(annexes, tag) {
     const bounds = [];
     const source = Array.isArray(annexes) ? annexes : [];
+    const records = [];
+
     for (let index = 0; index < source.length; index += 1) {
       const annex = source[index];
       if (!annex || annex.enabled === false) {
         continue;
       }
-      const annexBounds = createAnnex(annex, index, tag);
+      records.push(normalizeAnnexRecord(annex, index));
+    }
+
+    const openingsByAnnex = buildAnnexWallOpenings(records);
+    for (const record of records) {
+      const annexBounds = createAnnex(record, tag, openingsByAnnex.get(record.id) || {});
       if (annexBounds && annexBounds.minX < annexBounds.maxX && annexBounds.minZ < annexBounds.maxZ) {
         bounds.push(annexBounds);
       }
     }
+
     return bounds;
   }
 
@@ -1768,10 +2221,12 @@ export async function loadScene({
   const propRecords = [];
   const propRecordsById = new Map();
   const propInteractionTargets = [];
+  const displayPanels = [];
   const propModules = new Map();
   const animatedTextures = [];
   const dynamicProps = [];
   const visibilityEntries = [];
+  let sceneRevision = 0;
   let activePropMaterialOverrideIds = new Set();
   let glowLightCount = 0;
   const maxGlowLights = Number.isFinite(qualityProfile?.sceneGlowLightBudget)
@@ -1793,6 +2248,62 @@ export async function loadScene({
   const tempPropSize = new THREE.Vector3();
   const tempPropCenter = new THREE.Vector3();
   const tempLocalCenter = new THREE.Vector3();
+  const tempPanelLocalBounds = new THREE.Box3();
+  const tempPanelChildBounds = new THREE.Box3();
+  const tempPanelLocalSize = new THREE.Vector3();
+
+  function applyModelPlacement(modelRoot, placement = null) {
+    if (!modelRoot || !isObject(placement)) {
+      return;
+    }
+
+    tempPropBox.setFromObject(modelRoot);
+    if (tempPropBox.isEmpty()) {
+      return;
+    }
+
+    tempPropBox.getCenter(tempPropCenter);
+    const centerAxes = new Set(
+      (Array.isArray(placement.centerAxes) ? placement.centerAxes : [])
+        .map((entry) => readText(entry, "").toLowerCase())
+        .filter(Boolean)
+    );
+
+    if (centerAxes.has("x")) {
+      modelRoot.position.x -= tempPropCenter.x;
+    }
+    if (centerAxes.has("y")) {
+      modelRoot.position.y -= tempPropCenter.y;
+    }
+    if (centerAxes.has("z")) {
+      modelRoot.position.z -= tempPropCenter.z;
+    }
+
+    const alignY = readText(placement.alignY, "").toLowerCase();
+    if (alignY === "base") {
+      modelRoot.position.y -= tempPropBox.min.y;
+    } else if (alignY === "center" && !centerAxes.has("y")) {
+      modelRoot.position.y -= tempPropCenter.y;
+    }
+
+    const offset = Array.isArray(placement.offset) ? placement.offset : [];
+    modelRoot.position.x += Number(offset[0]) || 0;
+    modelRoot.position.y += Number(offset[1]) || 0;
+    modelRoot.position.z += Number(offset[2]) || 0;
+
+    const rotation = Array.isArray(placement.rotation) ? placement.rotation : [];
+    if (rotation.length) {
+      modelRoot.rotation.x += degToRad(rotation[0] || 0);
+      modelRoot.rotation.y += degToRad(rotation[1] || 0);
+      modelRoot.rotation.z += degToRad(rotation[2] || 0);
+    }
+
+    modelRoot.updateMatrixWorld(true);
+  }
+
+  function markSceneDirty() {
+    sceneRevision += 1;
+  }
 
   function addObjectCollider(
     object,
@@ -1895,8 +2406,56 @@ export async function loadScene({
     applyResolvedVisibility(entry);
   }
 
-  function registerVisibilityEntry(wrapper, prop, tag, target = null) {
+  function isRearExhibitProp(prop = {}) {
+    const position = Array.isArray(prop?.position) ? prop.position : null;
+    if (!position || position.length < 3) {
+      return false;
+    }
+
+    const x = Number(position[0]);
+    const z = Number(position[2]);
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+      return false;
+    }
+
+    return Math.abs(x) <= 15 && z <= -18;
+  }
+
+  function shouldDisablePropFrustumCulling(prop = {}, moduleIds = []) {
+    if (prop?.frustumCulled === false || prop?.render?.frustumCulled === false) {
+      return true;
+    }
+
+    return isRearExhibitProp(prop) || normalizeModuleIds(moduleIds).length > 0;
+  }
+
+  function applyPropRenderVisibilityFlags(wrapper, prop = {}, moduleIds = []) {
+    if (!wrapper || !shouldDisablePropFrustumCulling(prop, moduleIds)) {
+      return;
+    }
+
+    wrapper.traverse((child) => {
+      if (!child || !("frustumCulled" in child)) {
+        return;
+      }
+      child.frustumCulled = false;
+    });
+  }
+
+  function registerVisibilityEntry(wrapper, prop, tag, target = null, moduleIds = []) {
     if (!wrapper?.parent || prop?.visibility?.enabled === false) {
+      return null;
+    }
+    const resolvedModuleIds = normalizeModuleIds(moduleIds);
+    const explicitManagedVisibility =
+      prop?.visibility?.managed === true || prop?.visibility?.enabled === true;
+    const deferToModuleVisibility =
+      resolvedModuleIds.length &&
+      prop?.initiallyHidden &&
+      prop?.deferLoad === true &&
+      !explicitManagedVisibility;
+    const useRoomManagedVisibility = !isRearExhibitProp(prop) || explicitManagedVisibility;
+    if (deferToModuleVisibility || !useRoomManagedVisibility) {
       return null;
     }
 
@@ -1930,6 +2489,7 @@ export async function loadScene({
       ),
       maxDistance,
       coneCos: Math.cos(THREE.MathUtils.degToRad(coneDegrees * 0.5)),
+      moduleIds: resolvedModuleIds,
       cullVisible: true,
       moduleVisible: true,
       visible: true
@@ -2347,6 +2907,7 @@ export async function loadScene({
       })
     );
     hitbox.userData.disposeManagedResources = true;
+    hitbox.userData.isInteractionHitbox = true;
     hitbox.position.copy(tempLocalCenter);
     wrapper.add(hitbox);
 
@@ -2369,6 +2930,8 @@ export async function loadScene({
     });
 
     const baseScale = wrapper.scale.clone();
+    wrapper.userData.dynamicScale = baseScale.clone();
+    wrapper.userData.hoverScaleBoost = 0;
     return {
       id: `prop:${readText(prop.id, wrapper.name || "item")}`,
       label,
@@ -2387,12 +2950,68 @@ export async function loadScene({
       },
       setHovered: (hovered) => {
         const hoverStrength = hovered ? 1 : 0;
-        wrapper.scale.copy(baseScale).multiplyScalar(1 + hoverStrength * 0.03);
+        wrapper.userData.hoverScaleBoost = hoverStrength * 0.03;
+        wrapper.scale
+          .copy(wrapper.userData.dynamicScale || baseScale)
+          .multiplyScalar(1 + wrapper.userData.hoverScaleBoost);
         for (const material of emissiveMaterials) {
           const base = material.userData?.baseInteractableEmissiveIntensity ?? 0;
           material.emissiveIntensity = base + hoverStrength * 0.22;
         }
       }
+    };
+  }
+
+  function createDisplayPanelEntry(wrapper, prop, tag) {
+    const config = normalizeDisplayPanelConfig(prop?.displayPanel);
+    if (!config) {
+      return null;
+    }
+
+    let localSize = Array.isArray(config.localSize) ? config.localSize.slice(0, 2) : null;
+    if (!localSize?.length) {
+      tempPanelLocalBounds.makeEmpty();
+      wrapper.traverse((child) => {
+        if (!child?.isMesh || !child.geometry || child.userData?.isInteractionHitbox) {
+          return;
+        }
+        child.geometry.computeBoundingBox?.();
+        if (!child.geometry.boundingBox) {
+          return;
+        }
+        tempPanelChildBounds.copy(child.geometry.boundingBox).applyMatrix4(child.matrix);
+        if (tempPanelLocalBounds.isEmpty()) {
+          tempPanelLocalBounds.copy(tempPanelChildBounds);
+        } else {
+          tempPanelLocalBounds.union(tempPanelChildBounds);
+        }
+      });
+      if (!tempPanelLocalBounds.isEmpty()) {
+        tempPanelLocalBounds.getSize(tempPanelLocalSize);
+        localSize = [
+          Math.max(0.2, tempPanelLocalSize.x, tempPanelLocalSize.z),
+          Math.max(0.2, tempPanelLocalSize.y)
+        ];
+      }
+    }
+
+    return {
+      id: readText(prop.id, wrapper.name || "panel"),
+      type: config.type,
+      object: wrapper,
+      tag,
+      title: config.title,
+      subtitle: config.subtitle,
+      galleryId: config.galleryId,
+      emptyLabel: config.emptyLabel,
+      images: config.images,
+      body: config.body,
+      tags: config.tags,
+      bullets: config.bullets,
+      accent: config.accent,
+      cta: config.cta,
+      localSize: localSize?.length === 2 ? localSize : [1, 1],
+      projection: config.projection
     };
   }
 
@@ -2421,7 +3040,7 @@ export async function loadScene({
     wrapper.userData.billboardAxis = prop.billboardAxis || "all";
     wrapper.userData.propId = prop.id || "";
     wrapper.userData.baseMaterialConfig = cloneConfig(prop.material || {});
-    wrapper.userData.materialManaged = prop.type !== "model";
+    wrapper.userData.materialManaged = prop.type !== "model" && prop.type !== "composite";
     wrapper.position.copy(toVector3(prop.position || [0, 0, 0]));
     wrapper.rotation.set(
       degToRad(prop.rotation?.[0] || 0),
@@ -2429,7 +3048,9 @@ export async function loadScene({
       degToRad(prop.rotation?.[2] || 0)
     );
 
-    if (prop.type === "model" && prop.model) {
+    if (prop.type === "composite") {
+      wrapper.add(await createCompositeMesh(prop, cache, animatedTextures, wrapper));
+    } else if (prop.type === "model" && prop.model) {
       const gltf = await cache.loadModel(prop.model);
       if (shouldCancel()) {
         return null;
@@ -2442,6 +3063,7 @@ export async function loadScene({
             child.receiveShadow = true;
           }
         });
+        applyModelPlacement(model, prop.modelPlacement);
         wrapper.add(model);
       } else {
         const fallbackConfig = normalizeModelFallbackConfig(prop);
@@ -2483,14 +3105,22 @@ export async function loadScene({
     if (wrapper.userData.propId) {
       propRecordsById.set(wrapper.userData.propId, wrapper);
     }
-    const initialModuleVisible = !prop.initiallyHidden;
+    const initialModuleVisible = moduleIds.length
+      ? resolveModuleVisibility(moduleIds)
+      : !prop.initiallyHidden;
+    applyPropRenderVisibilityFlags(wrapper, prop, moduleIds);
     registerPropCollider(wrapper, prop, tag, moduleIds);
     const interactionTarget = createPropInteractionTarget(wrapper, prop, tag);
     if (interactionTarget) {
       propInteractionTargets.push(interactionTarget);
       wrapper.userData.interactionTarget = interactionTarget;
     }
-    const visibilityEntry = registerVisibilityEntry(wrapper, prop, tag, interactionTarget);
+    const displayPanelEntry = createDisplayPanelEntry(wrapper, prop, tag);
+    if (displayPanelEntry) {
+      displayPanels.push(displayPanelEntry);
+      wrapper.userData.displayPanelEntry = displayPanelEntry;
+    }
+    const visibilityEntry = registerVisibilityEntry(wrapper, prop, tag, interactionTarget, moduleIds);
     if (moduleIds.length) {
       registerModuleMember(
         moduleIds,
@@ -2512,10 +3142,13 @@ export async function loadScene({
     }
 
     const hover = prop.hoverMotion;
-    if (wrapper.userData.billboard || hover) {
+    const animations = normalizePropAnimations(prop);
+    if (wrapper.userData.billboard || hover || animations.length) {
       dynamicProps.push({
         object: wrapper,
         basePosition: wrapper.position.clone(),
+        baseRotation: wrapper.rotation.clone(),
+        baseScale: wrapper.scale.clone(),
         hover: hover
           ? {
               axis: hover.axis || "y",
@@ -2523,9 +3156,11 @@ export async function loadScene({
               speed: hover.speed ?? 1.2,
               phase: hover.phase ?? Math.random() * Math.PI * 2
             }
-          : null
+          : null,
+        animations
       });
     }
+    markSceneDirty();
     return wrapper;
   }
 
@@ -2617,6 +3252,7 @@ export async function loadScene({
         scene.remove(item);
         item.clear();
         propRecords.splice(i, 1);
+        markSceneDirty();
         for (let j = animatedTextures.length - 1; j >= 0; j -= 1) {
           if (animatedTextures[j].owner === item) {
             animatedTextures.splice(j, 1);
@@ -2630,6 +3266,11 @@ export async function loadScene({
         for (let j = propInteractionTargets.length - 1; j >= 0; j -= 1) {
           if (propInteractionTargets[j].userData?.owner === item) {
             propInteractionTargets.splice(j, 1);
+          }
+        }
+        for (let j = displayPanels.length - 1; j >= 0; j -= 1) {
+          if (displayPanels[j].object === item) {
+            displayPanels.splice(j, 1);
           }
         }
         for (let j = visibilityEntries.length - 1; j >= 0; j -= 1) {
@@ -2667,10 +3308,13 @@ export async function loadScene({
         continue;
       }
 
+      object.position.copy(item.basePosition);
+      object.rotation.copy(item.baseRotation);
+      object.scale.copy(item.baseScale);
+
       if (item.hover) {
         const { axis, amplitude, speed, phase } = item.hover;
         const wave = Math.sin(elapsedTime * speed + phase) * amplitude;
-        object.position.copy(item.basePosition);
         if (axis === "x") {
           object.position.x += wave;
         } else if (axis === "z") {
@@ -2678,6 +3322,47 @@ export async function loadScene({
         } else {
           object.position.y += wave;
         }
+      }
+
+      if (Array.isArray(item.animations) && item.animations.length) {
+        let pulseScale = 1;
+        for (const animation of item.animations) {
+          const phase = Number(animation.phase) || 0;
+          if (animation.type === "spin") {
+            const angle = elapsedTime * (Number(animation.speed) || 0.8) + phase;
+            if (animation.axis === "x") {
+              object.rotation.x += angle;
+            } else if (animation.axis === "z") {
+              object.rotation.z += angle;
+            } else {
+              object.rotation.y += angle;
+            }
+            continue;
+          }
+
+          if (animation.type === "pulse") {
+            pulseScale *= 1 + Math.sin(elapsedTime * animation.speed + phase) * animation.amplitude;
+            continue;
+          }
+
+          if (animation.type === "bob") {
+            const wave = Math.sin(elapsedTime * animation.speed + phase) * animation.amplitude;
+            if (animation.axis === "x") {
+              object.position.x += wave;
+            } else if (animation.axis === "z") {
+              object.position.z += wave;
+            } else {
+              object.position.y += wave;
+            }
+          }
+        }
+        object.scale.multiplyScalar(pulseScale);
+      }
+
+      object.userData.dynamicScale = object.userData.dynamicScale || new THREE.Vector3();
+      object.userData.dynamicScale.copy(object.scale);
+      if (object.userData.hoverScaleBoost) {
+        object.scale.multiplyScalar(1 + object.userData.hoverScaleBoost);
       }
 
       if (object.userData.billboard && activeCamera) {
@@ -2711,7 +3396,259 @@ export async function loadScene({
     };
   }
 
-  await addProps(sceneConfig.props || [], { tag: "base" });
+  function readVectorTriplet(value) {
+    if (Array.isArray(value) && value.length >= 3) {
+      const x = Number(value[0]);
+      const y = Number(value[1]);
+      const z = Number(value[2]);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        return [x, y, z];
+      }
+      return null;
+    }
+
+    if (isObject(value)) {
+      const x = Number(value.x);
+      const y = Number(value.y);
+      const z = Number(value.z);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        return [x, y, z];
+      }
+    }
+
+    return null;
+  }
+
+  function toRoundedNumber(value, digits = 4) {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return 0;
+    }
+    return Number(numeric.toFixed(digits));
+  }
+
+  function serializeEditableTransform(object) {
+    if (!object) {
+      return null;
+    }
+    return {
+      position: [
+        toRoundedNumber(object.position.x, 4),
+        toRoundedNumber(object.position.y, 4),
+        toRoundedNumber(object.position.z, 4)
+      ],
+      rotation: toRotationArray(object.rotation).map((value) => toRoundedNumber(value, 4)),
+      scale: [
+        toRoundedNumber(object.scale.x, 4),
+        toRoundedNumber(object.scale.y, 4),
+        toRoundedNumber(object.scale.z, 4)
+      ]
+    };
+  }
+
+  function getEditablePropObject(propId) {
+    const id = readText(propId, "");
+    if (!id) {
+      return null;
+    }
+    return propRecordsById.get(id) || null;
+  }
+
+  function getEditablePropIds() {
+    return [...propRecordsById.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }
+
+  function commitEditablePropTransform(propId, { markDirty = true } = {}) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+
+    const dynamicEntry = dynamicProps.find((entry) => entry?.object === object) || null;
+    if (dynamicEntry) {
+      dynamicEntry.basePosition.copy(object.position);
+      dynamicEntry.baseRotation.copy(object.rotation);
+      dynamicEntry.baseScale.copy(object.scale);
+    }
+
+    object.userData.dynamicScale = object.userData.dynamicScale || new THREE.Vector3();
+    object.userData.dynamicScale.copy(object.scale);
+    object.updateMatrixWorld(true);
+
+    if (markDirty) {
+      markSceneDirty();
+    }
+    return serializeEditableTransform(object);
+  }
+
+  function rebuildEditablePropCollider(propId, object) {
+    const id = readText(propId, "");
+    if (!id || !object) {
+      return 0;
+    }
+
+    const matching = colliders.filter((collider) => readText(collider?.id, "") === id);
+    if (!matching.length) {
+      return 0;
+    }
+
+    const template = matching[0];
+    for (let index = colliders.length - 1; index >= 0; index -= 1) {
+      if (readText(colliders[index]?.id, "") === id) {
+        colliders.splice(index, 1);
+      }
+    }
+    addObjectCollider(object, {
+      tag: readText(template?.tag, "base"),
+      id,
+      moduleIds: normalizeModuleIds(template?.moduleIds || []),
+      enabled: template?.enabled !== false
+    });
+    return matching.length;
+  }
+
+  function getEditablePropTransform(propId) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+    return serializeEditableTransform(object);
+  }
+
+  function setEditablePropTransform(propId, transform = {}, options = {}) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+    const nextTransform = isObject(transform) ? transform : {};
+    const position = readVectorTriplet(nextTransform.position);
+    const rotationDeg =
+      readVectorTriplet(nextTransform.rotationDeg) || readVectorTriplet(nextTransform.rotation);
+    const rotationRad = readVectorTriplet(nextTransform.rotationRad);
+    const scale = readVectorTriplet(nextTransform.scale);
+
+    if (position) {
+      object.position.set(position[0], position[1], position[2]);
+    }
+    if (rotationRad) {
+      object.rotation.set(rotationRad[0], rotationRad[1], rotationRad[2]);
+    } else if (rotationDeg) {
+      object.rotation.set(degToRad(rotationDeg[0]), degToRad(rotationDeg[1]), degToRad(rotationDeg[2]));
+    }
+    if (scale) {
+      object.scale.set(
+        Math.max(0.001, scale[0]),
+        Math.max(0.001, scale[1]),
+        Math.max(0.001, scale[2])
+      );
+    }
+    rebuildEditablePropCollider(propId, object);
+
+    return commitEditablePropTransform(propId, options);
+  }
+
+  function applyEditablePropTransforms(transformByPropId = {}, options = {}) {
+    const source = isObject(transformByPropId) ? transformByPropId : {};
+    let updatedCount = 0;
+    for (const [propId, transform] of Object.entries(source)) {
+      const updated = setEditablePropTransform(propId, transform, { markDirty: false });
+      if (updated) {
+        updatedCount += 1;
+      }
+    }
+    if (updatedCount && options.markDirty !== false) {
+      markSceneDirty();
+    }
+    return updatedCount;
+  }
+
+  function getPropState(propId) {
+    const id = readText(propId, "");
+    if (!id) {
+      return null;
+    }
+    const object = propRecordsById.get(id);
+    if (!object) {
+      return null;
+    }
+    const visibilityEntry = visibilityEntries.find((entry) => entry?.object === object) || null;
+    const colliderCount = colliders.filter((entry) => readText(entry?.id, "") === id).length;
+    const moduleIds = normalizeModuleIds(object.userData?.moduleIds || []);
+    const worldPosition = new THREE.Vector3();
+    const worldQuaternion = new THREE.Quaternion();
+    const worldEuler = new THREE.Euler();
+    const worldBounds = new THREE.Box3();
+    const worldSize = new THREE.Vector3();
+    let emissiveMaterialCount = 0;
+    let emissiveIntensityTotal = 0;
+    let emissiveIntensityMax = 0;
+    object.getWorldPosition(worldPosition);
+    object.getWorldQuaternion(worldQuaternion);
+    worldEuler.setFromQuaternion(worldQuaternion, "YXZ");
+    worldBounds.setFromObject(object);
+    if (!worldBounds.isEmpty()) {
+      worldBounds.getSize(worldSize);
+    } else {
+      worldSize.set(0, 0, 0);
+    }
+
+    object.traverse((child) => {
+      if (!child?.isMesh) {
+        return;
+      }
+      const materials = Array.isArray(child.material) ? child.material : [child.material];
+      for (const material of materials) {
+        if (!material || !material.emissive?.isColor) {
+          continue;
+        }
+        const emissiveIntensity = Number(material.emissiveIntensity) || 0;
+        emissiveMaterialCount += 1;
+        emissiveIntensityTotal += emissiveIntensity;
+        emissiveIntensityMax = Math.max(emissiveIntensityMax, emissiveIntensity);
+      }
+    });
+
+    return {
+      id,
+      visible: object.visible !== false,
+      moduleIds,
+      worldPosition: [
+        Number(worldPosition.x.toFixed(4)),
+        Number(worldPosition.y.toFixed(4)),
+        Number(worldPosition.z.toFixed(4))
+      ],
+      worldQuaternion: [
+        Number(worldQuaternion.x.toFixed(5)),
+        Number(worldQuaternion.y.toFixed(5)),
+        Number(worldQuaternion.z.toFixed(5)),
+        Number(worldQuaternion.w.toFixed(5))
+      ],
+      worldRotationDeg: [
+        Number(THREE.MathUtils.radToDeg(worldEuler.x).toFixed(3)),
+        Number(THREE.MathUtils.radToDeg(worldEuler.y).toFixed(3)),
+        Number(THREE.MathUtils.radToDeg(worldEuler.z).toFixed(3))
+      ],
+      worldBoundsSize: [
+        Number(worldSize.x.toFixed(4)),
+        Number(worldSize.y.toFixed(4)),
+        Number(worldSize.z.toFixed(4))
+      ],
+      emissiveStats: {
+        materialCount: emissiveMaterialCount,
+        averageIntensity:
+          emissiveMaterialCount > 0
+            ? Number((emissiveIntensityTotal / emissiveMaterialCount).toFixed(4))
+            : 0,
+        maxIntensity: Number(emissiveIntensityMax.toFixed(4))
+      },
+      colliderCount,
+      managedVisibility: Boolean(visibilityEntry),
+      cullVisible: visibilityEntry ? visibilityEntry.cullVisible !== false : null,
+      moduleVisible: visibilityEntry ? visibilityEntry.moduleVisible !== false : resolveModuleVisibility(moduleIds)
+    };
+  }
+
+  await addProps(expandScenePropGroups(sceneConfig), { tag: "base" });
 
   const spawn = sceneConfig.spawn || {};
   const player = new THREE.Object3D();
@@ -2758,6 +3695,7 @@ export async function loadScene({
     zones: sceneConfig.zones || [],
     animatedTextures,
     getInteractionTargets: () => propInteractionTargets,
+    getDisplayPanels: () => displayPanels,
     getColliders: () => colliders,
     setRoomBounds,
     getRoomBounds: () => ({ ...roomBounds }),
@@ -2770,6 +3708,14 @@ export async function loadScene({
     togglePropModulesVisible,
     getPropModuleState,
     getPropModuleStates,
+    getEditablePropIds,
+    getEditablePropObject,
+    getEditablePropTransform,
+    setEditablePropTransform,
+    commitEditablePropTransform,
+    applyEditablePropTransforms,
+    getPropState,
+    getSceneRevision: () => sceneRevision,
     updateDynamicProps,
     getPropStats
   };

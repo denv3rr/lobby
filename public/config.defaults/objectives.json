@@ -12,10 +12,8 @@
   },
   "ui": {
     "showStabilityMeter": false,
-    "showObjectivesPanel": true,
+    "showObjectivesPanel": false,
     "stabilityLabel": "Signal",
-    "title": "Artifact Directive",
-    "subtitle": "Only one thing matters here.",
     "labels": {
       "stable": "Coherent",
       "low": "Fraying",
@@ -26,8 +24,7 @@
   "objectives": [
     {
       "id": "brainstorm_main_task",
-      "label": "Main: Inspect The Center Artifact",
-      "detail": "It looks cool.",
+      "label": "Inspect The Center Artifact",
       "target": 1,
       "progress": 0,
       "optional": false,

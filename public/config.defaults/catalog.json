@@ -52,11 +52,11 @@
       }
     },
     "atelier": {
-      "enabled": true,
+      "enabled": false,
       "label": "Coming Soon",
       "feedSource": "atelier",
       "defaultUrl": "https://github.com/denv3rr/lobby",
-      "origin": [-19.3, 0, -5.1],
+      "origin": [-52, 0, -5.1],
       "size": [8.6, 4.6, 9.6],
       "entrySide": "east",
       "showEntryFrame": true,
@@ -109,7 +109,6 @@
         "aspectRatio": 1.7777777778,
         "displayY": 2.55,
         "offset": 0.08,
-        "label": "Now Screening",
         "idleLabel": "Select A Video"
       },
       "playlistWall": {
@@ -127,11 +126,13 @@
         "step": [0, 0, -9.6]
       },
       "layout": {
-        "maxItems": 6,
+        "maxItems": 18,
         "displayY": 2.55,
         "horizontalGap": 0.44,
         "wallMargin": 0.3,
-        "cardOffset": 0.08
+        "cardOffset": 0.08,
+        "allowReservedWallSideSlots": true,
+        "distribution": "balanced"
       }
     }
   },

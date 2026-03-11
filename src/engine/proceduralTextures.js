@@ -459,6 +459,116 @@ function createFlame() {
   return canvas;
 }
 
+function createM4Silhouette() {
+  const width = 1024;
+  const height = 512;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.save();
+  ctx.translate(width * 0.12, height * 0.55);
+
+  const bodyGradient = ctx.createLinearGradient(0, -120, 0, 120);
+  bodyGradient.addColorStop(0, "rgba(208, 196, 170, 0.96)");
+  bodyGradient.addColorStop(0.45, "rgba(128, 120, 104, 0.98)");
+  bodyGradient.addColorStop(1, "rgba(46, 44, 40, 0.98)");
+
+  const strokeColor = "rgba(18, 18, 16, 0.92)";
+  ctx.shadowColor = "rgba(232, 214, 165, 0.28)";
+  ctx.shadowBlur = 24;
+  ctx.fillStyle = bodyGradient;
+  ctx.strokeStyle = strokeColor;
+  ctx.lineWidth = 12;
+  ctx.lineJoin = "round";
+  ctx.lineCap = "round";
+
+  const fillAndStroke = () => {
+    ctx.fill();
+    ctx.stroke();
+  };
+
+  ctx.beginPath();
+  ctx.moveTo(0, -4);
+  ctx.lineTo(78, -52);
+  ctx.lineTo(124, -50);
+  ctx.lineTo(128, -6);
+  ctx.lineTo(74, 20);
+  ctx.lineTo(16, 24);
+  ctx.closePath();
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.rect(118, -38, 184, 72);
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.moveTo(212, -72);
+  ctx.lineTo(258, -72);
+  ctx.lineTo(278, -38);
+  ctx.lineTo(194, -38);
+  ctx.closePath();
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.moveTo(226, 28);
+  ctx.lineTo(280, 28);
+  ctx.lineTo(302, 118);
+  ctx.lineTo(252, 118);
+  ctx.closePath();
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.moveTo(292, -18);
+  ctx.lineTo(518, -18);
+  ctx.lineTo(542, -8);
+  ctx.lineTo(542, 10);
+  ctx.lineTo(292, 10);
+  ctx.closePath();
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.rect(346, -30, 116, 42);
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.rect(532, -7, 192, 12);
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.moveTo(722, -4);
+  ctx.lineTo(830, -4);
+  ctx.lineTo(830, 2);
+  ctx.lineTo(722, 2);
+  ctx.closePath();
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.rect(824, -14, 26, 28);
+  fillAndStroke();
+
+  ctx.beginPath();
+  ctx.rect(870, -8, 52, 4);
+  fillAndStroke();
+
+  ctx.shadowBlur = 0;
+  ctx.strokeStyle = "rgba(255, 245, 218, 0.34)";
+  ctx.lineWidth = 8;
+  ctx.beginPath();
+  ctx.moveTo(126, -18);
+  ctx.lineTo(286, -18);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(336, -8);
+  ctx.lineTo(706, -8);
+  ctx.stroke();
+
+  ctx.restore();
+  return canvas;
+}
+
 export function createProceduralTexture(name) {
   let canvas = null;
   if (name === "checkerboard") {
@@ -489,6 +599,8 @@ export function createProceduralTexture(name) {
     canvas = createNeonGrid();
   } else if (name === "flame") {
     canvas = createFlame();
+  } else if (name === "m4-silhouette") {
+    canvas = createM4Silhouette();
   } else {
     canvas = createConcrete();
   }

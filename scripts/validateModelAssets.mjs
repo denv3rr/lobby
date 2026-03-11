@@ -74,6 +74,19 @@ function asModelReference(prop, context) {
   };
 }
 
+function collectScenePropRefs(props, filePath, scope, refs) {
+  for (const prop of Array.isArray(props) ? props : []) {
+    const ref = asModelReference(prop, {
+      file: filePath,
+      scope,
+      themeId: null
+    });
+    if (ref) {
+      refs.push(ref);
+    }
+  }
+}
+
 function collectModelReferences(filePath, config) {
   const refs = [];
 
@@ -81,17 +94,11 @@ function collectModelReferences(filePath, config) {
     return refs;
   }
 
-  if (Array.isArray(config.props)) {
-    for (const prop of config.props) {
-      const ref = asModelReference(prop, {
-        file: filePath,
-        scope: "scene.props",
-        themeId: null
-      });
-      if (ref) {
-        refs.push(ref);
-      }
-    }
+  collectScenePropRefs(config.props, filePath, "scene.props", refs);
+  if (Array.isArray(config.propGroups)) {
+    config.propGroups.forEach((group, index) => {
+      collectScenePropRefs(group?.props, filePath, `scene.propGroups[${index}].props`, refs);
+    });
   }
 
   if (isObject(config.themes)) {

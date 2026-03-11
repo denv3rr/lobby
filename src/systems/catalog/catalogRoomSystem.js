@@ -114,7 +114,7 @@ function normalizePresentationWallConfig(config = null) {
     height: width / aspectRatio,
     displayY: Number(config.displayY) || 2.62,
     offset: Math.max(0.05, Number(config.offset) || 0.08),
-    label: trimTitle(config.label || "Now Screening", 22),
+    label: trimTitle(config.label || "Screening", 22),
     idleLabel: trimTitle(config.idleLabel || SCREENING_FALLBACK_LABEL, 24)
   };
 }
@@ -197,6 +197,14 @@ function trimTitle(title, max = 26) {
     return "▶︎";
   }
   return clean.length <= max ? clean : `${clean.slice(0, max - 1)}…`;
+}
+
+function readText(value, fallback = "") {
+  if (typeof value !== "string") {
+    return fallback;
+  }
+  const trimmed = value.trim();
+  return trimmed || fallback;
 }
 
 function makeLabelCanvas(lines, options = {}) {
@@ -450,6 +458,12 @@ export class CatalogRoomSystem {
       .map(([roomId]) => roomId);
   }
 
+  getActiveRoomIds() {
+    return [...this.roomNodes.entries()]
+      .filter(([, nodes]) => Array.isArray(nodes) && nodes.length)
+      .map(([roomId]) => roomId);
+  }
+
   getRoomConfig(roomId) {
     return this.catalogConfig?.rooms?.[roomId] || {};
   }
@@ -516,7 +530,6 @@ export class CatalogRoomSystem {
       aspectRatio: 16 / 9,
       displayY: roomConfig?.layout?.displayY ?? 2.62,
       offset: roomConfig?._derived?.cardOffset ?? roomConfig?.layout?.cardOffset ?? 0.08,
-      label: "Now Screening",
       idleLabel: SCREENING_FALLBACK_LABEL
     });
   }
@@ -553,15 +566,28 @@ export class CatalogRoomSystem {
     return this.getFeedItems(playlistWall.feedSource).slice(0, playlistWall.itemLimit);
   }
 
+  allowReservedWallSideSlots(roomConfig = {}) {
+    return roomConfig?.layout?.allowReservedWallSideSlots === true;
+  }
+
   getWallSlotBlockers(roomId, roomNode) {
     const blockers = [];
     const roomConfig = roomNode.config;
     const cardWidth = roomConfig.card?.width || 1.45;
     const horizontalGap = roomConfig.layout?.horizontalGap ?? 0.42;
+    const allowReservedWallSideSlots = this.allowReservedWallSideSlots(roomConfig);
     const blockerPadding =
       roomId === SCREENING_ROOM_ID
         ? cardWidth * 0.34 + horizontalGap * 0.18
         : cardWidth * 0.56 + horizontalGap * 0.45;
+    const presentationWall = this.getPresentationWallConfig(roomId, roomConfig, roomNode.index);
+    if (presentationWall && allowReservedWallSideSlots) {
+      blockers.push({
+        wall: presentationWall.wall,
+        min: -presentationWall.width * 0.5 - blockerPadding,
+        max: presentationWall.width * 0.5 + blockerPadding
+      });
+    }
     const playlistWall = this.getPlaylistWallConfig(roomId, roomConfig, roomNode.index);
     if (playlistWall) {
       blockers.push({
@@ -836,16 +862,14 @@ export class CatalogRoomSystem {
       return;
     }
 
-    const lines = item
-      ? [entry.config.label, trimTitle(item.title || SCREENING_FALLBACK_LABEL, 34)]
-      : [entry.config.label, entry.config.idleLabel];
-
     entry.posterImageRequest = typeof item?.image === "string" ? item.image : "";
-    this.setPresentationDisplayTexture(entry, this.createPresentationLabelTexture(lines));
-    entry.label.visible = true;
+    this.setPresentationDisplayTexture(entry, null);
+    if (entry.label) {
+      entry.label.visible = !item;
+    }
 
     const allowThumbnails = this.getQualityProfileValue("catalogThumbnails", true) !== false;
-    if (!allowThumbnails || !entry.posterImageRequest) {
+    if (!item || !allowThumbnails || !entry.posterImageRequest) {
       return;
     }
 
@@ -860,7 +884,9 @@ export class CatalogRoomSystem {
           return;
         }
         this.setPresentationDisplayTexture(entry, texture);
-        entry.label.visible = false;
+        if (entry.label) {
+          entry.label.visible = false;
+        }
       })
       .catch(() => {});
   }
@@ -925,17 +951,6 @@ export class CatalogRoomSystem {
       group.add(label);
     }
 
-    const title = makeLabelPlane([config.label], [Math.min(2.9, config.width * 0.72), 0.58], {
-      width: 768,
-      height: 168,
-      background: "rgba(9, 10, 12, 0.82)",
-      border: "rgba(194, 216, 218, 0.7)"
-    });
-    if (title) {
-      title.position.set(0, config.height * 0.5 + 0.52, 0.08);
-      group.add(title);
-    }
-
     switch (config.wall) {
       case "back":
         group.position.set(0, config.displayY, -depth * 0.5 + config.offset);
@@ -965,10 +980,10 @@ export class CatalogRoomSystem {
       frame,
       display,
       label,
-      title
+      title: null
     };
     this.presentationWalls.set(roomId, entry);
-    this.setPresentationDisplayTexture(entry, this.createPresentationLabelTexture([config.label, config.idleLabel]));
+    this.setPresentationDisplayTexture(entry, null);
     if (label) {
       label.visible = true;
     }
@@ -1817,6 +1832,7 @@ export class CatalogRoomSystem {
     const y = layout.displayY ?? clamp(height * 0.56, 2.2, 2.9);
     const offset = roomConfig._derived?.cardOffset ?? 0.08;
     const reservedWall = this.getPresentationWallConfig(roomId, roomConfig, roomNode.index)?.wall || null;
+    const allowReservedWallSideSlots = this.allowReservedWallSideSlots(roomConfig);
     const blockers = this.getWallSlotBlockers(roomId, roomNode);
 
     const buildLine = (length) => {
@@ -1845,7 +1861,7 @@ export class CatalogRoomSystem {
       );
 
     const walls = [];
-    if (reservedWall !== "back") {
+    if (reservedWall !== "back" || allowReservedWallSideSlots) {
       const backLine = filterBlockedLine("back", buildLine(width));
       for (const x of backLine) {
         walls.push({
@@ -1855,7 +1871,7 @@ export class CatalogRoomSystem {
         });
       }
     }
-    if (reservedWall !== "outer") {
+    if (reservedWall !== "outer" || allowReservedWallSideSlots) {
       const outerLine = filterBlockedLine("outer", buildLine(depth));
       for (const z of outerLine) {
         walls.push({
@@ -1865,8 +1881,8 @@ export class CatalogRoomSystem {
         });
       }
     }
-    if (reservedWall !== "front") {
-      const frontLine = buildLine(width);
+    if (reservedWall !== "front" || allowReservedWallSideSlots) {
+      const frontLine = filterBlockedLine("front", buildLine(width));
       for (const x of frontLine) {
         walls.push({
           wall: "front",
@@ -1880,6 +1896,7 @@ export class CatalogRoomSystem {
 
   computeRoomCapacity(roomId, config) {
     const tempNode = {
+      index: 0,
       config: {
         ...config,
         _derived: {
@@ -1888,6 +1905,99 @@ export class CatalogRoomSystem {
       }
     };
     return this.computeWallSlots(roomId, tempNode).length;
+  }
+
+  computeRoomCapacityForIndex(roomId, config, roomIndex = 0) {
+    const tempNode = {
+      index: roomIndex,
+      config: {
+        ...config,
+        _derived: {
+          cardOffset: config.layout?.cardOffset ?? 0.08
+        }
+      }
+    };
+    return this.computeWallSlots(roomId, tempNode).length;
+  }
+
+  computeRequiredRoomCount(roomId, config, itemCount) {
+    const safeItemCount = Math.max(0, Number(itemCount) || 0);
+    if (!safeItemCount) {
+      return 1;
+    }
+
+    let totalCapacity = 0;
+    let roomCount = 0;
+    const hardLimit = 24;
+    while (totalCapacity < safeItemCount && roomCount < hardLimit) {
+      totalCapacity += Math.max(1, this.computeRoomCapacityForIndex(roomId, config, roomCount));
+      roomCount += 1;
+    }
+    return Math.max(1, roomCount);
+  }
+
+  estimateRoomCount(roomId, itemCount = null) {
+    const roomConfig = this.getRoomConfig(roomId);
+    if (!roomConfig || roomConfig.enabled === false) {
+      return 0;
+    }
+
+    const resolvedItemCount = Number.isFinite(Number(itemCount))
+      ? Math.max(0, Math.floor(Number(itemCount)))
+      : this.getRoomItems(roomId).length;
+    return this.computeRequiredRoomCount(roomId, roomConfig, resolvedItemCount);
+  }
+
+  buildSlotPool(roomId, nodes, roomConfig, itemCount) {
+    const distribution = readText(roomConfig?.layout?.distribution, "sequential").toLowerCase();
+    if (distribution !== "balanced" || nodes.length <= 1) {
+      const slotPool = [];
+      for (const node of nodes) {
+        const slots = this.computeWallSlots(roomId, node);
+        for (const slot of slots) {
+          slotPool.push({
+            ...slot,
+            roomNode: node
+          });
+        }
+      }
+      return slotPool;
+    }
+
+    const buckets = nodes
+      .map((node) => ({
+        roomNode: node,
+        slots: this.computeWallSlots(roomId, node).map((slot) => ({
+          ...slot,
+          roomNode: node
+        }))
+      }))
+      .filter((bucket) => bucket.slots.length);
+    const slotPool = [];
+    while (slotPool.length < itemCount && buckets.some((bucket) => bucket.slots.length)) {
+      for (const bucket of buckets) {
+        const slot = bucket.slots.shift();
+        if (!slot) {
+          continue;
+        }
+        slotPool.push(slot);
+        if (slotPool.length >= itemCount) {
+          break;
+        }
+      }
+    }
+    return slotPool;
+  }
+
+  getRoomSnapshot(roomId) {
+    const nodes = this.getRoomNodes(roomId).sort((a, b) => a.index - b.index);
+    return {
+      roomId,
+      enabled: this.isRoomEnabled(roomId),
+      nodeCount: nodes.length,
+      cardCounts: nodes.map((node) => node.cardsGroup?.children?.length || 0),
+      capacities: nodes.map((node) => this.computeWallSlots(roomId, node).length)
+    };
   }
 
   reconcileRoomCount(roomId, config, required) {
@@ -1899,10 +2009,6 @@ export class CatalogRoomSystem {
     const current = this.getRoomNodes(roomId);
     if (current.length > required) {
       this.removeRoomsByIndex(roomId, required);
-    }
-    const refreshed = this.getRoomNodes(roomId);
-    for (let index = refreshed.length; index < required; index += 1) {
-      this.createRoomShell(roomId, config, index, required);
     }
 
     // Rebuild connectors if room count changed.
@@ -2154,22 +2260,11 @@ export class CatalogRoomSystem {
       return;
     }
 
-    const capacity = this.computeRoomCapacity(roomId, roomConfig);
-    const safeCapacity = Math.max(1, capacity);
-    const roomCount = Math.max(1, Math.ceil(items.length / safeCapacity));
+    const roomCount = this.computeRequiredRoomCount(roomId, roomConfig, items.length);
     this.reconcileRoomCount(roomId, roomConfig, roomCount);
 
     const nodes = this.getRoomNodes(roomId).sort((a, b) => a.index - b.index);
-    const slotPool = [];
-    for (const node of nodes) {
-      const slots = this.computeWallSlots(roomId, node);
-      for (const slot of slots) {
-        slotPool.push({
-          ...slot,
-          roomNode: node
-        });
-      }
-    }
+    const slotPool = this.buildSlotPool(roomId, nodes, roomConfig, items.length);
 
     for (let index = 0; index < items.length; index += 1) {
       if (token !== this.applyToken) {

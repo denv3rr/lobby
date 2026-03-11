@@ -23,6 +23,7 @@ export function createOverlay({
   isMobile,
   showDevPanel,
   showThemePanel = showDevPanel,
+  enableInspectPanel = showDevPanel,
   devMenu = null,
   onEnableSound,
   onInspectAction,
@@ -95,7 +96,7 @@ export function createOverlay({
 
         <div id="portal-prompt" class="portal-prompt"></div>
 
-        <div id="inspect-panel" class="inspect-panel hidden" data-ui>
+        <div id="inspect-panel" class="inspect-panel hidden${enableInspectPanel ? "" : " hidden"}" data-ui>
           <article class="inspect-card" data-ui>
             <button id="inspect-close-btn" class="inspect-close" type="button" data-ui>
               Close
@@ -730,6 +731,10 @@ export function createOverlay({
   }
 
   function showInspectPanel(data) {
+    if (!enableInspectPanel) {
+      hideInspectPanel();
+      return false;
+    }
     const normalized = normalizeInspectData(data);
     if (!normalized) {
       hideInspectPanel();

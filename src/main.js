@@ -10,6 +10,7 @@ import { InteractionDirector } from "./systems/interactions/interactionDirector.
 import { PortalInteractionSystem } from "./systems/interactions/portalInteractions.js";
 import { AudioSystem } from "./systems/audio/audioSystem.js";
 import { DriftEventsSystem } from "./systems/drift/driftEventsSystem.js";
+import { ScenePanelSystem } from "./systems/display/scenePanelSystem.js";
 import { StabilityObjectivesSystem } from "./systems/gameplay/stabilityObjectivesSystem.js";
 import { resolveInitialThemeName, ThemeSystem } from "./systems/theming/applyTheme.js";
 import { createOverlay } from "./ui/overlay.js";
@@ -98,6 +99,26 @@ function isMobileDevice() {
     window.matchMedia("(pointer: coarse)").matches ||
     /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
   );
+}
+
+function isLocalAuthoringHost() {
+  const hostname = readText(window.location.hostname, "").toLowerCase();
+  if (!hostname) {
+    return false;
+  }
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname === "::1" ||
+    hostname.endsWith(".local")
+  );
+}
+
+function shouldEnableLocalEditor(params, { isDev = false } = {}) {
+  if (params?.get("editor") !== "1") {
+    return false;
+  }
+  return isDev || isLocalAuthoringHost();
 }
 
 function withBuildId(path) {
@@ -764,14 +785,20 @@ function normalizeModuleTriggers(rawTriggers, zones) {
     const moduleIds = normalizeModuleTriggerIds(
       entry.moduleIds || entry.moduleId || entry.modules
     );
-    if (!zone || !moduleIds.length) {
+    const enterModuleIds = normalizeModuleTriggerIds(
+      entry.enterModuleIds || entry.enterModuleId || entry.enterModules || moduleIds
+    );
+    const exitModuleIds = normalizeModuleTriggerIds(
+      entry.exitModuleIds || entry.exitModuleId || entry.exitModules || moduleIds
+    );
+    if (!zone || !enterModuleIds.length) {
       continue;
     }
 
     const id =
       typeof entry.id === "string" && entry.id.trim()
         ? entry.id.trim()
-        : `${zoneId}:${moduleIds.join(",")}`;
+        : `${zoneId}:${enterModuleIds.join(",")}`;
     if (!id || seen.has(id)) {
       continue;
     }
@@ -780,7 +807,9 @@ function normalizeModuleTriggers(rawTriggers, zones) {
       id,
       zoneId,
       zone,
-      moduleIds,
+      moduleIds: enterModuleIds,
+      enterModuleIds,
+      exitModuleIds,
       enterVisible: entry.visible !== false,
       exitVisible:
         entry.exitVisible == null ? null : Boolean(entry.exitVisible),
@@ -888,14 +917,20 @@ async function boot() {
   const sceneUiEnabled = params.get("sceneui") !== "0";
   const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
   const devMenuEnabled = isDev || debugUiParam;
+  const editorModeEnabled = shouldEnableLocalEditor(params, {
+    isDev
+  });
+  const inspectUiEnabled = editorModeEnabled;
   const perfEnabled = params.get("perf") === "1";
 
   let rendererContext = null;
   let controls = null;
   let interactionSystem = null;
   let interactionDirector = null;
+  let scenePanelSystem = null;
   let themeSystem = null;
   let catalogSystem = null;
+  let editorSystem = null;
   let sceneContext = null;
   let audioSystem = null;
   let loadedThemesConfig = null;
@@ -913,9 +948,11 @@ async function boot() {
   let stabilitySystem = null;
   let centerArtifactActivated = false;
   let centerArtifactOwner = null;
+  let centerArtifactLinkedRifleOwner = null;
   let centerArtifactLight = null;
   let detachAudioUnlock = () => {};
   const centerArtifactMaterials = [];
+  const centerArtifactLinkedRifleMaterials = [];
   const centerArtifactPrimaryColor = new THREE.Color("#ffffff");
   const centerArtifactSecondaryColor = new THREE.Color("#ffffff");
   let secretUnlocks = [];
@@ -1021,6 +1058,15 @@ async function boot() {
 
   function collectCenterArtifactMaterials(owner) {
     centerArtifactMaterials.length = 0;
+    collectArtifactMaterials(owner, centerArtifactMaterials);
+  }
+
+  function collectLinkedRifleMaterials(owner) {
+    centerArtifactLinkedRifleMaterials.length = 0;
+    collectArtifactMaterials(owner, centerArtifactLinkedRifleMaterials);
+  }
+
+  function collectArtifactMaterials(owner, targetMaterials) {
     if (!owner) {
       return;
     }
@@ -1041,9 +1087,24 @@ async function boot() {
         if (!Number.isFinite(material.userData.centerArtifactBaseEmissiveIntensity)) {
           material.userData.centerArtifactBaseEmissiveIntensity = material.emissiveIntensity ?? 0;
         }
-        centerArtifactMaterials.push(material);
+        targetMaterials.push(material);
       }
     });
+  }
+
+  function findCenterArtifactLinkedRifleOwner() {
+    if (centerArtifactLinkedRifleOwner?.parent) {
+      return centerArtifactLinkedRifleOwner;
+    }
+    if (!rendererContext?.scene) {
+      return null;
+    }
+    const owner = rendererContext.scene.getObjectByName("east_media_project_rifle");
+    if (!owner) {
+      return null;
+    }
+    centerArtifactLinkedRifleOwner = owner;
+    return owner;
   }
 
   function ensureCenterArtifactLight(owner) {
@@ -1091,6 +1152,7 @@ async function boot() {
     const owner = target?.userData?.owner || findCenterArtifactOwner();
     centerArtifactOwner = owner || centerArtifactOwner;
     collectCenterArtifactMaterials(centerArtifactOwner);
+    collectLinkedRifleMaterials(findCenterArtifactLinkedRifleOwner());
     ensureCenterArtifactLight(centerArtifactOwner);
     centerArtifactActivated = true;
     stabilitySystem?.completeObjective(MAIN_OBJECTIVE_ID);
@@ -1099,6 +1161,29 @@ async function boot() {
 
   function updateCenterArtifact(elapsed) {
     if (!centerArtifactActivated) {
+      const owner = findCenterArtifactOwner();
+      if (!owner) {
+        return;
+      }
+      if (!centerArtifactMaterials.length) {
+        collectCenterArtifactMaterials(owner);
+      }
+      const light = ensureCenterArtifactLight(owner);
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * 2.8);
+      for (const material of centerArtifactMaterials) {
+        if (!material?.emissive?.isColor) {
+          continue;
+        }
+        const baseIntensity =
+          material.userData?.centerArtifactBaseEmissiveIntensity ?? material.emissiveIntensity ?? 0;
+        material.emissive.set("#ffffff");
+        material.emissiveIntensity = Math.max(baseIntensity + 0.06, 0.28 + pulse * 0.42);
+      }
+      if (light) {
+        light.color.set("#ffffff");
+        light.intensity = 0.7 + pulse * 0.44;
+        light.distance = 14;
+      }
       return;
     }
 
@@ -1108,6 +1193,10 @@ async function boot() {
     }
     if (!centerArtifactMaterials.length) {
       collectCenterArtifactMaterials(owner);
+    }
+    const linkedRifleOwner = findCenterArtifactLinkedRifleOwner();
+    if (linkedRifleOwner && !centerArtifactLinkedRifleMaterials.length) {
+      collectLinkedRifleMaterials(linkedRifleOwner);
     }
     const light = ensureCenterArtifactLight(owner);
     if (!light) {
@@ -1120,6 +1209,17 @@ async function boot() {
     centerArtifactSecondaryColor.setHSL((hue + 0.12) % 1, 0.92, 0.52);
 
     for (const material of centerArtifactMaterials) {
+      if (!material?.emissive?.isColor) {
+        continue;
+      }
+      const baseIntensity =
+        material.userData?.centerArtifactBaseEmissiveIntensity ?? material.emissiveIntensity ?? 0;
+      material.emissive.copy(centerArtifactPrimaryColor);
+      material.color?.copy?.(centerArtifactSecondaryColor);
+      material.emissiveIntensity = Math.max(1.05, baseIntensity * 4.5) + pulse * 1.1;
+    }
+
+    for (const material of centerArtifactLinkedRifleMaterials) {
       if (!material?.emissive?.isColor) {
         continue;
       }
@@ -1246,6 +1346,10 @@ async function boot() {
   }
 
   function focusCatalogRoomWall(roomId, wall = "front", distance = 4.2) {
+    if (!catalogSystem?.isRoomEnabled?.(roomId)) {
+      return false;
+    }
+
     const roomConfig = catalogSystem?.getRoomConfig?.(roomId);
     if (!roomConfig) {
       return false;
@@ -1299,6 +1403,12 @@ async function boot() {
     return centerArtifactActivated;
   }
 
+  function refreshInteractiveSurfaces() {
+    interactionSystem?.setTargets?.(getInteractionTargets());
+    scenePanelSystem?.setPanels?.(sceneContext?.getDisplayPanels?.() || []);
+    scenePanelSystem?.update?.(rendererContext?.camera);
+  }
+
   async function applyThemeSelection(themeName, options = {}) {
     let appliedTheme = themeName;
     if (options.hideInspectPanel !== false) {
@@ -1317,7 +1427,7 @@ async function boot() {
     }
     if (catalogSystem) {
       await catalogSystem.applyTheme(appliedTheme);
-      interactionSystem?.setTargets(getInteractionTargets());
+      refreshInteractiveSurfaces();
     }
     currentThemeName = appliedTheme;
     themeAmbientMixBase = getThemeAmbientMix(loadedThemesConfig, appliedTheme);
@@ -1328,6 +1438,7 @@ async function boot() {
     captureThemeFogBase();
     applyDriftFogPulse();
     applyCenterArtifactLightingDominance();
+    scenePanelSystem?.setPanels?.(sceneContext?.getDisplayPanels?.() || []);
     if (options.persist !== false) {
       saveThemeSelection(appliedTheme, { mirrorLegacyDevKey: isDev });
     }
@@ -1370,25 +1481,37 @@ async function boot() {
     }
 
     for (const trigger of moduleTriggers) {
-      if (trigger.active === false) {
-        continue;
-      }
+    if (trigger.active === false) {
+      continue;
+    }
 
-      const inside = isPositionInsideBoxZone(trigger.zone, sceneContext.player.position);
-      if (inside && !trigger.wasInside) {
-        const updated =
-          sceneContext?.setPropModulesVisible?.(trigger.moduleIds, trigger.enterVisible) || [];
-        if (updated.length && trigger.message) {
-          showTransientPrompt(trigger.message);
-        }
-        if (trigger.once) {
-          trigger.active = false;
-        }
-      } else if (!inside && trigger.wasInside && trigger.exitVisible != null) {
-        const updated =
-          sceneContext?.setPropModulesVisible?.(trigger.moduleIds, trigger.exitVisible) || [];
-        if (updated.length && trigger.exitMessage) {
-          showTransientPrompt(trigger.exitMessage);
+    const inside = isPositionInsideBoxZone(trigger.zone, sceneContext.player.position);
+    if (inside && !trigger.wasInside) {
+      const updated =
+          sceneContext?.setPropModulesVisible?.(
+            trigger.enterModuleIds?.length ? trigger.enterModuleIds : trigger.moduleIds,
+            trigger.enterVisible
+          ) || [];
+      if (updated.length) {
+        refreshInteractiveSurfaces();
+      }
+      if (updated.length && trigger.message) {
+        showTransientPrompt(trigger.message);
+      }
+      if (trigger.once) {
+        trigger.active = false;
+      }
+    } else if (!inside && trigger.wasInside && trigger.exitVisible != null) {
+      const updated =
+          sceneContext?.setPropModulesVisible?.(
+            trigger.exitModuleIds?.length ? trigger.exitModuleIds : trigger.moduleIds,
+            trigger.exitVisible
+          ) || [];
+      if (updated.length) {
+        refreshInteractiveSurfaces();
+      }
+      if (updated.length && trigger.exitMessage) {
+        showTransientPrompt(trigger.exitMessage);
         }
       }
 
@@ -1416,6 +1539,7 @@ async function boot() {
     isMobile: mobile,
     showDevPanel: devMenuEnabled,
     showThemePanel: allowThemeSelector,
+    enableInspectPanel: inspectUiEnabled,
     devMenu: {
       enabled: devMenuEnabled,
       writable: isDev,
@@ -1558,6 +1682,14 @@ async function boot() {
     sceneConfig.moduleTriggers,
     sceneContext?.zones || sceneConfig?.zones || []
   );
+  scenePanelSystem = new ScenePanelSystem({
+    domElement: rendererContext.renderer.domElement,
+    camera: rendererContext.camera,
+    scene: rendererContext.scene,
+    panels: sceneContext?.getDisplayPanels?.() || [],
+    onOpenUrl: (url) => openExternalUrl(url),
+    isPointerLocked: () => controls?.isPointerLocked?.() || false
+  });
   ui.setLoadingState({
     message: "Linking portals and systems."
   });
@@ -1629,7 +1761,7 @@ async function boot() {
     .initialize(appliedTheme || themeName)
     .then(() => {
       catalogReady = true;
-      interactionSystem?.setTargets(getInteractionTargets());
+      refreshInteractiveSurfaces();
     })
     .catch((error) => {
       console.error("Catalog failed to initialize", error);
@@ -1676,6 +1808,10 @@ async function boot() {
       if (controls?.isPointerLocked?.()) {
         return true;
       }
+      if (!inspectUiEnabled) {
+        ui.hideInspectPanel?.();
+        return true;
+      }
       ui.showInspectPanel?.(target.inspectData);
       return true;
     },
@@ -1696,12 +1832,12 @@ async function boot() {
     activateCenterArtifact,
     toggleModules: async (moduleIds) => {
       const updated = sceneContext?.togglePropModulesVisible?.(moduleIds) || [];
-      interactionSystem?.setTargets(getInteractionTargets());
+      refreshInteractiveSurfaces();
       return updated;
     },
     setModulesVisible: async (moduleIds, visible) => {
       const updated = sceneContext?.setPropModulesVisible?.(moduleIds, visible) || [];
-      interactionSystem?.setTargets(getInteractionTargets());
+      refreshInteractiveSurfaces();
       return updated;
     },
     activatePortal: async (portalId, interaction = {}) => {
@@ -1725,7 +1861,7 @@ async function boot() {
     isPointerLocked: () => controls?.isPointerLocked?.() || false,
     syncMatrices: () => rendererContext.scene?.updateMatrixWorld?.(true),
     onHover: (target) => {
-      ui.setPortalPrompt(target);
+      ui.setPortalPrompt(target?.type === "portal" ? target : null);
     },
     onActivate: (target) => {
       const activation = interactionDirector?.activate(target);
@@ -1738,9 +1874,34 @@ async function boot() {
     interactionSystem.setTargets(getInteractionTargets());
   }
 
+  if (editorModeEnabled) {
+    const { createLocalSceneEditor } = await import("./editor/localSceneEditor.js");
+    editorSystem = createLocalSceneEditor({
+      mount: app,
+      scene: rendererContext.scene,
+      camera: rendererContext.camera,
+      renderer: rendererContext.renderer,
+      sceneContext,
+      onSceneMutated: () => {
+        refreshInteractiveSurfaces();
+      },
+      onSuppressPointerLock: () => {
+        rendererContext.renderer.domElement.dataset.pointerLockSuppressedUntil = String(
+          performance.now() + 600
+        );
+        document.exitPointerLock?.();
+        controls?.clearKeys?.();
+      }
+    });
+    editorSystem?.loadSavedState?.({ silent: true });
+    refreshInteractiveSurfaces();
+  }
+
   const debugTargetBounds = new THREE.Box3();
   const debugTargetCenter = new THREE.Vector3();
   const debugTargetNdc = new THREE.Vector3();
+  let lastSceneRevision =
+    typeof sceneContext?.getSceneRevision === "function" ? sceneContext.getSceneRevision() : -1;
 
   function getInteractionTargetById(targetId) {
     const normalizedTargetId = typeof targetId === "string" ? targetId.trim() : "";
@@ -1781,6 +1942,80 @@ async function boot() {
     };
   }
 
+  function readDebugPosition(value) {
+    if (Array.isArray(value) && value.length >= 3) {
+      const x = Number(value[0]);
+      const y = Number(value[1]);
+      const z = Number(value[2]);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        return [x, y, z];
+      }
+      return null;
+    }
+    if (value && typeof value === "object") {
+      const x = Number(value.x);
+      const y = Number(value.y);
+      const z = Number(value.z);
+      if (Number.isFinite(x) && Number.isFinite(y) && Number.isFinite(z)) {
+        return [x, y, z];
+      }
+    }
+    return null;
+  }
+
+  function probeColliders(position, radius = 0.38) {
+    const point = readDebugPosition(position);
+    const probeRadius = THREE.MathUtils.clamp(Number(radius) || 0.38, 0.05, 2.5);
+    if (!point) {
+      return {
+        blocked: false,
+        blockerCount: 0,
+        blockers: []
+      };
+    }
+
+    const [x, y, z] = point;
+    const blockers = [];
+    for (const collider of getPlayerColliders?.() || []) {
+      if (!collider || collider.enabled === false) {
+        continue;
+      }
+      const minY = Number.isFinite(collider.minY) ? collider.minY : -Infinity;
+      const maxY = Number.isFinite(collider.maxY) ? collider.maxY : Infinity;
+      if (y < minY || y > maxY) {
+        continue;
+      }
+      const minX = (Number(collider.minX) || 0) - probeRadius;
+      const maxX = (Number(collider.maxX) || 0) + probeRadius;
+      const minZ = (Number(collider.minZ) || 0) - probeRadius;
+      const maxZ = (Number(collider.maxZ) || 0) + probeRadius;
+      if (x < minX || x > maxX || z < minZ || z > maxZ) {
+        continue;
+      }
+      blockers.push({
+        id: collider.id || null,
+        tag: collider.tag || null,
+        roomId: collider.roomId || null,
+        roomIndex: Number.isFinite(collider.roomIndex) ? collider.roomIndex : null,
+        minX: Number((collider.minX ?? 0).toFixed?.(4) || 0),
+        maxX: Number((collider.maxX ?? 0).toFixed?.(4) || 0),
+        minZ: Number((collider.minZ ?? 0).toFixed?.(4) || 0),
+        maxZ: Number((collider.maxZ ?? 0).toFixed?.(4) || 0)
+      });
+      if (blockers.length >= 12) {
+        break;
+      }
+    }
+
+    return {
+      blocked: blockers.length > 0,
+      blockerCount: blockers.length,
+      radius: Number(probeRadius.toFixed(3)),
+      position: [Number(x.toFixed(4)), Number(y.toFixed(4)), Number(z.toFixed(4))],
+      blockers
+    };
+  }
+
   function getDebugStats(options = {}) {
     const includeRaycasts = options.includeRaycasts === true;
     const rendererInfo = rendererContext?.renderer?.info;
@@ -1810,6 +2045,7 @@ async function boot() {
         id: entry.id,
         zoneId: entry.zoneId,
         moduleIds: [...entry.moduleIds],
+        exitModuleIds: [...(entry.exitModuleIds || [])],
         wasInside: entry.wasInside,
         active: entry.active !== false
       })),
@@ -1867,13 +2103,51 @@ async function boot() {
     getDriftSnapshot: () => driftSystem?.getSnapshot?.() || null,
     resetDrift: (seed) => driftSystem?.reset?.(seed),
     getModuleStates: () => sceneContext?.getPropModuleStates?.() || [],
-    setModuleVisibility: (moduleId, visible) =>
-      sceneContext?.setPropModulesVisible?.([moduleId], visible) || [],
-    toggleModuleVisibility: (moduleId) =>
-      sceneContext?.togglePropModulesVisible?.([moduleId]) || [],
+    setModuleVisibility: (moduleId, visible) => {
+      const updated = sceneContext?.setPropModulesVisible?.([moduleId], visible) || [];
+      refreshInteractiveSurfaces();
+      return updated;
+    },
+    toggleModuleVisibility: (moduleId) => {
+      const updated = sceneContext?.togglePropModulesVisible?.([moduleId]) || [];
+      refreshInteractiveSurfaces();
+      return updated;
+    },
     playScreeningItem: (roomId, itemId) =>
       catalogSystem?.playScreenVideo?.({ roomId, itemId }) || false,
     getScreeningState: () => catalogSystem?.getScreeningState?.() || null,
+    getCatalogRoomIds: () => catalogSystem?.getConfiguredRoomIds?.() || [],
+    getCatalogRoomSnapshot: (roomId) => catalogSystem?.getRoomSnapshot?.(roomId) || null,
+    estimateCatalogRoomCount: (roomId, itemCount) =>
+      catalogSystem?.estimateRoomCount?.(roomId, itemCount) ?? null,
+    getScenePanelIds: () =>
+      (scenePanelSystem?.getPanelSnapshots?.() ||
+        (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+          id: typeof entry?.id === "string" ? entry.id.trim() : ""
+        })))
+        .map((entry) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
+        .filter(Boolean),
+    getScenePanels: () =>
+      scenePanelSystem?.getPanelSnapshots?.() ||
+      (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+        id: typeof entry?.id === "string" ? entry.id.trim() : "",
+        type: entry?.type || null,
+        imageCount: Array.isArray(entry?.images) ? entry.images.length : 0,
+        visible: entry?.object?.visible !== false,
+        ctaUrl: typeof entry?.cta?.url === "string" ? entry.cta.url : ""
+      })),
+    activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
+    debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
+    getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
+    getEditorSnapshot: () => editorSystem?.getSnapshot?.() || null,
+    saveEditorState: () => editorSystem?.saveState?.() || null,
+    loadEditorState: () => editorSystem?.loadSavedState?.() ?? 0,
+    clearEditorState: () => {
+      editorSystem?.clearState?.();
+      return true;
+    },
+    selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
+    probeColliders: (position, radius) => probeColliders(position, radius),
     activateCenterArtifact: () => activateCenterArtifactTarget(),
     teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
     focusCatalogRoomWall: (roomId, wall, distance) => focusCatalogRoomWall(roomId, wall, distance),
@@ -1912,7 +2186,15 @@ async function boot() {
     }
     sceneContext.updateDynamicProps?.(elapsed, rendererContext.camera);
     catalogSystem?.update(delta, elapsed, rendererContext.camera);
+    const currentSceneRevision =
+      typeof sceneContext?.getSceneRevision === "function" ? sceneContext.getSceneRevision() : -1;
+    if (currentSceneRevision !== lastSceneRevision) {
+      lastSceneRevision = currentSceneRevision;
+      refreshInteractiveSurfaces();
+      editorSystem?.refreshOutliner?.();
+    }
     rendererContext.scene?.updateMatrixWorld?.(true);
+    scenePanelSystem?.update(rendererContext.camera);
     interactionSystem?.update();
     themeSystem?.update(delta);
     if (driftSystem?.config?.enabled) {
@@ -1944,6 +2226,8 @@ async function boot() {
     detachAudioUnlock?.();
     controls?.dispose?.();
     interactionSystem?.dispose?.();
+    scenePanelSystem?.dispose?.();
+    editorSystem?.dispose?.();
     themeSystem?.dispose?.();
     catalogSystem?.dispose?.();
     stabilitySystem?.dispose?.();

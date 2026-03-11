@@ -4,11 +4,18 @@ dist/
 Thumbs.db
 *.log
 
-# Docs/Info
+# Private docs / planning / agent files
 agents.md
 AGENTS.md
 _agents/
 .agents/
+docs/
+doc/
+planning/
+planning-*/
+private-*/
+notes/
+notes-*/
 planning-private/
 private-planning/
 private-notes/
@@ -17,12 +24,13 @@ scratch-private/
 *.private.md
 FEATURE-PASS-NOTES.md
 DESIGN-REFERENCE-LIBRARY.md
-docs/
 README.md
+public/config/README.md
+public/assets/manifest/README.md
+public/assets/**/README.*
 
 # Local runtime config overrides (dev-only)
 public/config/*.json
-!public/config/README.md
 
 # Editor and local env
 .vscode/
@@ -40,3 +48,9 @@ public/config/*.json
 test-results/
 playwright-report/
 .playwright/
+
+# Scratch / debug artifacts
+.tmp*
+tmp-*
+tmp_*
+artifacts/
