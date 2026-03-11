@@ -190,6 +190,149 @@ function createGrass() {
   return canvas;
 }
 
+function drawTopoContours(ctx, size, options = {}) {
+  const spacing = Math.max(12, Number(options.spacing) || 26);
+  const wiggle = Math.max(2, Number(options.wiggle) || 6);
+  const lineWidth = Math.max(0.8, Number(options.lineWidth) || 1.4);
+  const offset = Number(options.offset) || 0;
+  ctx.save();
+  ctx.globalAlpha = options.alpha ?? 0.34;
+  ctx.strokeStyle = options.lineColor || "#dbe4d8";
+  ctx.lineWidth = lineWidth;
+
+  for (let band = -spacing; band <= size + spacing; band += spacing) {
+    ctx.beginPath();
+    for (let x = -6; x <= size + 6; x += 6) {
+      const waveA = Math.sin(x * 0.026 + band * 0.068 + offset) * wiggle;
+      const waveB = Math.cos(x * 0.071 - band * 0.034 + offset * 1.8) * wiggle * 0.42;
+      const y = band + waveA + waveB;
+      if (x <= 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+function createTopoRock() {
+  const size = 512;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#45515a");
+  gradient.addColorStop(0.5, "#303943");
+  gradient.addColorStop(1, "#1b242c");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  drawNoise(ctx, size, 0.14);
+
+  ctx.globalAlpha = 0.22;
+  for (let index = 0; index < 150; index += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const radius = Math.random() * 12 + 2;
+    ctx.fillStyle = index % 2 === 0 ? "#61707a" : "#202930";
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  drawTopoContours(ctx, size, {
+    lineColor: "#d8e0e4",
+    alpha: 0.26,
+    spacing: 28,
+    wiggle: 7,
+    lineWidth: 1.5,
+    offset: 0.6
+  });
+
+  return canvas;
+}
+
+function createTopoSand() {
+  const size = 512;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, 0, size);
+  gradient.addColorStop(0, "#b89468");
+  gradient.addColorStop(0.55, "#8d6a46");
+  gradient.addColorStop(1, "#68482e");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  drawNoise(ctx, size, 0.12);
+
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = "#d7b78f";
+  for (let index = 0; index < 220; index += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const width = Math.random() * 18 + 4;
+    const height = Math.random() * 5 + 1;
+    ctx.fillRect(x, y, width, height);
+  }
+  ctx.globalAlpha = 1;
+
+  drawTopoContours(ctx, size, {
+    lineColor: "#f0ddc2",
+    alpha: 0.28,
+    spacing: 24,
+    wiggle: 5,
+    lineWidth: 1.25,
+    offset: 1.3
+  });
+
+  return canvas;
+}
+
+function createTopoGrass() {
+  const size = 512;
+  const canvas = createCanvas(size);
+  const ctx = canvas.getContext("2d");
+
+  const gradient = ctx.createLinearGradient(0, 0, size, size);
+  gradient.addColorStop(0, "#5f7b55");
+  gradient.addColorStop(0.52, "#415e40");
+  gradient.addColorStop(1, "#2d4130");
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, size, size);
+
+  drawNoise(ctx, size, 0.1);
+
+  ctx.globalAlpha = 0.22;
+  ctx.strokeStyle = "#86a16f";
+  ctx.lineWidth = 2;
+  for (let index = 0; index < 220; index += 1) {
+    const x = Math.random() * size;
+    const y = Math.random() * size;
+    const height = Math.random() * 12 + 4;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + Math.random() * 5 - 2.5, y - height);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  drawTopoContours(ctx, size, {
+    lineColor: "#dce8d1",
+    alpha: 0.18,
+    spacing: 26,
+    wiggle: 6,
+    lineWidth: 1.1,
+    offset: 0.2
+  });
+
+  return canvas;
+}
+
 function createMarble() {
   const size = 512;
   const canvas = createCanvas(size);
@@ -579,6 +722,12 @@ export function createProceduralTexture(name) {
     canvas = createDirt();
   } else if (name === "grass") {
     canvas = createGrass();
+  } else if (name === "topo-rock") {
+    canvas = createTopoRock();
+  } else if (name === "topo-sand") {
+    canvas = createTopoSand();
+  } else if (name === "topo-grass") {
+    canvas = createTopoGrass();
   } else if (name === "pompeii-fresco") {
     canvas = createPompeiiFresco();
   } else if (name === "mosaic") {

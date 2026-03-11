@@ -107,6 +107,8 @@ function normalizePresentationWallConfig(config = null) {
   const width = Math.max(2.6, Number(config.width) || 3.6);
   const aspectRatio = Math.max(1.2, Number(config.aspectRatio) || 16 / 9);
   const wall = ["back", "outer", "front"].includes(config.wall) ? config.wall : "front";
+  const center =
+    Number.isFinite(Number(config.centerX)) ? Number(config.centerX) : Number(config.center) || 0;
   return {
     enabled: true,
     wall,
@@ -114,6 +116,7 @@ function normalizePresentationWallConfig(config = null) {
     height: width / aspectRatio,
     displayY: Number(config.displayY) || 2.62,
     offset: Math.max(0.05, Number(config.offset) || 0.08),
+    center,
     label: trimTitle(config.label || "Screening", 22),
     idleLabel: trimTitle(config.idleLabel || SCREENING_FALLBACK_LABEL, 24)
   };
@@ -127,6 +130,8 @@ function normalizePlaylistWallConfig(config = null) {
   const width = Math.max(2.2, Number(config.width) || 3.36);
   const height = Math.max(1.8, Number(config.height) || 3.04);
   const wall = ["back", "outer", "front"].includes(config.wall) ? config.wall : "back";
+  const center =
+    Number.isFinite(Number(config.centerX)) ? Number(config.centerX) : Number(config.center) || 0;
   return {
     enabled: true,
     wall,
@@ -134,6 +139,7 @@ function normalizePlaylistWallConfig(config = null) {
     height,
     displayY: Number(config.displayY) || 2.3,
     offset: Math.max(0.05, Number(config.offset) || 0.08),
+    center,
     label: trimTitle(config.label || "Longform Archive", 24),
     feedSource:
       typeof config.feedSource === "string" && config.feedSource.trim()
@@ -177,6 +183,38 @@ function extractYoutubeVideoId(item = {}) {
   }
 
   return "";
+}
+
+function readPublishedAtTimestamp(item = {}) {
+  const publishedAt =
+    typeof item?.publishedAt === "string" ? item.publishedAt.trim() : "";
+  if (!publishedAt) {
+    return -1;
+  }
+
+  const timestamp = Date.parse(publishedAt);
+  return Number.isFinite(timestamp) ? timestamp : -1;
+}
+
+function resolveFeaturedVideoItem(items = []) {
+  const safeItems = Array.isArray(items) ? items.filter(Boolean) : [];
+  if (!safeItems.length) {
+    return null;
+  }
+
+  let featuredItem = safeItems[0];
+  let featuredTimestamp = readPublishedAtTimestamp(featuredItem);
+
+  for (let index = 1; index < safeItems.length; index += 1) {
+    const candidate = safeItems[index];
+    const candidateTimestamp = readPublishedAtTimestamp(candidate);
+    if (candidateTimestamp > featuredTimestamp) {
+      featuredItem = candidate;
+      featuredTimestamp = candidateTimestamp;
+    }
+  }
+
+  return featuredItem;
 }
 
 function buildYoutubeEmbedUrl(videoId) {
@@ -234,7 +272,9 @@ function makeLabelCanvas(lines, options = {}) {
 
   content.forEach((line, index) => {
     ctx.font = index === 0 ? "700 52px Trebuchet MS" : "600 42px Trebuchet MS";
-    ctx.fillStyle = index === 0 ? "#f2f5f4" : "#b9d0ce";
+    ctx.fillStyle = index === 0
+      ? options.primaryColor || "#f2f5f4"
+      : options.secondaryColor || "#b9d0ce";
     ctx.fillText(String(line), width * 0.5, firstLineY + index * lineGap);
   });
 
@@ -584,16 +624,16 @@ export class CatalogRoomSystem {
     if (presentationWall && allowReservedWallSideSlots) {
       blockers.push({
         wall: presentationWall.wall,
-        min: -presentationWall.width * 0.5 - blockerPadding,
-        max: presentationWall.width * 0.5 + blockerPadding
+        min: presentationWall.center - presentationWall.width * 0.5 - blockerPadding,
+        max: presentationWall.center + presentationWall.width * 0.5 + blockerPadding
       });
     }
     const playlistWall = this.getPlaylistWallConfig(roomId, roomConfig, roomNode.index);
     if (playlistWall) {
       blockers.push({
         wall: playlistWall.wall,
-        min: -playlistWall.width * 0.5 - blockerPadding,
-        max: playlistWall.width * 0.5 + blockerPadding
+        min: playlistWall.center - playlistWall.width * 0.5 - blockerPadding,
+        max: playlistWall.center + playlistWall.width * 0.5 + blockerPadding
       });
     }
     return blockers;
@@ -953,19 +993,19 @@ export class CatalogRoomSystem {
 
     switch (config.wall) {
       case "back":
-        group.position.set(0, config.displayY, -depth * 0.5 + config.offset);
+        group.position.set(config.center, config.displayY, -depth * 0.5 + config.offset);
         group.rotation.y = 0;
         break;
       case "outer":
         group.position.set(
           entrySide === "east" ? -width * 0.5 + config.offset : width * 0.5 - config.offset,
           config.displayY,
-          0
+          config.center
         );
         group.rotation.y = entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5;
         break;
       default:
-        group.position.set(0, config.displayY, depth * 0.5 - config.offset);
+        group.position.set(config.center, config.displayY, depth * 0.5 - config.offset);
         group.rotation.y = Math.PI;
         break;
     }
@@ -1064,16 +1104,16 @@ export class CatalogRoomSystem {
         group.position.set(
           entrySide === "east" ? -width * 0.5 + config.offset : width * 0.5 - config.offset,
           config.displayY,
-          0
+          config.center
         );
         group.rotation.y = entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5;
         break;
       case "front":
-        group.position.set(0, config.displayY, depth * 0.5 - config.offset);
+        group.position.set(config.center, config.displayY, depth * 0.5 - config.offset);
         group.rotation.y = Math.PI;
         break;
       default:
-        group.position.set(0, config.displayY, -depth * 0.5 + config.offset);
+        group.position.set(config.center, config.displayY, -depth * 0.5 + config.offset);
         group.rotation.y = 0;
         break;
     }
@@ -1991,12 +2031,17 @@ export class CatalogRoomSystem {
 
   getRoomSnapshot(roomId) {
     const nodes = this.getRoomNodes(roomId).sort((a, b) => a.index - b.index);
+    const latestItemIds = this.dynamicCards
+      .filter((entry) => entry.roomId === roomId && entry.isLatestVideo)
+      .map((entry) => entry.itemId);
     return {
       roomId,
       enabled: this.isRoomEnabled(roomId),
       nodeCount: nodes.length,
       cardCounts: nodes.map((node) => node.cardsGroup?.children?.length || 0),
-      capacities: nodes.map((node) => this.computeWallSlots(roomId, node).length)
+      capacities: nodes.map((node) => this.computeWallSlots(roomId, node).length),
+      latestItemId: latestItemIds[0] || null,
+      latestItemIds
     };
   }
 
@@ -2024,7 +2069,7 @@ export class CatalogRoomSystem {
     }
   }
 
-  async createCard(roomId, roomNode, item, placement, index, token) {
+  async createCard(roomId, roomNode, item, placement, index, token, options = {}) {
     const roomConfig = roomNode.config;
     const cardWidth = roomConfig.card?.width || 1.45;
     const cardHeight = roomConfig.card?.height || 1.9;
@@ -2038,6 +2083,7 @@ export class CatalogRoomSystem {
     const MaterialCtor = basicMode ? THREE.MeshBasicMaterial : THREE.MeshStandardMaterial;
     const isScreeningRoom = Boolean(this.getPresentationWallConfig(roomId, roomConfig, roomNode.index));
     const videoId = extractYoutubeVideoId(item);
+    const isLatestVideoCard = isScreeningRoom && options?.featuredItem === item;
 
     const group = new THREE.Group();
     group.position.set(
@@ -2056,17 +2102,21 @@ export class CatalogRoomSystem {
     };
 
     const accent = toColor(roomConfig.accentColor, roomId === "shop" ? "#8ec8d3" : "#ba9de2");
+    const cardAccent = isLatestVideoCard
+      ? accent.clone().lerp(new THREE.Color("#ffdcea"), 0.38)
+      : accent.clone();
+    const restFrameColor = cardAccent.clone().multiplyScalar(0.44);
     const frameMaterial = new MaterialCtor(
       basicMode
         ? {
-            color: accent.clone().multiplyScalar(0.48)
+            color: cardAccent.clone().multiplyScalar(0.48)
           }
         : {
-            color: accent.clone().multiplyScalar(0.44),
+            color: restFrameColor.clone(),
             roughness: 0.45,
             metalness: 0.28,
-            emissive: accent,
-            emissiveIntensity: 0.12
+            emissive: cardAccent,
+            emissiveIntensity: isLatestVideoCard ? 0.2 : 0.12
           }
     );
     const frame = new THREE.Mesh(
@@ -2099,9 +2149,9 @@ export class CatalogRoomSystem {
       ? new THREE.Mesh(
           new THREE.PlaneGeometry(cardWidth + 0.5, cardHeight + 0.5),
           new THREE.MeshBasicMaterial({
-            color: accent,
+            color: cardAccent,
             transparent: true,
-            opacity: basicMode ? 0.2 : 0.34,
+            opacity: isLatestVideoCard ? (basicMode ? 0.3 : 0.46) : basicMode ? 0.2 : 0.34,
             blending: THREE.AdditiveBlending,
             depthWrite: false
           })
@@ -2114,7 +2164,7 @@ export class CatalogRoomSystem {
     }
 
     if (!basicMode && cardLightBudget > 0 && index < cardLightBudget) {
-      const glowLight = new THREE.PointLight(accent, 0.42, 3.8);
+      const glowLight = new THREE.PointLight(cardAccent, isLatestVideoCard ? 0.58 : 0.42, 3.8);
       glowLight.position.set(0, 0.08, 0.44);
       glowLight.userData.canCastShadow = false;
       group.add(glowLight);
@@ -2169,6 +2219,21 @@ export class CatalogRoomSystem {
       group.add(labelPlane);
     }
 
+    if (isLatestVideoCard) {
+      const latestBadge = makeLabelPlane(["Latest"], [0.92, 0.28], {
+        width: 384,
+        height: 120,
+        background: "rgba(255, 240, 247, 0.96)",
+        border: "rgba(255, 173, 206, 0.96)",
+        primaryColor: "#ff6da4"
+      });
+      if (latestBadge) {
+        latestBadge.position.set(cardWidth * 0.22, cardHeight * 0.5 - 0.16, 0.1);
+        latestBadge.renderOrder = 4;
+        group.add(latestBadge);
+      }
+    }
+
     const hitbox = new THREE.Mesh(
       new THREE.PlaneGeometry(cardWidth + 0.2, cardHeight + 0.24),
       new THREE.MeshBasicMaterial({
@@ -2182,12 +2247,19 @@ export class CatalogRoomSystem {
     group.add(hitbox);
 
     let hovered = false;
-    const hoverColor = accent.clone().lerp(new THREE.Color("#ffffff"), 0.24);
+    const hoverColor = cardAccent.clone().lerp(new THREE.Color("#ffffff"), 0.24);
+    const baseGlowOpacity = glowPanel ? Number(glowPanel.material?.opacity) || 0 : 0;
+    const hoverGlowOpacity = isLatestVideoCard
+      ? (basicMode ? 0.42 : 0.62)
+      : basicMode
+        ? 0.3
+        : 0.5;
+    const itemId = item.id || videoId || `${roomId}-${index}`;
     const interaction = isScreeningRoom
       ? {
           type: "screen-video",
           roomId,
-          itemId: item.id || videoId || `${roomId}-${index}`,
+          itemId,
           videoId,
           url: item.url || "",
           title: item.title || "",
@@ -2201,16 +2273,16 @@ export class CatalogRoomSystem {
       url: isScreeningRoom ? "" : item.url || this.getDefaultRoomUrl(roomId),
       interaction,
       hitbox,
-      userData: { roomId, roomIndex: roomNode.index },
+      userData: { roomId, roomIndex: roomNode.index, itemId, isLatestVideo: isLatestVideoCard },
       setHovered: (state) => {
         hovered = Boolean(state);
         if (!basicMode && "emissiveIntensity" in frameMaterial) {
-          frameMaterial.emissiveIntensity = hovered ? 0.52 : 0.12;
+          frameMaterial.emissiveIntensity = hovered ? 0.52 : isLatestVideoCard ? 0.2 : 0.12;
         }
-        frameMaterial.color.copy(hovered ? hoverColor : accent.clone().multiplyScalar(0.44));
+        frameMaterial.color.copy(hovered ? hoverColor : restFrameColor);
         frame.scale.setScalar(hovered ? 1.05 : 1);
         if (glowPanel) {
-          glowPanel.material.opacity = hovered ? (basicMode ? 0.3 : 0.5) : basicMode ? 0.2 : 0.34;
+          glowPanel.material.opacity = hovered ? hoverGlowOpacity : baseGlowOpacity;
         }
       }
     };
@@ -2220,6 +2292,8 @@ export class CatalogRoomSystem {
     this.dynamicCards.push({
       roomId,
       roomIndex: roomNode.index,
+      itemId,
+      isLatestVideo: isLatestVideoCard,
       group,
       target,
       baseY: placement.position[1],
@@ -2265,6 +2339,7 @@ export class CatalogRoomSystem {
 
     const nodes = this.getRoomNodes(roomId).sort((a, b) => a.index - b.index);
     const slotPool = this.buildSlotPool(roomId, nodes, roomConfig, items.length);
+    const featuredItem = roomId === SCREENING_ROOM_ID ? resolveFeaturedVideoItem(items) : null;
 
     for (let index = 0; index < items.length; index += 1) {
       if (token !== this.applyToken) {
@@ -2275,7 +2350,15 @@ export class CatalogRoomSystem {
         break;
       }
       // Sequential creation avoids burst texture requests on first load.
-      const created = await this.createCard(roomId, slot.roomNode, items[index], slot, index, token);
+      const created = await this.createCard(
+        roomId,
+        slot.roomNode,
+        items[index],
+        slot,
+        index,
+        token,
+        { featuredItem }
+      );
       if (!created && token !== this.applyToken) {
         return;
       }

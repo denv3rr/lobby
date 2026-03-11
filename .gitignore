@@ -36,6 +36,9 @@ public/config/*.json
 .vscode/
 .idea/
 .codex/
+*.code-workspace
+*.swp
+*.swo
 .env
 .env.*
 *.local
@@ -43,6 +46,9 @@ public/config/*.json
 *.secret
 *.pem
 *.key
+*.bak
+*.orig
+*.rej
 
 # E2E artifacts
 test-results/

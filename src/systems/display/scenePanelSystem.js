@@ -70,6 +70,46 @@ export class ScenePanelSystem {
     this.panelEntries = [];
   }
 
+  markPointerLockSuppressed(durationMs = 320) {
+    if (!this.domElement?.dataset) {
+      return;
+    }
+    this.domElement.dataset.pointerLockSuppressedUntil = String(performance.now() + durationMs);
+  }
+
+  bindUiControl(element, { blurOnClick = false } = {}) {
+    if (!element) {
+      return element;
+    }
+
+    this.disableElementDrag(element);
+    element.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      this.markPointerLockSuppressed();
+    });
+    element.addEventListener("click", (event) => {
+      event.stopPropagation();
+      this.markPointerLockSuppressed();
+      if (blurOnClick && typeof element.blur === "function") {
+        queueMicrotask(() => element.blur());
+      }
+    });
+    return element;
+  }
+
+  disableElementDrag(element) {
+    if (!element) {
+      return element;
+    }
+    if ("draggable" in element) {
+      element.draggable = false;
+    }
+    element.addEventListener("dragstart", (event) => {
+      event.preventDefault();
+    });
+    return element;
+  }
+
   createPanelScaffold(panel) {
     const layer = this.ensureLayer();
     const root = document.createElement("section");
@@ -124,6 +164,7 @@ export class ScenePanelSystem {
     button.textContent = readText(panel.cta?.label, "Visit the project site");
     button.disabled = !readText(panel.cta?.url, "");
     button.dataset.ui = "true";
+    this.bindUiControl(button, { blurOnClick: true });
     button.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
@@ -257,6 +298,7 @@ export class ScenePanelSystem {
         button.className = "scene-panel-gallery-button";
         button.dataset.ui = "true";
         button.dataset.index = String(index);
+        this.bindUiControl(button, { blurOnClick: true });
         button.addEventListener("click", (event) => {
           event.preventDefault();
           event.stopPropagation();
@@ -270,6 +312,7 @@ export class ScenePanelSystem {
         image.loading = "lazy";
         image.decoding = "async";
         image.dataset.ui = "true";
+        this.disableElementDrag(image);
 
         button.appendChild(image);
         strip.appendChild(button);
@@ -312,6 +355,7 @@ export class ScenePanelSystem {
     image.loading = "eager";
     image.decoding = "async";
     image.dataset.ui = "true";
+    this.disableElementDrag(image);
 
     stage.appendChild(image);
     preview.appendChild(stage);
@@ -431,9 +475,9 @@ export class ScenePanelSystem {
         continue;
       }
 
-      const images =
-        entries.find((entry) => this.getEffectivePanelImages(entry).length)?.images ||
-        this.getEffectivePanelImages(entries[0]);
+      const imageSourceEntry =
+        entries.find((entry) => this.getEffectivePanelImages(entry).length) || entries[0];
+      const images = this.getEffectivePanelImages(imageSourceEntry);
       const imageCount = Array.isArray(images) ? images.length : 0;
       const selectedIndex = this.getGallerySelection(galleryId, imageCount);
 
@@ -923,12 +967,22 @@ export class ScenePanelSystem {
     if (!entry) {
       return null;
     }
+    const effectiveImages = this.getEffectivePanelImages(entry);
+    const galleryId = this.getGalleryId(entry);
+    const selectedIndex = effectiveImages.length
+      ? this.getGallerySelection(galleryId, effectiveImages.length)
+      : null;
     return {
       id: entry.id,
       type: entry.type || null,
-      imageCount: this.getEffectivePanelImages(entry).length,
+      imageCount: effectiveImages.length,
+      selectedIndex,
       visible: Boolean(entry.root && !entry.root.classList.contains("hidden")),
-      ctaUrl: readText(entry.cta?.url, "")
+      ctaUrl: readText(entry.cta?.url, ""),
+      previewSrc:
+        entry.type === "gallery-preview" ? readText(entry.previewImage?.getAttribute?.("src"), "") : "",
+      previewCaption:
+        entry.type === "gallery-preview" ? readText(entry.previewCaption?.textContent, "") : ""
     };
   }
 

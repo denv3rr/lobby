@@ -2,6 +2,8 @@ import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
+import { selectPreferredFeedRuntimeSource } from "../src/utils/runtimeConfigFeeds.js";
+
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const PUBLIC_CONFIG_DIR = path.join(ROOT_DIR, "public", "config");
 export const PUBLIC_DEFAULTS_DIR = path.join(ROOT_DIR, "public", "config.defaults");
@@ -88,6 +90,18 @@ function collectCatalogFeedFiles(catalogConfig) {
 
 function normalizeTarget(target = "local") {
   return target === "defaults" ? "defaults" : "local";
+}
+
+function parseJsonIfPossible(text = "") {
+  if (typeof text !== "string" || !text.trim()) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 export function isRuntimeConfigFile(fileName) {
@@ -188,6 +202,15 @@ export async function readRuntimeConfig(fileName, source = "effective") {
   let resolvedSource = source;
   if (source === "effective") {
     resolvedSource = localResult.exists ? "local" : "defaults";
+    if (localResult.exists && defaultsResult.exists) {
+      const preferredFeedSource = selectPreferredFeedRuntimeSource(normalizedFileName, {
+        localPayload: parseJsonIfPossible(localResult.text),
+        defaultsPayload: parseJsonIfPossible(defaultsResult.text)
+      });
+      if (preferredFeedSource === "defaults" || preferredFeedSource === "local") {
+        resolvedSource = preferredFeedSource;
+      }
+    }
   }
 
   if (resolvedSource !== "local" && resolvedSource !== "defaults") {

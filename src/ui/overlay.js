@@ -36,6 +36,14 @@ export function createOverlay({
   const themeHiddenClass = showThemePanel ? "" : "hidden";
   const devPanelHiddenClass = devMenu?.enabled ? "" : "hidden";
   const devModeLabel = devMenu?.writable ? "Local Write" : "Read Only";
+  const editorSupported = Boolean(devMenu?.editorSupported);
+  const editorActive = Boolean(devMenu?.editorActive);
+  const editorButtonLabel = editorActive ? "Close Editor" : "Open Editor";
+  const editorNote = editorSupported
+    ? editorActive
+      ? "Editor is active. Current shell supports selecting and transforming placed props with local save/load."
+      : "Local editor is available here. It opens the current scene authoring shell for selecting and moving existing props."
+    : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
 
   mount.innerHTML = `
     <div class="lobby-root">
@@ -90,7 +98,16 @@ export function createOverlay({
               <button id="dev-save-defaults-btn" type="button" data-ui>Save Deploy</button>
               <button id="dev-delete-local-btn" type="button" data-ui>Clear Local</button>
               <button id="dev-reload-runtime-btn" type="button" data-ui>Reload App</button>
+              <button
+                id="dev-editor-toggle-btn"
+                type="button"
+                data-ui
+                ${editorSupported ? "" : "disabled"}
+              >${editorButtonLabel}</button>
             </div>
+            <p id="dev-editor-note" class="dev-config-status" data-tone="${editorSupported ? "info" : "muted"}">
+              ${editorNote}
+            </p>
           </section>
         </div>
 
@@ -201,6 +218,8 @@ export function createOverlay({
   const devSaveDefaultsButton = mount.querySelector("#dev-save-defaults-btn");
   const devDeleteLocalButton = mount.querySelector("#dev-delete-local-btn");
   const devReloadRuntimeButton = mount.querySelector("#dev-reload-runtime-btn");
+  const devEditorToggleButton = mount.querySelector("#dev-editor-toggle-btn");
+  const devEditorNote = mount.querySelector("#dev-editor-note");
 
   if (showDevPanel) {
     controlHint.textContent = isMobile
@@ -456,6 +475,23 @@ export function createOverlay({
     }
   }
 
+  function setDevEditorState() {
+    if (devEditorToggleButton) {
+      devEditorToggleButton.textContent = Boolean(devMenu?.editorActive) ? "Close Editor" : "Open Editor";
+      devEditorToggleButton.disabled = !Boolean(devMenu?.editorSupported) || devBusy;
+    }
+    if (devEditorNote) {
+      const supported = Boolean(devMenu?.editorSupported);
+      const active = Boolean(devMenu?.editorActive);
+      devEditorNote.textContent = supported
+        ? active
+          ? "Editor is active. Current shell supports selecting and transforming placed props with local save/load."
+          : "Local editor is available here. It opens the current scene authoring shell for selecting and moving existing props."
+        : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
+      devEditorNote.dataset.tone = supported ? "info" : "muted";
+    }
+  }
+
   async function loadDevConfig(requestedSource = null) {
     if (!devMenu?.enabled || typeof devMenu.loadConfig !== "function" || !devConfigFile) {
       return false;
@@ -490,6 +526,7 @@ export function createOverlay({
       devBusy = false;
       setDevButtonsDisabled(false);
       setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+      setDevEditorState();
     }
   }
 
@@ -524,6 +561,7 @@ export function createOverlay({
       devBusy = false;
       setDevButtonsDisabled(false);
       setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+      setDevEditorState();
     }
   }
 
@@ -553,6 +591,7 @@ export function createOverlay({
       devBusy = false;
       setDevButtonsDisabled(false);
       setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+      setDevEditorState();
     }
   }
 
@@ -848,6 +887,7 @@ export function createOverlay({
     setDevConfigFiles(devMenu.configFiles);
 
     setDevWriteButtonsEnabled(Boolean(devMenu.writable));
+    setDevEditorState();
     setDevStatus(
       devMenu.writable
         ? "Edit JSON here, then save locally or directly to deploy defaults."
@@ -875,6 +915,9 @@ export function createOverlay({
     });
     devReloadRuntimeButton.addEventListener("click", () => {
       devMenu.reloadRuntime?.();
+    });
+    devEditorToggleButton?.addEventListener("click", () => {
+      devMenu.toggleEditor?.();
     });
 
     loadDevConfig().catch(() => {});

@@ -14,6 +14,7 @@ import { ScenePanelSystem } from "./systems/display/scenePanelSystem.js";
 import { StabilityObjectivesSystem } from "./systems/gameplay/stabilityObjectivesSystem.js";
 import { resolveInitialThemeName, ThemeSystem } from "./systems/theming/applyTheme.js";
 import { createOverlay } from "./ui/overlay.js";
+import { isFeedRuntimeConfigFile, selectPreferredFeedRuntimeSource } from "./utils/runtimeConfigFeeds.js";
 import { createPerfHud } from "./ui/perfHud.js";
 import { resolvePublicPath } from "./utils/path.js";
 
@@ -148,6 +149,22 @@ async function loadJson(path) {
   return response.json();
 }
 
+async function loadRuntimeConfigCandidate(path) {
+  try {
+    return {
+      ok: true,
+      path,
+      payload: await loadJson(path)
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      path,
+      error
+    };
+  }
+}
+
 async function loadRuntimeConfig(fileName, { optional = false, defaultsOnly = false } = {}) {
   const normalizedFileName = isSupportedRuntimeConfigFile(fileName)
     ? normalizeRuntimeConfigFileName(fileName)
@@ -157,6 +174,36 @@ async function loadRuntimeConfig(fileName, { optional = false, defaultsOnly = fa
       return null;
     }
     throw new Error(`Unsupported runtime config "${fileName}".`);
+  }
+
+  if (!defaultsOnly && isFeedRuntimeConfigFile(normalizedFileName)) {
+    const localPath = `config/${normalizedFileName}`;
+    const defaultsPath = `config.defaults/${normalizedFileName}`;
+    const [localCandidate, defaultsCandidate] = await Promise.all([
+      loadRuntimeConfigCandidate(localPath),
+      loadRuntimeConfigCandidate(defaultsPath)
+    ]);
+    const preferredSource = selectPreferredFeedRuntimeSource(normalizedFileName, {
+      localPayload: localCandidate.ok ? localCandidate.payload : null,
+      defaultsPayload: defaultsCandidate.ok ? defaultsCandidate.payload : null
+    });
+
+    if (preferredSource === "defaults" && defaultsCandidate.ok) {
+      return defaultsCandidate.payload;
+    }
+    if (preferredSource === "local" && localCandidate.ok) {
+      return localCandidate.payload;
+    }
+    if (localCandidate.ok) {
+      return localCandidate.payload;
+    }
+    if (defaultsCandidate.ok) {
+      return defaultsCandidate.payload;
+    }
+    if (optional) {
+      return null;
+    }
+    throw defaultsCandidate.error || localCandidate.error || new Error(`Failed loading ${normalizedFileName}.`);
   }
 
   const attempts = defaultsOnly
@@ -378,13 +425,9 @@ function normalizeRuntimeConfigFileName(fileName) {
   return typeof fileName === "string" ? fileName.trim() : "";
 }
 
-function isFeedConfigFile(fileName) {
-  return /^[a-z0-9_-]+-feed\.json$/i.test(normalizeRuntimeConfigFileName(fileName));
-}
-
 function isSupportedRuntimeConfigFile(fileName) {
   const normalized = normalizeRuntimeConfigFileName(fileName);
-  return DEV_CONFIG_FILE_SET.has(normalized) || isFeedConfigFile(normalized);
+  return DEV_CONFIG_FILE_SET.has(normalized) || isFeedRuntimeConfigFile(normalized);
 }
 
 function mergeDevConfigFiles(...sources) {
@@ -917,6 +960,7 @@ async function boot() {
   const sceneUiEnabled = params.get("sceneui") !== "0";
   const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
   const devMenuEnabled = isDev || debugUiParam;
+  const editorSupported = isDev || isLocalAuthoringHost();
   const editorModeEnabled = shouldEnableLocalEditor(params, {
     isDev
   });
@@ -1543,11 +1587,28 @@ async function boot() {
     devMenu: {
       enabled: devMenuEnabled,
       writable: isDev,
+      editorSupported,
+      editorActive: editorModeEnabled,
       configFiles: DEV_CONFIG_FILES,
       loadConfig: (fileName, source) => readEditableRuntimeConfig(fileName, source),
       saveConfig: (fileName, target, text) => writeEditableRuntimeConfig(fileName, target, text),
       deleteConfig: (fileName, target) => deleteEditableRuntimeConfig(fileName, target),
-      reloadRuntime: () => window.location.reload()
+      reloadRuntime: () => window.location.reload(),
+      toggleEditor: () => {
+        if (!editorSupported) {
+          return false;
+        }
+        const nextUrl = new URL(window.location.href);
+        if (editorModeEnabled) {
+          nextUrl.searchParams.delete("editor");
+        } else {
+          nextUrl.searchParams.set("editor", "1");
+          nextUrl.searchParams.set("debugui", "1");
+          nextUrl.searchParams.set("sceneui", "1");
+        }
+        window.location.assign(nextUrl.toString());
+        return true;
+      }
     },
     onEnableSound: async () => tryEnableAudioFromInteraction(),
     onInspectAction: async (action) => handleInspectAction(action),

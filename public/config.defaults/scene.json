@@ -719,6 +719,137 @@
       }
     },
     {
+      "id": "spi_room_door_frame_left",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -14.88,
+        1.66,
+        -6.96
+      ],
+      "scale": [
+        0.16,
+        3.12,
+        0.24
+      ],
+      "collider": false,
+      "material": {
+        "color": "#3a2632",
+        "emissiveColor": "#54293f",
+        "emissiveIntensity": 0.08,
+        "roughness": 0.28,
+        "metalness": 0.58
+      }
+    },
+    {
+      "id": "spi_room_door_frame_right",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -14.88,
+        1.66,
+        -3.24
+      ],
+      "scale": [
+        0.16,
+        3.12,
+        0.24
+      ],
+      "collider": false,
+      "material": {
+        "color": "#3a2632",
+        "emissiveColor": "#54293f",
+        "emissiveIntensity": 0.08,
+        "roughness": 0.28,
+        "metalness": 0.58
+      }
+    },
+    {
+      "id": "spi_room_door_frame_top",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -14.88,
+        3.14,
+        -5.1
+      ],
+      "scale": [
+        0.16,
+        0.18,
+        4.08
+      ],
+      "collider": false,
+      "material": {
+        "color": "#4b3140",
+        "emissiveColor": "#633248",
+        "emissiveIntensity": 0.12,
+        "roughness": 0.28,
+        "metalness": 0.62
+      }
+    },
+    {
+      "id": "spi_room_door_glow_strip",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -14.78,
+        2.98,
+        -5.1
+      ],
+      "scale": [
+        0.05,
+        0.08,
+        3.68
+      ],
+      "collider": false,
+      "material": {
+        "color": "#ff9bd7",
+        "emissiveColor": "#ff83cb",
+        "emissiveIntensity": 0.46,
+        "glowLight": false,
+        "roughness": 0.18,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "spi_room_door_light",
+      "type": "primitive",
+      "primitive": "sphere",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -14.5,
+        3.54,
+        -5.1
+      ],
+      "scale": [
+        0.28,
+        0.28,
+        0.28
+      ],
+      "collider": false,
+      "material": {
+        "color": "#ffd2ea",
+        "emissiveColor": "#ff7fc7",
+        "emissiveIntensity": 0.78,
+        "roughness": 0.16,
+        "metalness": 0.04
+      }
+    },
+    {
       "id": "outdoor_ground",
       "type": "primitive",
       "primitive": "plane",
@@ -796,6 +927,335 @@
         "color": "#5d615f",
         "roughness": 0.76,
         "metalness": 0.08
+      }
+    },
+    {
+      "id": "floating_city_platform_core",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        0,
+        -4.9,
+        7
+      ],
+      "scale": [
+        56,
+        8.8,
+        96
+      ],
+      "collider": false,
+      "material": {
+        "color": "#171c22",
+        "roughness": 0.94,
+        "metalness": 0.08
+      }
+    },
+    {
+      "id": "floating_city_platform_trim",
+      "type": "primitive",
+      "primitive": "box",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        0,
+        -0.26,
+        7
+      ],
+      "scale": [
+        52.6,
+        0.32,
+        92.4
+      ],
+      "collider": false,
+      "material": {
+        "color": "#212b33",
+        "emissiveColor": "#7db7c9",
+        "emissiveIntensity": 0.05,
+        "roughness": 0.68,
+        "metalness": 0.16
+      }
+    },
+    {
+      "id": "floating_city_topo_primary",
+      "type": "primitive",
+      "primitive": "terrain",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        0,
+        -5.1,
+        18
+      ],
+      "scale": [
+        116,
+        4.2,
+        132
+      ],
+      "collider": false,
+      "terrain": {
+        "seed": "floating-city-primary",
+        "segmentsX": 132,
+        "segmentsZ": 148,
+        "flatRadius": 34,
+        "riseRadius": 54,
+        "noiseScale": 0.072,
+        "ridgeMix": 0.34,
+        "uplift": 0.26,
+        "edgeLift": 0.14,
+        "terraceSteps": 10,
+        "warpStrength": 0.22
+      },
+      "material": {
+        "color": "#43574c",
+        "procedural": "topo-grass",
+        "textureRepeat": [
+          14,
+          16
+        ],
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_topo_south_shelf",
+      "type": "primitive",
+      "primitive": "terrain",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        28,
+        -8.2,
+        76
+      ],
+      "scale": [
+        44,
+        3.8,
+        30
+      ],
+      "collider": false,
+      "terrain": {
+        "seed": "floating-city-south-shelf",
+        "segments": 84,
+        "flatRadius": 7,
+        "riseRadius": 14,
+        "noiseScale": 0.094,
+        "ridgeMix": 0.28,
+        "uplift": 0.24,
+        "edgeLift": 0.18,
+        "terraceSteps": 9,
+        "warpStrength": 0.2
+      },
+      "material": {
+        "color": "#8d6d48",
+        "procedural": "topo-sand",
+        "textureRepeat": [
+          8,
+          6
+        ],
+        "roughness": 0.98,
+        "metalness": 0.01
+      }
+    },
+    {
+      "id": "floating_city_topo_west_shelf",
+      "type": "primitive",
+      "primitive": "terrain",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -54,
+        -9.4,
+        18
+      ],
+      "scale": [
+        34,
+        4.6,
+        52
+      ],
+      "collider": false,
+      "terrain": {
+        "seed": "floating-city-west-shelf",
+        "segmentsX": 76,
+        "segmentsZ": 102,
+        "flatRadius": 8,
+        "riseRadius": 16,
+        "noiseScale": 0.086,
+        "ridgeMix": 0.48,
+        "uplift": 0.22,
+        "edgeLift": 0.2,
+        "terraceSteps": 11,
+        "warpStrength": 0.24
+      },
+      "material": {
+        "color": "#3d4953",
+        "procedural": "topo-rock",
+        "textureRepeat": [
+          7,
+          10
+        ],
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_topo_east_shelf",
+      "type": "primitive",
+      "primitive": "terrain",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        58,
+        -9,
+        10
+      ],
+      "scale": [
+        30,
+        4,
+        44
+      ],
+      "collider": false,
+      "terrain": {
+        "seed": "floating-city-east-shelf",
+        "segmentsX": 72,
+        "segmentsZ": 88,
+        "flatRadius": 7,
+        "riseRadius": 15,
+        "noiseScale": 0.092,
+        "ridgeMix": 0.42,
+        "uplift": 0.22,
+        "edgeLift": 0.16,
+        "terraceSteps": 10,
+        "warpStrength": 0.22
+      },
+      "material": {
+        "color": "#4a5561",
+        "procedural": "topo-rock",
+        "textureRepeat": [
+          6,
+          9
+        ],
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_cloud_bank_a",
+      "type": "primitive",
+      "primitive": "sphere",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -18,
+        -10.4,
+        58
+      ],
+      "scale": [
+        18,
+        5.6,
+        12
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f0edf3",
+        "emissiveColor": "#f6d8ec",
+        "emissiveIntensity": 0.04,
+        "opacity": 0.3,
+        "transparent": true,
+        "doubleSided": true,
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_cloud_bank_b",
+      "type": "primitive",
+      "primitive": "sphere",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        14,
+        -11.2,
+        66
+      ],
+      "scale": [
+        22,
+        6.4,
+        14
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f7f4fb",
+        "emissiveColor": "#e2e7ff",
+        "emissiveIntensity": 0.03,
+        "opacity": 0.28,
+        "transparent": true,
+        "doubleSided": true,
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_cloud_bank_c",
+      "type": "primitive",
+      "primitive": "sphere",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        -44,
+        -12.6,
+        10
+      ],
+      "scale": [
+        16,
+        5.2,
+        10
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f2f1f7",
+        "opacity": 0.24,
+        "transparent": true,
+        "doubleSided": true,
+        "roughness": 1,
+        "metalness": 0
+      }
+    },
+    {
+      "id": "floating_city_cloud_bank_d",
+      "type": "primitive",
+      "primitive": "sphere",
+      "allowCatalogOverlap": true,
+      "allowDoorwayBlock": true,
+      "allowPortalBlock": true,
+      "position": [
+        46,
+        -12.2,
+        18
+      ],
+      "scale": [
+        18,
+        5.4,
+        11
+      ],
+      "collider": false,
+      "material": {
+        "color": "#f1eef8",
+        "opacity": 0.24,
+        "transparent": true,
+        "doubleSided": true,
+        "roughness": 1,
+        "metalness": 0
       }
     },
     {
@@ -1301,9 +1761,9 @@
             0
           ],
           "scale": [
-            1.08,
-            1.04,
-            1.08
+            1.22,
+            1.18,
+            1.22
           ],
           "collider": false,
           "material": {
@@ -1315,93 +1775,6 @@
             "doubleSided": true,
             "roughness": 0.16,
             "metalness": 0.08
-          }
-        },
-        {
-          "id": "east_media_project_ring",
-          "type": "primitive",
-          "primitive": "torus",
-          "position": [
-            0,
-            2.86,
-            0
-          ],
-          "rotation": [
-            90,
-            0,
-            0
-          ],
-          "scale": [
-            0.58,
-            0.58,
-            0.14
-          ],
-          "collider": false,
-          "animation": {
-            "type": "spin-y",
-            "speed": 0.96
-          },
-          "material": {
-            "color": "#d8c28e",
-            "emissiveColor": "#d8c28e",
-            "emissiveIntensity": 0.4,
-            "roughness": 0.4,
-            "metalness": 0.24
-          }
-        },
-        {
-          "id": "east_media_project_ring_outer",
-          "type": "primitive",
-          "primitive": "torus",
-          "position": [
-            0,
-            3.04,
-            0
-          ],
-          "rotation": [
-            90,
-            0,
-            0
-          ],
-          "scale": [
-            0.8,
-            0.8,
-            0.08
-          ],
-          "collider": false,
-          "animation": {
-            "type": "spin-y",
-            "speed": -0.62
-          },
-          "material": {
-            "color": "#d6edf4",
-            "emissiveColor": "#d6edf4",
-            "emissiveIntensity": 0.22,
-            "transparent": true,
-            "opacity": 0.58,
-            "roughness": 0.18,
-            "metalness": 0.1
-          }
-        },
-        {
-          "id": "east_media_project_holo_base",
-          "type": "primitive",
-          "primitive": "cylinder",
-          "position": [
-            -2.22,
-            0.38,
-            1.14
-          ],
-          "scale": [
-            0.82,
-            0.76,
-            0.82
-          ],
-          "collider": false,
-          "material": {
-            "color": "#4c4640",
-            "roughness": 0.82,
-            "metalness": 0.1
           }
         },
         {
@@ -1432,64 +1805,6 @@
             "alignY": "base"
           },
           "modelFallback": "cylinder"
-        },
-        {
-          "id": "east_media_project_server_base",
-          "type": "primitive",
-          "primitive": "box",
-          "position": [
-            2.18,
-            0.34,
-            -1.16
-          ],
-          "scale": [
-            1,
-            0.68,
-            1
-          ],
-          "collider": false,
-          "material": {
-            "color": "#4a443d",
-            "roughness": 0.8,
-            "metalness": 0.12
-          }
-        },
-        {
-          "id": "east_media_project_server_rack",
-          "type": "model",
-          "model": "/assets/models/props/neon_server_rack.glb",
-          "position": [
-            2.18,
-            0.68,
-            -1.16
-          ],
-          "rotation": [
-            0,
-            -32,
-            0
-          ],
-          "scale": [
-            0.72,
-            0.72,
-            0.72
-          ],
-          "collider": false,
-          "modelPlacement": {
-            "centerAxes": [
-              "x",
-              "z"
-            ],
-            "alignY": "base"
-          },
-          "modelFallback": {
-            "type": "primitive",
-            "primitive": "box",
-            "scale": [
-              0.9,
-              1.6,
-              0.9
-            ]
-          }
         },
         {
           "id": "east_media_project_rifle",
@@ -1535,6 +1850,512 @@
               "roughness": 0.44,
               "metalness": 0.22
             }
+          }
+        }
+      ]
+    },
+    {
+      "id": "floating_city_skyline_west",
+      "defaults": {
+        "type": "primitive",
+        "primitive": "box",
+        "collider": false,
+        "allowCatalogOverlap": true,
+        "allowDoorwayBlock": true,
+        "allowPortalBlock": true,
+        "material": {
+          "color": "#242d36",
+          "emissiveColor": "#ffa4d3",
+          "emissiveIntensity": 0.08,
+          "procedural": "neon-grid",
+          "textureRepeat": [
+            1,
+            6
+          ],
+          "roughness": 0.9,
+          "metalness": 0.12
+        }
+      },
+      "position": [
+        -66,
+        -18,
+        16
+      ],
+      "props": [
+        {
+          "id": "floating_city_west_tower_01",
+          "position": [
+            0,
+            10,
+            0
+          ],
+          "scale": [
+            8,
+            20,
+            8
+          ]
+        },
+        {
+          "id": "floating_city_west_tower_02",
+          "position": [
+            10,
+            13,
+            8
+          ],
+          "scale": [
+            10,
+            26,
+            10
+          ],
+          "material": {
+            "color": "#222831",
+            "emissiveColor": "#8fd4ff",
+            "emissiveIntensity": 0.07,
+            "procedural": "neon-grid",
+            "textureRepeat": [
+              1,
+              8
+            ],
+            "roughness": 0.88,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "floating_city_west_tower_03",
+          "position": [
+            20,
+            8.5,
+            -6
+          ],
+          "scale": [
+            7,
+            17,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "floating_city_skyline_east",
+      "defaults": {
+        "type": "primitive",
+        "primitive": "box",
+        "collider": false,
+        "allowCatalogOverlap": true,
+        "allowDoorwayBlock": true,
+        "allowPortalBlock": true,
+        "material": {
+          "color": "#28323c",
+          "emissiveColor": "#ff9bcf",
+          "emissiveIntensity": 0.08,
+          "procedural": "neon-grid",
+          "textureRepeat": [
+            1,
+            7
+          ],
+          "roughness": 0.9,
+          "metalness": 0.12
+        }
+      },
+      "position": [
+        66,
+        -18,
+        12
+      ],
+      "props": [
+        {
+          "id": "floating_city_east_tower_01",
+          "position": [
+            0,
+            11.5,
+            0
+          ],
+          "scale": [
+            8,
+            23,
+            8
+          ],
+          "material": {
+            "color": "#252f38",
+            "emissiveColor": "#8ccfff",
+            "emissiveIntensity": 0.07,
+            "procedural": "neon-grid",
+            "textureRepeat": [
+              1,
+              8
+            ],
+            "roughness": 0.88,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "floating_city_east_tower_02",
+          "position": [
+            -11,
+            9.5,
+            7
+          ],
+          "scale": [
+            6.5,
+            19,
+            6.5
+          ]
+        },
+        {
+          "id": "floating_city_east_tower_03",
+          "position": [
+            14,
+            14,
+            -5
+          ],
+          "scale": [
+            11,
+            28,
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "id": "floating_city_skyline_south",
+      "defaults": {
+        "type": "primitive",
+        "primitive": "box",
+        "collider": false,
+        "allowCatalogOverlap": true,
+        "allowDoorwayBlock": true,
+        "allowPortalBlock": true,
+        "material": {
+          "color": "#25303a",
+          "emissiveColor": "#ffa2d8",
+          "emissiveIntensity": 0.08,
+          "procedural": "neon-grid",
+          "textureRepeat": [
+            1,
+            8
+          ],
+          "roughness": 0.9,
+          "metalness": 0.12
+        }
+      },
+      "position": [
+        0,
+        -20,
+        88
+      ],
+      "props": [
+        {
+          "id": "floating_city_south_tower_01",
+          "position": [
+            -18,
+            10,
+            0
+          ],
+          "scale": [
+            9,
+            20,
+            9
+          ]
+        },
+        {
+          "id": "floating_city_south_tower_02",
+          "position": [
+            0,
+            14,
+            -6
+          ],
+          "scale": [
+            12,
+            28,
+            12
+          ],
+          "material": {
+            "color": "#232b34",
+            "emissiveColor": "#8dd5ff",
+            "emissiveIntensity": 0.07,
+            "procedural": "neon-grid",
+            "textureRepeat": [
+              1,
+              9
+            ],
+            "roughness": 0.88,
+            "metalness": 0.14
+          }
+        },
+        {
+          "id": "floating_city_south_tower_03",
+          "position": [
+            20,
+            8.5,
+            4
+          ],
+          "scale": [
+            7,
+            17,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "outdoor_frontier_relic_display",
+      "defaults": {
+        "allowCatalogOverlap": true,
+        "allowDoorwayBlock": true,
+        "allowPortalBlock": true,
+        "collider": false
+      },
+      "position": [
+        0,
+        0,
+        35.8
+      ],
+      "props": [
+        {
+          "id": "outdoor_frontier_horse",
+          "type": "model",
+          "model": "/assets/models/props/roman_statue.glb",
+          "position": [
+            0,
+            0.02,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.84,
+            0.84,
+            0.84
+          ],
+          "modelPlacement": {
+            "centerAxes": [
+              "x",
+              "z"
+            ],
+            "alignY": "base"
+          },
+          "modelFallback": "cylinder"
+        },
+        {
+          "id": "outdoor_frontier_halo",
+          "type": "primitive",
+          "primitive": "torus",
+          "position": [
+            0,
+            8,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            1.66,
+            1.66,
+            0.08
+          ],
+          "collider": false,
+          "animation": {
+            "type": "spin-y",
+            "speed": 0.48
+          },
+          "material": {
+            "color": "#f0d89e",
+            "emissiveColor": "#ffd48f",
+            "emissiveIntensity": 0.24,
+            "roughness": 0.28,
+            "metalness": 0.16
+          }
+        },
+        {
+          "id": "outdoor_frontier_rifle_column",
+          "type": "primitive",
+          "primitive": "cylinder",
+          "position": [
+            0,
+            0.68,
+            -5.7
+          ],
+          "scale": [
+            0.92,
+            1.36,
+            0.92
+          ],
+          "collider": false,
+          "material": {
+            "color": "#4e463d",
+            "procedural": "marble",
+            "textureRepeat": [
+              1,
+              2
+            ],
+            "roughness": 0.82,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "outdoor_frontier_rifle_column_cap",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            1.42,
+            -5.7
+          ],
+          "scale": [
+            1.32,
+            0.12,
+            1.32
+          ],
+          "collider": false,
+          "material": {
+            "color": "#6b6257",
+            "roughness": 0.74,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "outdoor_frontier_rifle_case_glass",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            0,
+            2.02,
+            -5.7
+          ],
+          "scale": [
+            1.22,
+            1.18,
+            1.22
+          ],
+          "collider": false,
+          "material": {
+            "color": "#8cb4c7",
+            "emissiveColor": "#8cb4c7",
+            "emissiveIntensity": 0.05,
+            "opacity": 0.12,
+            "transparent": true,
+            "doubleSided": true,
+            "roughness": 0.16,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "outdoor_frontier_rifle",
+          "type": "model",
+          "model": "/assets/models/props/spi_rifle.glb",
+          "position": [
+            0,
+            1.88,
+            -5.7
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            0.14,
+            0.14,
+            0.14
+          ],
+          "modelPlacement": {
+            "centerAxes": [
+              "x",
+              "z"
+            ],
+            "alignY": "center"
+          },
+          "modelFallback": "box"
+        },
+        {
+          "id": "outdoor_frontier_post_left",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            -2.26,
+            1.02,
+            -1.52
+          ],
+          "scale": [
+            0.12,
+            2.04,
+            0.12
+          ],
+          "material": {
+            "color": "#4e4942",
+            "roughness": 0.88,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "outdoor_frontier_post_light_left",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            -2.26,
+            2.12,
+            -1.52
+          ],
+          "scale": [
+            0.24,
+            0.24,
+            0.24
+          ],
+          "collider": false,
+          "material": {
+            "color": "#ffd3a1",
+            "emissiveColor": "#ffb86c",
+            "emissiveIntensity": 0.52,
+            "roughness": 0.24,
+            "metalness": 0.06
+          }
+        },
+        {
+          "id": "outdoor_frontier_post_right",
+          "type": "primitive",
+          "primitive": "box",
+          "position": [
+            2.26,
+            1.02,
+            -1.52
+          ],
+          "scale": [
+            0.12,
+            2.04,
+            0.12
+          ],
+          "material": {
+            "color": "#4e4942",
+            "roughness": 0.88,
+            "metalness": 0.08
+          }
+        },
+        {
+          "id": "outdoor_frontier_post_light_right",
+          "type": "primitive",
+          "primitive": "sphere",
+          "position": [
+            2.26,
+            2.12,
+            -1.52
+          ],
+          "scale": [
+            0.24,
+            0.24,
+            0.24
+          ],
+          "collider": false,
+          "material": {
+            "color": "#ffd3a1",
+            "emissiveColor": "#ffb86c",
+            "emissiveIntensity": 0.52,
+            "roughness": 0.24,
+            "metalness": 0.06
           }
         }
       ]

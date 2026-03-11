@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { selectPreferredFeedRuntimeSource } from "../src/utils/runtimeConfigFeeds.js";
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const CHANNEL_URL = "https://www.youtube.com/@seperet";
@@ -12,7 +13,7 @@ const OUTPUT_RECENT_DEFAULTS = path.join(ROOT_DIR, "public", "config.defaults", 
 const OUTPUT_LONG_LOCAL = path.join(ROOT_DIR, "public", "config", "videos-long-feed.json");
 const OUTPUT_LONG_DEFAULTS = path.join(ROOT_DIR, "public", "config.defaults", "videos-long-feed.json");
 
-const DEFAULT_RECENT_LIMIT = 6;
+const DEFAULT_RECENT_LIMIT = 18;
 const DEFAULT_LONG_LIMIT = 28;
 
 function parseArgs(argv = process.argv.slice(2)) {
@@ -130,13 +131,24 @@ function parseFeedEntries(feedXml, limit) {
       publishedAt
     });
     seen.add(videoId);
-
-    if (entries.length >= limit) {
-      break;
-    }
   }
 
-  return entries;
+  return entries
+    .sort((left, right) => {
+      const leftPublished = Date.parse(left?.publishedAt || "");
+      const rightPublished = Date.parse(right?.publishedAt || "");
+      if (Number.isFinite(leftPublished) && Number.isFinite(rightPublished)) {
+        return rightPublished - leftPublished;
+      }
+      if (Number.isFinite(rightPublished)) {
+        return 1;
+      }
+      if (Number.isFinite(leftPublished)) {
+        return -1;
+      }
+      return 0;
+    })
+    .slice(0, limit);
 }
 
 function extractInitialDataJson(html) {
@@ -343,10 +355,28 @@ async function main() {
     });
   }
 
-  const [recentFallback, longFallback] = await Promise.all([
-    readExistingFeed(OUTPUT_RECENT_LOCAL).then((result) => result || readExistingFeed(OUTPUT_RECENT_DEFAULTS)),
-    readExistingFeed(OUTPUT_LONG_LOCAL).then((result) => result || readExistingFeed(OUTPUT_LONG_DEFAULTS))
-  ]);
+  const [recentLocalFallback, recentDefaultsFallback, longLocalFallback, longDefaultsFallback] =
+    await Promise.all([
+      readExistingFeed(OUTPUT_RECENT_LOCAL),
+      readExistingFeed(OUTPUT_RECENT_DEFAULTS),
+      readExistingFeed(OUTPUT_LONG_LOCAL),
+      readExistingFeed(OUTPUT_LONG_DEFAULTS)
+    ]);
+
+  const recentFallback =
+    selectPreferredFeedRuntimeSource("videos-feed.json", {
+      localPayload: recentLocalFallback,
+      defaultsPayload: recentDefaultsFallback
+    }) === "local"
+      ? recentLocalFallback
+      : recentDefaultsFallback;
+  const longFallback =
+    selectPreferredFeedRuntimeSource("videos-long-feed.json", {
+      localPayload: longLocalFallback,
+      defaultsPayload: longDefaultsFallback
+    }) === "local"
+      ? longLocalFallback
+      : longDefaultsFallback;
 
   const resolvedRecentItems = recentItems.length ? recentItems : recentFallback?.items || [];
   const resolvedLongItems = longItems.length ? longItems : longFallback?.items || [];

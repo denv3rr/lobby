@@ -2,7 +2,7 @@ name: Sync Content Feeds
 
 on:
   schedule:
-    - cron: "0 10 * * *"
+    - cron: "17 */6 * * *"
   workflow_dispatch:
 
 permissions:

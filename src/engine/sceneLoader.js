@@ -259,6 +259,148 @@ function readText(value, fallback = "") {
   return trimmed || fallback;
 }
 
+function hashSeed(value, fallback = 0x6d2b79f5) {
+  if (Number.isFinite(value)) {
+    return (Number(value) >>> 0) || fallback;
+  }
+  const text = readText(value, "");
+  if (!text) {
+    return fallback;
+  }
+
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function hashNoise2D(x, z, seed) {
+  let hash = seed ^ Math.imul(x, 374761393) ^ Math.imul(z, 668265263);
+  hash = Math.imul(hash ^ (hash >>> 13), 1274126177);
+  return ((hash ^ (hash >>> 16)) >>> 0) / 4294967295;
+}
+
+function sampleValueNoise2D(x, z, seed) {
+  const x0 = Math.floor(x);
+  const z0 = Math.floor(z);
+  const x1 = x0 + 1;
+  const z1 = z0 + 1;
+  const tx = x - x0;
+  const tz = z - z0;
+  const sx = THREE.MathUtils.smoothstep(tx, 0, 1);
+  const sz = THREE.MathUtils.smoothstep(tz, 0, 1);
+  const n00 = hashNoise2D(x0, z0, seed);
+  const n10 = hashNoise2D(x1, z0, seed);
+  const n01 = hashNoise2D(x0, z1, seed);
+  const n11 = hashNoise2D(x1, z1, seed);
+  const nx0 = THREE.MathUtils.lerp(n00, n10, sx);
+  const nx1 = THREE.MathUtils.lerp(n01, n11, sx);
+  return THREE.MathUtils.lerp(nx0, nx1, sz) * 2 - 1;
+}
+
+function sampleFractalNoise2D(x, z, options = {}) {
+  const octaves = THREE.MathUtils.clamp(Math.round(options.octaves ?? 4), 1, 7);
+  const lacunarity = Math.max(1.1, Number(options.lacunarity) || 2);
+  const gain = THREE.MathUtils.clamp(Number(options.gain) || 0.5, 0.1, 0.92);
+  const seed = hashSeed(options.seed, 0x6d2b79f5);
+  let amplitude = 1;
+  let frequency = 1;
+  let total = 0;
+  let totalAmplitude = 0;
+
+  for (let octave = 0; octave < octaves; octave += 1) {
+    total += sampleValueNoise2D(x * frequency, z * frequency, seed + octave * 374761) * amplitude;
+    totalAmplitude += amplitude;
+    amplitude *= gain;
+    frequency *= lacunarity;
+  }
+
+  return totalAmplitude > 0 ? total / totalAmplitude : 0;
+}
+
+function createTerrainGeometry(prop = {}) {
+  const terrain = isObject(prop.terrain) ? prop.terrain : {};
+  const scale = Array.isArray(prop.scale) ? prop.scale : [1, 1, 1];
+  const width = Math.max(1, Math.abs(Number(scale[0]) || 1));
+  const depth = Math.max(1, Math.abs(Number(scale[2]) || 1));
+  const segmentsX = THREE.MathUtils.clamp(
+    Math.round(terrain.segmentsX ?? terrain.segments ?? Math.max(40, Math.min(144, Math.round(width * 1.2)))),
+    8,
+    196
+  );
+  const segmentsZ = THREE.MathUtils.clamp(
+    Math.round(terrain.segmentsZ ?? terrain.segments ?? Math.max(40, Math.min(196, Math.round(depth * 1.2)))),
+    8,
+    220
+  );
+  const geometry = new THREE.PlaneGeometry(1, 1, segmentsX, segmentsZ);
+  geometry.rotateX(-Math.PI / 2);
+
+  const seed = hashSeed(terrain.seed || prop.id || "terrain", 0x6d2b79f5);
+  const noiseScale = Math.max(0.004, Number(terrain.noiseScale) || 0.08);
+  const warpScale = Number(terrain.warpScale) || noiseScale * 2.4;
+  const warpStrength = Math.max(0, Number(terrain.warpStrength) || 0.28);
+  const ridgeMix = THREE.MathUtils.clamp(Number(terrain.ridgeMix) || 0.42, 0, 1.2);
+  const uplift = Number(terrain.uplift) || 0.44;
+  const flatRadius =
+    Math.max(0, Number(terrain.flatRadius) || Math.min(width, depth) * 0.24);
+  const riseRadius =
+    Math.max(flatRadius + 0.01, Number(terrain.riseRadius) || Math.min(width, depth) * 0.42);
+  const edgeLift = Math.max(0, Number(terrain.edgeLift) || 0.2);
+  const terraceSteps = THREE.MathUtils.clamp(Math.round(terrain.terraceSteps ?? 0), 0, 32);
+  const position = geometry.attributes.position;
+
+  for (let index = 0; index < position.count; index += 1) {
+    const sampleX = position.getX(index) * width;
+    const sampleZ = position.getZ(index) * depth;
+    const warpX =
+      sampleFractalNoise2D(sampleX * warpScale, sampleZ * warpScale, {
+        seed: seed + 0x9e3779b9,
+        octaves: 2,
+        gain: 0.55
+      }) * warpStrength;
+    const warpZ =
+      sampleFractalNoise2D(sampleX * warpScale, sampleZ * warpScale, {
+        seed: seed + 0x85ebca6b,
+        octaves: 2,
+        gain: 0.55
+      }) * warpStrength;
+    const plateauBlend = THREE.MathUtils.smoothstep(
+      Math.hypot(sampleX, sampleZ),
+      flatRadius,
+      riseRadius
+    );
+    const baseNoise = sampleFractalNoise2D((sampleX + warpX * width) * noiseScale, (sampleZ + warpZ * depth) * noiseScale, {
+      seed,
+      octaves: terrain.octaves,
+      lacunarity: terrain.lacunarity,
+      gain: terrain.gain
+    });
+    const ridgeNoise = 1 -
+      Math.abs(
+        sampleFractalNoise2D((sampleX - warpZ * width) * noiseScale * 1.65, (sampleZ + warpX * depth) * noiseScale * 1.65, {
+          seed: seed + 0x27d4eb2d,
+          octaves: 3,
+          lacunarity: 2.18,
+          gain: 0.48
+        })
+      );
+
+    let height = Math.max(0, uplift + baseNoise * 0.55 + ridgeNoise * ridgeMix);
+    height *= plateauBlend;
+    height += plateauBlend * plateauBlend * edgeLift;
+    if (terraceSteps > 1) {
+      height = Math.floor(height * terraceSteps) / terraceSteps;
+    }
+    position.setY(index, height);
+  }
+
+  geometry.computeVertexNormals();
+  return geometry;
+}
+
 function normalizeModuleIds(value) {
   const source = Array.isArray(value) ? value : [value];
   const seen = new Set();
@@ -505,6 +647,8 @@ async function createPrimitiveMesh(prop, cache, animatedTextures, owner) {
     geometry = new THREE.CylinderGeometry(0.5, 0.5, 1, 18);
   } else if (primitive === "plane") {
     geometry = new THREE.PlaneGeometry(1, 1);
+  } else if (primitive === "terrain") {
+    geometry = createTerrainGeometry(prop);
   } else if (primitive === "torus") {
     geometry = new THREE.TorusGeometry(0.45, 0.18, 14, 30);
   } else {
@@ -2800,7 +2944,11 @@ export async function loadScene({
       return;
     }
 
-    if (prop.type === "primitive" && prop.primitive === "plane" && prop.collider !== true) {
+    if (
+      prop.type === "primitive" &&
+      (prop.primitive === "plane" || prop.primitive === "terrain") &&
+      prop.collider !== true
+    ) {
       return;
     }
 

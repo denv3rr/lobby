@@ -88,8 +88,8 @@
     "videos": {
       "label": "Screening Hall",
       "feedSource": "videos",
-      "origin": [19.3, 0, -5.1],
-      "size": [8.6, 4.6, 9.6],
+      "origin": [24.3, 0, -5.1],
+      "size": [18.6, 4.6, 9.6],
       "entrySide": "west",
       "showEntryFrame": true,
       "accentColor": "#d99b94",
@@ -108,6 +108,7 @@
         "width": 3.58,
         "aspectRatio": 1.7777777778,
         "displayY": 2.55,
+        "centerX": -5,
         "offset": 0.08,
         "idleLabel": "Select A Video"
       },
@@ -117,6 +118,7 @@
         "width": 3.28,
         "height": 3.02,
         "displayY": 2.2,
+        "centerX": -5,
         "offset": 0.08,
         "label": "Longform Archive",
         "feedSource": "videos-long",

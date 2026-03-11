@@ -3,8 +3,8 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-10T10:50:13.411Z",
-    "count": 6,
+    "fetchedAt": "2026-03-11T03:26:27.178Z",
+    "count": 15,
     "usedFallback": false,
     "errors": []
   },
@@ -98,6 +98,141 @@
         "recent"
       ],
       "publishedAt": "2026-03-05T23:16:37+00:00"
+    },
+    {
+      "id": "q7i6y1paLu8",
+      "title": "Fireworks experiment nearly claims a man #arma #conflict #fps",
+      "url": "https://www.youtube.com/watch?v=q7i6y1paLu8",
+      "image": "https://i2.ytimg.com/vi/q7i6y1paLu8/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-05T03:42:44+00:00"
+    },
+    {
+      "id": "NAnA6Kxyv3o",
+      "title": "ngl almost ran out there 😂 #arma #gaming",
+      "url": "https://www.youtube.com/watch?v=NAnA6Kxyv3o",
+      "image": "https://i3.ytimg.com/vi/NAnA6Kxyv3o/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-05T02:49:49+00:00"
+    },
+    {
+      "id": "BONauiCvkvg",
+      "title": "He actually did see it coming #cannon",
+      "url": "https://www.youtube.com/watch?v=BONauiCvkvg",
+      "image": "https://i3.ytimg.com/vi/BONauiCvkvg/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-04T03:49:38+00:00"
+    },
+    {
+      "id": "FXgG7oMjs40",
+      "title": "Pt. 2 of that last clip lol #armareforger #armor #conflict #fps #nvg",
+      "url": "https://www.youtube.com/watch?v=FXgG7oMjs40",
+      "image": "https://i3.ytimg.com/vi/FXgG7oMjs40/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-04T01:26:14+00:00"
+    },
+    {
+      "id": "AZfN8_ufN2o",
+      "title": "Click clackin my way to victory brothers #armareforger #getgood #gaming #fps #arma #conflict #heli",
+      "url": "https://www.youtube.com/watch?v=AZfN8_ufN2o",
+      "image": "https://i2.ytimg.com/vi/AZfN8_ufN2o/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-03T22:22:52+00:00"
+    },
+    {
+      "id": "NfltOZKVsp4",
+      "title": "Dude I could not see a thing #arma #minigun #funnymoments",
+      "url": "https://www.youtube.com/watch?v=NfltOZKVsp4",
+      "image": "https://i3.ytimg.com/vi/NfltOZKVsp4/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-03T00:40:41+00:00"
+    },
+    {
+      "id": "BQhFgEMAXOw",
+      "title": "the tactical trees caught our fall pretty well (which we planned for) #arma #armareforger",
+      "url": "https://www.youtube.com/watch?v=BQhFgEMAXOw",
+      "image": "https://i3.ytimg.com/vi/BQhFgEMAXOw/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-01T06:35:55+00:00"
+    },
+    {
+      "id": "Q7Z_H1fu3gI",
+      "title": "Fellas? #blackhawk #arma #armareforger #funnymoments #conflict #fps #gamingclips",
+      "url": "https://www.youtube.com/watch?v=Q7Z_H1fu3gI",
+      "image": "https://i2.ytimg.com/vi/Q7Z_H1fu3gI/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-02-28T04:37:50+00:00"
+    },
+    {
+      "id": "-z5s4FqJ3jk",
+      "title": "Not sure how he didnt get me #arma #armareforger #gaming #thisisarma #armaplatform",
+      "url": "https://www.youtube.com/watch?v=-z5s4FqJ3jk",
+      "image": "https://i2.ytimg.com/vi/-z5s4FqJ3jk/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-02-27T06:45:06+00:00"
     }
   ]
 }

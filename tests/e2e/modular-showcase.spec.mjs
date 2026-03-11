@@ -16,6 +16,9 @@ const SOUTH_PADRE_PORTAL_ID = "south_padre_workshop";
 const SOUTH_PADRE_RIFLE_PROP_ID = "east_media_project_rifle";
 const SOUTH_PADRE_RING_PROP_ID = "east_media_project_ring";
 const SOUTH_PADRE_COLUMN_PROP_ID = "east_media_project_column";
+const OUTDOOR_FRONTIER_HORSE_PROP_ID = "outdoor_frontier_horse";
+const OUTDOOR_FRONTIER_HALO_PROP_ID = "outdoor_frontier_halo";
+const OUTDOOR_FRONTIER_RIFLE_PROP_ID = "outdoor_frontier_rifle";
 const REMOVED_REAR_PROP_IDS = [
   "rear_hall_runner",
   "rear_hall_directory",
@@ -204,10 +207,14 @@ function quaternionDeltaRadians(left, right) {
   return 2 * Math.acos(clampedDot);
 }
 
-async function createOverflowVideosPayload() {
+async function readDefaultVideosPayload() {
   const sourcePath = new URL("../../public/config.defaults/videos-feed.json", import.meta.url);
   const raw = await readFile(sourcePath, "utf8");
-  const payload = JSON.parse(raw);
+  return JSON.parse(raw);
+}
+
+async function createExpandedVideosPayload() {
+  const payload = await readDefaultVideosPayload();
   const baseItems = Array.isArray(payload.items) ? payload.items : [];
   const clonedItems = baseItems.map((item, index) => ({
     ...item,
@@ -215,6 +222,18 @@ async function createOverflowVideosPayload() {
     title: `${item.title || `Video ${index + 1}`} Overflow ${index + 1}`
   }));
   payload.items = [...baseItems, ...clonedItems.slice(0, 4)];
+  if (payload.meta && typeof payload.meta === "object") {
+    payload.meta = {
+      ...payload.meta,
+      count: payload.items.length
+    };
+  }
+  return payload;
+}
+
+async function createLimitedVideosPayload(limit = 2) {
+  const payload = await readDefaultVideosPayload();
+  payload.items = (Array.isArray(payload.items) ? payload.items : []).slice(0, limit);
   if (payload.meta && typeof payload.meta === "object") {
     payload.meta = {
       ...payload.meta,
@@ -276,6 +295,52 @@ test("south padre room is a static lobby annex with linked gallery screens and a
       { timeout: 25_000 }
     )
     .toBe(21);
+
+  const insideAim = await aimCameraAtPanel(page, SOUTH_PADRE_BROWSER_PANEL_ID, [-19.3, 1.7, -6.5]);
+  expect(insideAim?.lookDot ?? -1).toBeGreaterThan(0.2);
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_BROWSER_PANEL_ID))?.visible ?? null, {
+      timeout: 25_000
+    })
+    .toBe(true);
+
+  const initialPreview = await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID);
+  expect(initialPreview?.selectedIndex).toBe(0);
+  expect(initialPreview?.previewSrc || "").toContain("Arma Reforger-2026_02_27-08-22-58.png");
+
+  await page
+    .locator(`[data-panel-id="${SOUTH_PADRE_BROWSER_PANEL_ID}"] .scene-panel-gallery-button`)
+    .nth(3)
+    .click();
+
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_BROWSER_PANEL_ID))?.selectedIndex ?? null, {
+      timeout: 25_000
+    })
+    .toBe(3);
+
+  const previewAim = await aimCameraAtPanel(page, SOUTH_PADRE_PREVIEW_PANEL_ID, [-19.3, 1.7, -6.5]);
+  expect(previewAim?.lookDot ?? -1).toBeGreaterThan(0.2);
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.visible ?? null, {
+      timeout: 25_000
+    })
+    .toBe(true);
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.selectedIndex ?? null, {
+      timeout: 25_000
+    })
+    .toBe(3);
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.previewCaption ?? null, {
+      timeout: 25_000
+    })
+    .toBe("4 / 21");
+  await expect
+    .poll(async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.previewSrc ?? "", {
+      timeout: 25_000
+    })
+    .toContain("Arma Reforger-2026_02_27-05-14-47.png");
 
   const originalUrl = page.url();
   await page.evaluate(() => {
@@ -445,10 +510,55 @@ test("back hallway is left empty for now", async ({ page }) => {
   }
 });
 
-test("screening overflow rebalances cards instead of leaving a nearly empty second room", async ({
+test("outdoor courtyard centers the horse and rifle without blocking the main path", async ({
   page
 }) => {
-  const overflowPayload = await createOverflowVideosPayload();
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1`);
+  await waitForDebugApi(page, "getPropState");
+  await waitForDebugApi(page, "probeColliders");
+
+  await expect.poll(() => teleportDebug(page, [0, 1.7, 35.4], 180, 0), {
+    timeout: 25_000
+  }).toBe(true);
+
+  const [horseState, haloState, rifleState] = await Promise.all([
+    getPropState(page, OUTDOOR_FRONTIER_HORSE_PROP_ID),
+    getPropState(page, OUTDOOR_FRONTIER_HALO_PROP_ID),
+    getPropState(page, OUTDOOR_FRONTIER_RIFLE_PROP_ID)
+  ]);
+  const removedStreetCache = await getPropState(page, "outdoor_street_cache_holo");
+  const removedFrontierPlinth = await getPropState(page, "outdoor_frontier_plinth");
+  const removedFrontierBaseRing = await getPropState(page, "outdoor_frontier_base_ring");
+
+  expect(horseState).toBeTruthy();
+  expect(haloState).toBeTruthy();
+  expect(rifleState).toBeTruthy();
+  expect(removedStreetCache).toBe(null);
+  expect(removedFrontierPlinth).toBe(null);
+  expect(removedFrontierBaseRing).toBe(null);
+  expect(Math.abs(horseState.worldPosition[0])).toBeLessThan(0.4);
+  expect(horseState.worldPosition[1]).toBeLessThan(0.2);
+  expect(Math.abs(rifleState.worldPosition[0])).toBeLessThan(0.4);
+  expect(haloState.worldPosition[1]).toBeGreaterThan(horseState.worldPosition[1] + 3.5);
+  expect(rifleState.worldPosition[2]).toBeLessThan(horseState.worldPosition[2] - 1);
+
+  for (const position of [
+    [0, 1.7, 30.2],
+    [0, 1.7, 35.4],
+    [0, 1.7, 40.2]
+  ]) {
+    await expect
+      .poll(async () => (await probeColliders(page, position, 0.34))?.blockerCount ?? -1, {
+        timeout: 25_000
+      })
+      .toBe(0);
+  }
+});
+
+test("screening hall keeps overflow in a single widened room instead of cloning south", async ({
+  page
+}) => {
+  const overflowPayload = await createExpandedVideosPayload();
   await page.route(/\/(?:config|config\.defaults)\/videos-feed\.json(?:\?|$)/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -466,18 +576,36 @@ test("screening overflow rebalances cards instead of leaving a nearly empty seco
       const snapshot = await getCatalogRoomSnapshot(page, "videos");
       return snapshot?.nodeCount || 0;
     }, { timeout: 25_000 })
-    .toBe(2);
+    .toBe(1);
 
   await expect
     .poll(async () => {
       const snapshot = await getCatalogRoomSnapshot(page, "videos");
-      return snapshot?.cardCounts || [];
+      return (snapshot?.cardCounts || []).length;
     }, { timeout: 25_000 })
-    .toEqual([5, 5]);
+    .toBe(1);
+  await expect
+    .poll(async () => {
+      const counts = (await getCatalogRoomSnapshot(page, "videos"))?.cardCounts || [];
+      return counts.reduce((sum, count) => sum + count, 0);
+    }, { timeout: 25_000 })
+    .toBe(18);
+  await expect
+    .poll(async () => {
+      const counts = (await getCatalogRoomSnapshot(page, "videos"))?.cardCounts || [];
+      return counts.length ? Math.min(...counts) : 0;
+    }, { timeout: 25_000 })
+    .toBeGreaterThanOrEqual(5);
+  await expect
+    .poll(async () => (await getCatalogRoomSnapshot(page, "videos"))?.latestItemId ?? null, {
+      timeout: 25_000
+    })
+    .toBe(overflowPayload.items?.[0]?.id || null);
 
   for (const position of [
     [19.3, 1.7, -5.1],
-    [19.3, 1.7, -9.9],
+    [27.4, 1.7, -5.1],
+    [31.2, 1.7, -5.1],
     [19.3, 1.7, -14.7]
   ]) {
     await expect
@@ -486,4 +614,81 @@ test("screening overflow rebalances cards instead of leaving a nearly empty seco
       })
       .toBe(0);
   }
+});
+
+test("screening hall prefers the fresher default video feed over a stale local override", async ({
+  page
+}) => {
+  const staleLocalPayload = await createLimitedVideosPayload(2);
+  staleLocalPayload.meta = {
+    ...(staleLocalPayload.meta || {}),
+    fetchedAt: "2026-03-08T00:00:00.000Z",
+    count: staleLocalPayload.items.length
+  };
+
+  const freshDefaultsPayload = await createExpandedVideosPayload();
+  freshDefaultsPayload.meta = {
+    ...(freshDefaultsPayload.meta || {}),
+    fetchedAt: "2026-03-10T12:00:00.000Z",
+    count: freshDefaultsPayload.items.length
+  };
+
+  const requests = [];
+  await page.route(/\/config\/videos-feed\.json(?:\?|$)/, async (route) => {
+    requests.push("local");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(staleLocalPayload)
+    });
+  });
+  await page.route(/\/config\.defaults\/videos-feed\.json(?:\?|$)/, async (route) => {
+    requests.push("defaults");
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(freshDefaultsPayload)
+    });
+  });
+
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1`);
+  await waitForDebugApi(page, "getCatalogRoomSnapshot");
+
+  await expect
+    .poll(() => Array.from(new Set(requests)).sort().join(","), { timeout: 25_000 })
+    .toBe("defaults,local");
+  await expect
+    .poll(async () => {
+      const snapshot = await getCatalogRoomSnapshot(page, "videos");
+      return snapshot?.nodeCount || 0;
+    }, { timeout: 25_000 })
+    .toBe(1);
+  await expect
+    .poll(async () => {
+      const snapshot = await getCatalogRoomSnapshot(page, "videos");
+      return (snapshot?.cardCounts || []).length;
+    }, { timeout: 25_000 })
+    .toBe(1);
+  await expect
+    .poll(async () => {
+      const counts = (await getCatalogRoomSnapshot(page, "videos"))?.cardCounts || [];
+      return counts.reduce((sum, count) => sum + count, 0);
+    }, { timeout: 25_000 })
+    .toBe(18);
+  await expect
+    .poll(async () => {
+      const counts = (await getCatalogRoomSnapshot(page, "videos"))?.cardCounts || [];
+      return counts.length ? Math.min(...counts) : 0;
+    }, { timeout: 25_000 })
+    .toBeGreaterThanOrEqual(5);
+  await expect
+    .poll(async () => (await getCatalogRoomSnapshot(page, "videos"))?.latestItemIds?.length ?? 0, {
+      timeout: 25_000
+    })
+    .toBe(1);
+  await expect
+    .poll(async () => (await getCatalogRoomSnapshot(page, "videos"))?.latestItemId ?? null, {
+      timeout: 25_000
+    })
+    .toBe(freshDefaultsPayload.items?.[0]?.id || null);
 });
