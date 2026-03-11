@@ -2399,6 +2399,7 @@ export async function loadScene({
   const animatedTextures = [];
   const dynamicProps = [];
   const visibilityEntries = [];
+  const editorHiddenPropIds = new Set();
   let sceneRevision = 0;
   let activePropMaterialOverrideIds = new Set();
   let glowLightCount = 0;
@@ -2554,7 +2555,11 @@ export async function loadScene({
   }
 
   function applyResolvedVisibility(entry) {
-    const resolved = entry.cullVisible !== false && entry.moduleVisible !== false;
+    const propId = readText(entry.object?.userData?.propId, "");
+    const resolved =
+      !editorHiddenPropIds.has(propId) &&
+      entry.cullVisible !== false &&
+      entry.moduleVisible !== false;
     if (entry.visible === resolved) {
       return;
     }
@@ -3638,6 +3643,10 @@ export async function loadScene({
     return [...propRecordsById.keys()].filter(Boolean).sort((a, b) => a.localeCompare(b));
   }
 
+  function getHiddenEditablePropIds() {
+    return [...editorHiddenPropIds].sort((a, b) => a.localeCompare(b));
+  }
+
   function commitEditablePropTransform(propId, { markDirty = true } = {}) {
     const object = getEditablePropObject(propId);
     if (!object) {
@@ -3742,6 +3751,50 @@ export async function loadScene({
     return updatedCount;
   }
 
+  function setEditablePropVisible(propId, visible, { markDirty = true } = {}) {
+    const id = readText(propId, "");
+    if (!id) {
+      return false;
+    }
+
+    const object = getEditablePropObject(id);
+    if (!object) {
+      return false;
+    }
+
+    const resolved = visible !== false;
+    if (resolved) {
+      editorHiddenPropIds.delete(id);
+    } else {
+      editorHiddenPropIds.add(id);
+    }
+
+    const visibilityEntry = visibilityEntries.find((entry) => entry?.object === object) || null;
+    if (visibilityEntry) {
+      applyResolvedVisibility(visibilityEntry);
+    } else {
+      object.visible = resolved;
+      const target = propInteractionTargets.find((entry) => entry?.userData?.owner === object) || null;
+      if (target?.hitbox) {
+        target.hitbox.visible = resolved;
+      }
+      if (target?.userData) {
+        target.userData.hiddenFromInteraction = !resolved;
+      }
+    }
+
+    for (const collider of colliders) {
+      if (readText(collider?.id, "") === id) {
+        collider.enabled = resolved;
+      }
+    }
+
+    if (markDirty) {
+      markSceneDirty();
+    }
+    return true;
+  }
+
   function getPropState(propId) {
     const id = readText(propId, "");
     if (!id) {
@@ -3791,6 +3844,7 @@ export async function loadScene({
     return {
       id,
       visible: object.visible !== false,
+      editorHidden: editorHiddenPropIds.has(id),
       moduleIds,
       sourceConfigFile: readText(object.userData?.sourceConfigFile, ""),
       sourcePath: readText(object.userData?.sourcePath, ""),
@@ -3893,9 +3947,11 @@ export async function loadScene({
     getPropModuleState,
     getPropModuleStates,
     getEditablePropIds,
+    getHiddenEditablePropIds,
     getEditablePropObject,
     getEditablePropTransform,
     setEditablePropTransform,
+    setEditablePropVisible,
     commitEditablePropTransform,
     applyEditablePropTransforms,
     getPropState,

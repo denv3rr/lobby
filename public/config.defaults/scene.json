@@ -1755,6 +1755,38 @@
           "modelFallback": "cylinder"
         },
         {
+          "id": "east_media_project_ring",
+          "type": "primitive",
+          "primitive": "torus",
+          "position": [
+            0,
+            2.62,
+            0
+          ],
+          "rotation": [
+            90,
+            0,
+            0
+          ],
+          "scale": [
+            1.04,
+            1.04,
+            0.08
+          ],
+          "collider": false,
+          "animation": {
+            "type": "spin-y",
+            "speed": 0.54
+          },
+          "material": {
+            "color": "#f2b0d6",
+            "emissiveColor": "#ff84c6",
+            "emissiveIntensity": 0.28,
+            "roughness": 0.24,
+            "metalness": 0.12
+          }
+        },
+        {
           "id": "east_media_project_rifle",
           "type": "model",
           "model": "/assets/models/props/spi_rifle.glb",

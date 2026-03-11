@@ -41,8 +41,8 @@ export function createOverlay({
   const editorButtonLabel = editorActive ? "Close Editor" : "Open Editor";
   const editorNote = editorSupported
     ? editorActive
-      ? "Editor is active. Current shell supports selecting and transforming placed props with local save/load."
-      : "Local editor is available here. It opens the current scene authoring shell for selecting and moving existing props."
+      ? "Editor is active. RMB look plus Q/W/E/R editing is available, with local session saves and scene override export."
+      : "Local editor is available here. It opens the current scene authoring shell for selecting, moving, and exporting scene overrides."
     : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
 
   mount.innerHTML = `
@@ -485,8 +485,8 @@ export function createOverlay({
       const active = Boolean(devMenu?.editorActive);
       devEditorNote.textContent = supported
         ? active
-          ? "Editor is active. Current shell supports selecting and transforming placed props with local save/load."
-          : "Local editor is available here. It opens the current scene authoring shell for selecting and moving existing props."
+          ? "Editor is active. RMB look plus Q/W/E/R editing is available, with local session saves and scene override export."
+          : "Local editor is available here. It opens the current scene authoring shell for selecting, moving, and exporting scene overrides."
         : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
       devEditorNote.dataset.tone = supported ? "info" : "muted";
     }

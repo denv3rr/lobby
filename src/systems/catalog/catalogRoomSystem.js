@@ -448,6 +448,8 @@ export class CatalogRoomSystem {
 
     this.enabled = this.catalogConfig.enabled !== false;
     this.roomNodes = new Map(); // roomId -> roomNode[]
+    this.generatedShellObjects = new Map();
+    this.hiddenShellNodeIds = new Set();
     this.targets = [];
     this.dynamicCards = [];
     this.colliders = [];
@@ -486,6 +488,191 @@ export class CatalogRoomSystem {
 
   getColliders() {
     return this.colliders;
+  }
+
+  registerGeneratedShellObject(roomId, roomIndex, object, metadata = {}) {
+    if (!object) {
+      return object;
+    }
+
+    const partId = readText(metadata.partId, object.name || "shell-node");
+    const label = readText(metadata.label, partId);
+    const type = readText(metadata.type, "shell");
+    const sourcePath = readText(metadata.sourcePath, `catalog.rooms.${roomId}`);
+    const shellNodeId = `catalog:${roomId}:${roomIndex}:${partId}`;
+
+    object.userData = object.userData || {};
+    object.userData.generatedShellNodeId = shellNodeId;
+    object.userData.generatedShellRoomId = roomId;
+    object.userData.generatedShellRoomIndex = roomIndex;
+    object.userData.generatedShellPartId = partId;
+    object.userData.generatedShellType = type;
+    object.userData.generatedShellLabel = label;
+    object.userData.generatedShellSourceFile = "catalog.json";
+    object.userData.generatedShellSourcePath = sourcePath;
+    this.generatedShellObjects.set(shellNodeId, object);
+
+    if (this.hiddenShellNodeIds.has(shellNodeId)) {
+      object.visible = false;
+    }
+
+    return object;
+  }
+
+  unregisterGeneratedShellObjects(roomId, minIndexInclusive = 0) {
+    const normalizedRoomId = readText(roomId, "");
+    if (!normalizedRoomId) {
+      return 0;
+    }
+
+    let removed = 0;
+    for (const [shellNodeId, object] of this.generatedShellObjects.entries()) {
+      if (readText(object?.userData?.generatedShellRoomId, "") !== normalizedRoomId) {
+        continue;
+      }
+      const roomIndex = Number(object?.userData?.generatedShellRoomIndex);
+      if (Number.isFinite(roomIndex) && roomIndex < minIndexInclusive) {
+        continue;
+      }
+      this.generatedShellObjects.delete(shellNodeId);
+      removed += 1;
+    }
+    return removed;
+  }
+
+  getGeneratedShellObject(shellNodeId) {
+    const id = readText(shellNodeId, "");
+    if (!id) {
+      return null;
+    }
+    return this.generatedShellObjects.get(id) || null;
+  }
+
+  getHiddenGeneratedShellNodeIds() {
+    return [...this.hiddenShellNodeIds].sort((a, b) => a.localeCompare(b));
+  }
+
+  getGeneratedShellEntries(roomId = "") {
+    const targetRoomId = readText(roomId, "");
+    const roomIds = targetRoomId ? [targetRoomId] : this.getActiveRoomIds();
+    const worldBounds = new THREE.Box3();
+    const worldCenter = new THREE.Vector3();
+    const worldSize = new THREE.Vector3();
+    const entries = [];
+
+    for (const currentRoomId of roomIds) {
+      const nodes = this.getRoomNodes(currentRoomId).sort((a, b) => a.index - b.index);
+      for (const node of nodes) {
+        const shellNodes = Array.isArray(node.generatedShellNodes) ? node.generatedShellNodes : [];
+        for (const object of shellNodes) {
+          const shellNodeId = readText(object?.userData?.generatedShellNodeId, "");
+          if (!shellNodeId) {
+            continue;
+          }
+
+          object.updateWorldMatrix?.(true, true);
+          worldBounds.setFromObject(object);
+          if (worldBounds.isEmpty()) {
+            worldCenter.setFromMatrixPosition(object.matrixWorld);
+            worldSize.set(0, 0, 0);
+          } else {
+            worldBounds.getCenter(worldCenter);
+            worldBounds.getSize(worldSize);
+          }
+
+          const colliderCount = this.colliders.filter(
+            (entry) => readText(entry?.id, "") === shellNodeId
+          ).length;
+          const enabledColliderCount = this.colliders.filter(
+            (entry) => readText(entry?.id, "") === shellNodeId && entry.enabled !== false
+          ).length;
+
+          entries.push({
+            id: shellNodeId,
+            roomId: currentRoomId,
+            roomIndex: node.index,
+            type: readText(object.userData?.generatedShellType, "shell"),
+            partId: readText(object.userData?.generatedShellPartId, ""),
+            label: readText(object.userData?.generatedShellLabel, shellNodeId),
+            sourceConfigFile: readText(object.userData?.generatedShellSourceFile, "catalog.json"),
+            sourcePath: readText(object.userData?.generatedShellSourcePath, `catalog.rooms.${currentRoomId}`),
+            visible: object.visible !== false,
+            colliderCount,
+            enabledColliderCount,
+            worldPosition: [
+              Number(worldCenter.x.toFixed(4)),
+              Number(worldCenter.y.toFixed(4)),
+              Number(worldCenter.z.toFixed(4))
+            ],
+            worldBoundsSize: [
+              Number(worldSize.x.toFixed(4)),
+              Number(worldSize.y.toFixed(4)),
+              Number(worldSize.z.toFixed(4))
+            ],
+            object
+          });
+        }
+      }
+    }
+
+    return entries.sort((a, b) => {
+      const byRoom = a.roomId.localeCompare(b.roomId);
+      if (byRoom) {
+        return byRoom;
+      }
+      const byIndex = a.roomIndex - b.roomIndex;
+      if (byIndex) {
+        return byIndex;
+      }
+      return a.label.localeCompare(b.label);
+    });
+  }
+
+  setGeneratedShellNodeVisible(shellNodeId, visible) {
+    const id = readText(shellNodeId, "");
+    if (!id) {
+      return false;
+    }
+
+    const resolved = visible !== false;
+    if (resolved) {
+      this.hiddenShellNodeIds.delete(id);
+    } else {
+      this.hiddenShellNodeIds.add(id);
+    }
+
+    const object = this.generatedShellObjects.get(id) || null;
+    if (object) {
+      object.visible = resolved;
+    }
+
+    let updatedCollider = false;
+    for (const collider of this.colliders) {
+      if (readText(collider?.id, "") !== id) {
+        continue;
+      }
+      collider.enabled = resolved;
+      updatedCollider = true;
+    }
+
+    return Boolean(object) || updatedCollider;
+  }
+
+  restoreGeneratedShellRoom(roomId) {
+    const normalizedRoomId = readText(roomId, "");
+    if (!normalizedRoomId) {
+      return 0;
+    }
+
+    let restored = 0;
+    for (const entry of this.getGeneratedShellEntries(normalizedRoomId)) {
+      if (!entry.visible || entry.enabledColliderCount !== entry.colliderCount) {
+        if (this.setGeneratedShellNodeVisible(entry.id, true)) {
+          restored += 1;
+        }
+      }
+    }
+    return restored;
   }
 
   isRoomEnabled(roomId) {
@@ -1507,6 +1694,7 @@ export class CatalogRoomSystem {
   removeRoom(roomId) {
     this.clearRoomCards(roomId);
     this.removeRoomsByIndex(roomId, 0);
+    this.unregisterGeneratedShellObjects(roomId, 0);
     this.hidePresentationOverlay(roomId);
     this.removePresentationOverlay(roomId);
     this.presentationWalls.delete(roomId);
@@ -1523,6 +1711,7 @@ export class CatalogRoomSystem {
     if (!nodes.length) {
       return;
     }
+    this.unregisterGeneratedShellObjects(roomId, minIndexInclusive);
     const kept = [];
     for (const node of nodes) {
       if (node.index < minIndexInclusive) {
@@ -1549,8 +1738,13 @@ export class CatalogRoomSystem {
     );
   }
 
-  addCollider(roomId, roomIndex, centerX, centerZ, sizeX, sizeZ, minY, maxY) {
+  addCollider(roomId, roomIndex, centerX, centerZ, sizeX, sizeZ, minY, maxY, metadata = {}) {
     this.colliders.push({
+      id: readText(metadata.id, ""),
+      tag: readText(metadata.tag, ""),
+      label: readText(metadata.label, ""),
+      sourcePath: readText(metadata.sourcePath, ""),
+      enabled: metadata.enabled !== false,
       roomId,
       roomIndex,
       minX: centerX - sizeX * 0.5,
@@ -1562,7 +1756,7 @@ export class CatalogRoomSystem {
     });
   }
 
-  addColliderFromObject(roomId, roomIndex, object, minThickness = 0.42) {
+  addColliderFromObject(roomId, roomIndex, object, minThickness = 0.42, metadata = {}) {
     if (!object) {
       return false;
     }
@@ -1586,7 +1780,17 @@ export class CatalogRoomSystem {
       Math.max(tempColliderSize.x, thickness),
       Math.max(tempColliderSize.z, thickness),
       minY,
-      maxY
+      maxY,
+      {
+        id: readText(metadata.id, readText(object.userData?.generatedShellNodeId, "")),
+        tag: readText(metadata.tag, readText(object.userData?.generatedShellType, "")),
+        label: readText(metadata.label, readText(object.userData?.generatedShellLabel, "")),
+        sourcePath: readText(
+          metadata.sourcePath,
+          readText(object.userData?.generatedShellSourcePath, "")
+        ),
+        enabled: metadata.enabled ?? object.visible !== false
+      }
     );
     return true;
   }
@@ -1603,10 +1807,23 @@ export class CatalogRoomSystem {
     material,
     position,
     rotationY,
-    doorway = null
+    doorway = null,
+    metadata = null
   ) {
     const panels = [];
     const [panelWidth, panelHeight] = geometryArgs;
+    const meta = isObject(metadata) ? metadata : null;
+    const registerPanel = (panel, suffix = "", label = "") => {
+      if (!meta || typeof meta.register !== "function") {
+        return;
+      }
+      const partId = suffix ? `${meta.partId}-${suffix}` : meta.partId;
+      meta.register(panel, {
+        partId,
+        type: readText(meta.type, "wall"),
+        label: readText(label, partId)
+      });
+    };
     if (!doorway) {
       const full = new THREE.Mesh(
         new THREE.PlaneGeometry(panelWidth, panelHeight),
@@ -1615,6 +1832,7 @@ export class CatalogRoomSystem {
       full.position.copy(position);
       full.rotation.y = rotationY;
       roomGroup.add(full);
+      registerPanel(full, "", readText(meta?.label, "Wall"));
       panels.push(full);
       return panels;
     }
@@ -1632,6 +1850,7 @@ export class CatalogRoomSystem {
     top.position.y += openingHeight * 0.5 + topHeight * 0.5;
     top.rotation.y = rotationY;
     roomGroup.add(top);
+    registerPanel(top, "top", `${readText(meta?.label, "Wall")} Top`);
     panels.push(top);
 
     const left = new THREE.Mesh(
@@ -1643,6 +1862,7 @@ export class CatalogRoomSystem {
     left.position.z += Math.sin(rotationY) * (openingWidth * 0.5 + sideSegment * 0.5);
     left.rotation.y = rotationY;
     roomGroup.add(left);
+    registerPanel(left, "left", `${readText(meta?.label, "Wall")} Left`);
     panels.push(left);
 
     const right = new THREE.Mesh(
@@ -1654,6 +1874,7 @@ export class CatalogRoomSystem {
     right.position.z -= Math.sin(rotationY) * (openingWidth * 0.5 + sideSegment * 0.5);
     right.rotation.y = rotationY;
     roomGroup.add(right);
+    registerPanel(right, "right", `${readText(meta?.label, "Wall")} Right`);
     panels.push(right);
     return panels;
   }
@@ -1661,6 +1882,7 @@ export class CatalogRoomSystem {
   createRoomShell(roomId, config, roomIndex, totalRooms) {
     const group = new THREE.Group();
     group.name = `${roomId}Room_${roomIndex + 1}`;
+    const generatedShellNodes = [];
 
     const size = config.size || [8, 4.6, 9.6];
     const [width, height, depth] = size;
@@ -1688,6 +1910,17 @@ export class CatalogRoomSystem {
     const titleColor = toColor(config.titleColor, "#f5f5f0");
     const wallColor = accent.clone().multiplyScalar(0.24);
     const trimColor = accent.clone().multiplyScalar(0.55);
+    const generatedShellSourcePath = `catalog.rooms.${roomId}`;
+    const registerShellNode = (object, metadata = {}) => {
+      const registered = this.registerGeneratedShellObject(roomId, roomIndex, object, {
+        sourcePath: generatedShellSourcePath,
+        ...metadata
+      });
+      if (registered) {
+        generatedShellNodes.push(registered);
+      }
+      return registered;
+    };
 
     const floor = new THREE.Mesh(
       new THREE.PlaneGeometry(width, depth),
@@ -1696,6 +1929,11 @@ export class CatalogRoomSystem {
     floor.rotation.x = -Math.PI * 0.5;
     floor.receiveShadow = true;
     group.add(floor);
+    registerShellNode(floor, {
+      partId: "floor",
+      type: "floor",
+      label: "Floor"
+    });
 
     const ceiling = new THREE.Mesh(
       new THREE.PlaneGeometry(width, depth),
@@ -1712,6 +1950,11 @@ export class CatalogRoomSystem {
     ceiling.rotation.x = Math.PI * 0.5;
     ceiling.position.y = height;
     group.add(ceiling);
+    registerShellNode(ceiling, {
+      partId: "ceiling",
+      type: "ceiling",
+      label: "Ceiling"
+    });
 
     const wallMaterial = createSharedWallMaterial(this.wallMaterialSource, wallColor);
 
@@ -1723,6 +1966,11 @@ export class CatalogRoomSystem {
     outerWall.rotation.y = entrySide === "east" ? Math.PI * 0.5 : -Math.PI * 0.5;
     outerWall.position.set(outerWallDirection * width * 0.5, height * 0.5, 0);
     group.add(outerWall);
+    registerShellNode(outerWall, {
+      partId: "outer-wall",
+      type: "wall",
+      label: "Outer Wall"
+    });
 
     const connectorDoor = {
       width: clamp(config.connectorDoor?.width ?? 2.4, 1.4, width - 1),
@@ -1755,7 +2003,13 @@ export class CatalogRoomSystem {
       wallMaterial,
       new THREE.Vector3(0, height * 0.5, -depth * 0.5),
       0,
-      backConnector
+      backConnector,
+      {
+        partId: "back-wall",
+        type: "wall",
+        label: "Back Wall",
+        register: registerShellNode
+      }
     );
     const frontWallPanels = this.createWallPanel(
       group,
@@ -1763,21 +2017,40 @@ export class CatalogRoomSystem {
       wallMaterial,
       new THREE.Vector3(0, height * 0.5, depth * 0.5),
       Math.PI,
-      frontConnector
+      frontConnector,
+      {
+        partId: "front-wall",
+        type: "wall",
+        label: "Front Wall",
+        register: registerShellNode
+      }
     );
 
     if (showEntryFrame) {
       const entranceFrameMaterial = new SurfaceMaterial(
         basicMode
           ? {
-              color: trimColor
+              color: trimColor.clone().multiplyScalar(0.45)
             }
           : {
-              color: trimColor,
+              color: trimColor.clone().multiplyScalar(0.45),
               roughness: 0.58,
-              metalness: 0.18,
+              metalness: 0.28,
+              emissive: accent.clone().multiplyScalar(0.18),
+              emissiveIntensity: 0.08
+            }
+      );
+      const entranceAccentMaterial = new SurfaceMaterial(
+        basicMode
+          ? {
+              color: accent.clone().offsetHSL(0, 0.08, 0.14)
+            }
+          : {
+              color: accent.clone().offsetHSL(0, 0.08, 0.14),
+              roughness: 0.2,
+              metalness: 0.08,
               emissive: accent,
-              emissiveIntensity: 0.14
+              emissiveIntensity: 0.42
             }
       );
       const frameDepth = 0.24;
@@ -1790,18 +2063,53 @@ export class CatalogRoomSystem {
         new THREE.BoxGeometry(0.18, 0.2, frameWidth),
         entranceFrameMaterial
       );
+      frameTop.castShadow = true;
+      frameTop.receiveShadow = true;
       frameTop.position.set(frameCenterX, frameHeight, 0);
       group.add(frameTop);
+      registerShellNode(frameTop, {
+        partId: "entry-frame-top",
+        type: "frame",
+        label: "Entry Frame Top"
+      });
 
       const framePillar = new THREE.Mesh(
         new THREE.BoxGeometry(0.18, frameHeight, frameDepth),
         entranceFrameMaterial
       );
+      framePillar.castShadow = true;
+      framePillar.receiveShadow = true;
       framePillar.position.set(frameCenterX, frameHeight * 0.5, frameWidth * 0.5 - frameDepth * 0.5);
       group.add(framePillar);
+      registerShellNode(framePillar, {
+        partId: "entry-frame-left",
+        type: "frame",
+        label: "Entry Frame Left"
+      });
       const secondPillar = framePillar.clone();
+      secondPillar.castShadow = true;
+      secondPillar.receiveShadow = true;
       secondPillar.position.z = -(frameWidth * 0.5 - frameDepth * 0.5);
       group.add(secondPillar);
+      registerShellNode(secondPillar, {
+        partId: "entry-frame-right",
+        type: "frame",
+        label: "Entry Frame Right"
+      });
+
+      const glowStrip = new THREE.Mesh(
+        new THREE.BoxGeometry(0.05, 0.08, Math.max(1.4, frameWidth - 0.38)),
+        entranceAccentMaterial
+      );
+      glowStrip.castShadow = true;
+      glowStrip.receiveShadow = true;
+      glowStrip.position.set(frameCenterX - frameDirection * 0.1, frameHeight - 0.14, 0);
+      group.add(glowStrip);
+      registerShellNode(glowStrip, {
+        partId: "entry-frame-glow-strip",
+        type: "frame-accent",
+        label: "Entry Glow Strip"
+      });
 
       const title = makeLabelPlane(
         [trimTitle(config.label || (roomId === "shop" ? "Gift Shop" : "Projects"), 24)],
@@ -1823,7 +2131,7 @@ export class CatalogRoomSystem {
           0.45,
           8
         );
-        accentLight.position.set(frameCenterX + frameDirection * 0.55, height - 0.6, 0);
+        accentLight.position.set(frameCenterX - frameDirection * 0.46, frameHeight + 0.32, 0);
         group.add(accentLight);
       }
     }
@@ -1842,6 +2150,7 @@ export class CatalogRoomSystem {
       index: roomIndex,
       group,
       cardsGroup,
+      generatedShellNodes,
       config: {
         ...config,
         size,
@@ -2038,6 +2347,12 @@ export class CatalogRoomSystem {
       roomId,
       enabled: this.isRoomEnabled(roomId),
       nodeCount: nodes.length,
+      shellNodeCount: nodes.reduce(
+        (total, node) =>
+          total + (Array.isArray(node.generatedShellNodes) ? node.generatedShellNodes.length : 0),
+        0
+      ),
+      colliderCount: this.colliders.filter((entry) => entry?.roomId === roomId).length,
       cardCounts: nodes.map((node) => node.cardsGroup?.children?.length || 0),
       capacities: nodes.map((node) => this.computeWallSlots(roomId, node).length),
       latestItemId: latestItemIds[0] || null,
@@ -2047,6 +2362,7 @@ export class CatalogRoomSystem {
 
   reconcileRoomCount(roomId, config, required) {
     this.colliders = this.colliders.filter((entry) => entry.roomId !== roomId);
+    this.unregisterGeneratedShellObjects(roomId, 0);
     this.hidePresentationOverlay(roomId);
     this.presentationWalls.delete(roomId);
     this.hidePlaylistOverlay(roomId);

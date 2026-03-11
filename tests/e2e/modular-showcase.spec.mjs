@@ -174,6 +174,58 @@ async function probeColliders(page, position, radius = 0.38) {
   );
 }
 
+async function setGeneratedShellVisibleDebug(page, shellNodeId, visible) {
+  return page.evaluate(
+    ([hookNames, requestedShellNodeId, nextVisible]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.setGeneratedShellVisible !== "function") {
+          continue;
+        }
+        return Boolean(api.setGeneratedShellVisible(requestedShellNodeId, nextVisible));
+      }
+      return false;
+    },
+    [DEBUG_HOOK_NAMES, shellNodeId, visible]
+  );
+}
+
+async function setThemeDebug(page, themeName) {
+  return page.evaluate(
+    async ([hookNames, requestedThemeName]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.setTheme !== "function") {
+          continue;
+        }
+        await api.setTheme(requestedThemeName);
+        return true;
+      }
+      return false;
+    },
+    [DEBUG_HOOK_NAMES, themeName]
+  );
+}
+
+async function getGeneratedShellEntry(page, shellNodeId) {
+  return page.evaluate(
+    ([hookNames, requestedShellNodeId]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.getGeneratedShellEntries !== "function") {
+          continue;
+        }
+        const entries = api.getGeneratedShellEntries("videos");
+        return Array.isArray(entries)
+          ? entries.find((entry) => entry?.id === requestedShellNodeId) || null
+          : null;
+      }
+      return null;
+    },
+    [DEBUG_HOOK_NAMES, shellNodeId]
+  );
+}
+
 async function aimCameraAtPanel(page, panelId, position, pitch = 0) {
   const yawCandidates = [0, 45, 90, 135, 180, 225, 270, 315];
   let best = null;
@@ -213,6 +265,12 @@ async function readDefaultVideosPayload() {
   return JSON.parse(raw);
 }
 
+async function readDefaultCatalogPayload() {
+  const sourcePath = new URL("../../public/config.defaults/catalog.json", import.meta.url);
+  const raw = await readFile(sourcePath, "utf8");
+  return JSON.parse(raw);
+}
+
 async function createExpandedVideosPayload() {
   const payload = await readDefaultVideosPayload();
   const baseItems = Array.isArray(payload.items) ? payload.items : [];
@@ -228,6 +286,39 @@ async function createExpandedVideosPayload() {
       count: payload.items.length
     };
   }
+  return payload;
+}
+
+async function createMultiRoomVideosPayload() {
+  const payload = await readDefaultVideosPayload();
+  const baseItems = Array.isArray(payload.items) ? payload.items : [];
+  const expandedItems = [];
+  for (let index = 0; index < 42; index += 1) {
+    const template = baseItems[index % Math.max(1, baseItems.length)] || {};
+    expandedItems.push({
+      ...template,
+      id: `${template.id || `video-${index + 1}`}-multi-${index + 1}`,
+      title: `${template.title || `Video ${index + 1}`} Multi ${index + 1}`
+    });
+  }
+  payload.items = expandedItems;
+  if (payload.meta && typeof payload.meta === "object") {
+    payload.meta = {
+      ...payload.meta,
+      count: payload.items.length
+    };
+  }
+  return payload;
+}
+
+async function createMultiRoomCatalogPayload() {
+  const payload = await readDefaultCatalogPayload();
+  payload.rooms = payload.rooms || {};
+  payload.rooms.videos = payload.rooms.videos || {};
+  payload.rooms.videos.layout = {
+    ...(payload.rooms.videos.layout || {}),
+    maxItems: 42
+  };
   return payload;
 }
 
@@ -614,6 +705,67 @@ test("screening hall keeps overflow in a single widened room instead of cloning 
       })
       .toBe(0);
   }
+});
+
+test("hidden screening shell walls stay collider-disabled after a catalog rebuild", async ({ page }) => {
+  const videosPayload = await createMultiRoomVideosPayload();
+  const catalogPayload = await createMultiRoomCatalogPayload();
+  await page.route(/\/(?:config|config\.defaults)\/videos-feed\.json(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(videosPayload)
+    });
+  });
+  await page.route(/\/(?:config|config\.defaults)\/catalog\.json(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(catalogPayload)
+    });
+  });
+
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1&editor=1`);
+  await waitForDebugApi(page, "getCatalogRoomSnapshot");
+  await waitForDebugApi(page, "getGeneratedShellEntries");
+  await waitForDebugApi(page, "setGeneratedShellVisible");
+  await waitForDebugApi(page, "setTheme");
+
+  await expect
+    .poll(async () => (await getCatalogRoomSnapshot(page, "videos"))?.nodeCount ?? 0, {
+      timeout: 25_000
+    })
+    .toBeGreaterThanOrEqual(2);
+
+  const shellNodeId = "catalog:videos:0:back-wall-right";
+  await expect.poll(() => setGeneratedShellVisibleDebug(page, shellNodeId, false), {
+    timeout: 25_000
+  }).toBe(true);
+
+  await expect
+    .poll(async () => (await getGeneratedShellEntry(page, shellNodeId))?.enabledColliderCount ?? -1, {
+      timeout: 25_000
+    })
+    .toBe(0);
+  await expect
+    .poll(async () => (await getGeneratedShellEntry(page, shellNodeId))?.visible ?? true, {
+      timeout: 25_000
+    })
+    .toBe(false);
+
+  await expect.poll(() => setThemeDebug(page, "backrooms"), { timeout: 25_000 }).toBe(true);
+  await expect.poll(() => setThemeDebug(page, "lobby"), { timeout: 25_000 }).toBe(true);
+
+  await expect
+    .poll(async () => (await getGeneratedShellEntry(page, shellNodeId))?.enabledColliderCount ?? -1, {
+      timeout: 25_000
+    })
+    .toBe(0);
+  await expect
+    .poll(async () => (await getGeneratedShellEntry(page, shellNodeId))?.visible ?? true, {
+      timeout: 25_000
+    })
+    .toBe(false);
 });
 
 test("screening hall prefers the fresher default video feed over a stale local override", async ({

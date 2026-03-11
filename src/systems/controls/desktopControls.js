@@ -107,8 +107,12 @@ export class DesktopControls {
 
     const deltaX = Number.isFinite(event.movementX) ? event.movementX : 0;
     const deltaY = Number.isFinite(event.movementY) ? event.movementY : 0;
-    const nextYaw = this.player.rotation.y - deltaX * this.mouseSensitivity;
-    const nextPitch = this.pitch.rotation.x - deltaY * this.mouseSensitivity;
+    this.applyLookDelta(deltaX, deltaY);
+  }
+
+  applyLookDelta(deltaX = 0, deltaY = 0) {
+    const nextYaw = this.player.rotation.y - (Number(deltaX) || 0) * this.mouseSensitivity;
+    const nextPitch = this.pitch.rotation.x - (Number(deltaY) || 0) * this.mouseSensitivity;
     this.player.rotation.y = Number.isFinite(nextYaw) ? nextYaw : this.player.rotation.y;
     this.pitch.rotation.x = THREE.MathUtils.clamp(
       Number.isFinite(nextPitch) ? nextPitch : this.pitch.rotation.x,

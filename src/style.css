@@ -649,6 +649,13 @@ body,
   color: #b4c5be;
 }
 
+.editor-panel-hint {
+  margin: -0.08rem 0 0;
+  color: #90a6a0;
+  font-size: 0.63rem;
+  line-height: 1.45;
+}
+
 .editor-panel-row {
   display: flex;
   flex-wrap: wrap;
@@ -657,7 +664,9 @@ body,
 }
 
 .editor-mode-row button,
-.editor-actions-row button {
+.editor-actions-row button,
+.editor-selection-actions-row button,
+.editor-export-row button {
   appearance: none;
   border: 1px solid rgba(158, 191, 185, 0.4);
   background: rgba(24, 35, 32, 0.9);
@@ -694,18 +703,25 @@ body,
   padding: 0.4rem;
 }
 
-.editor-transform-row {
+.editor-transform-row,
+.editor-source-row {
   border: 1px solid rgba(137, 159, 152, 0.35);
   background: rgba(14, 20, 18, 0.76);
   padding: 0.38rem 0.45rem;
   min-height: 2.25rem;
 }
 
-.editor-transform-row code {
+.editor-transform-row code,
+.editor-source-row code {
   display: block;
   color: #b6d2ca;
   font-size: 0.62rem;
   line-height: 1.5;
+}
+
+.editor-panel button:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
 }
 
 .editor-status {

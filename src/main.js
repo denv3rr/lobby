@@ -699,6 +699,25 @@ function cloneJson(value) {
   }
 }
 
+function normalizeEditorOverrides(payload) {
+  const source = isObject(payload) ? payload : {};
+  const props = isObject(source.props) ? cloneJson(source.props) || {} : {};
+  const hiddenProps = [...new Set((Array.isArray(source.hiddenProps) ? source.hiddenProps : [])
+    .map((entry) => readText(entry, ""))
+    .filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const hiddenGeneratedNodes = [...new Set(
+    (Array.isArray(source.hiddenGeneratedNodes) ? source.hiddenGeneratedNodes : [])
+      .map((entry) => readText(entry, ""))
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
+  return {
+    props,
+    hiddenProps,
+    hiddenGeneratedNodes
+  };
+}
+
 function getUnlockedSecretIds() {
   const stored = readStorageJson(SECRET_UNLOCKS_STORAGE_KEY, null);
   const ids = Array.isArray(stored?.unlockedIds) ? stored.unlockedIds : [];
@@ -1809,6 +1828,7 @@ async function boot() {
     loadRuntimeConfig("catalog.json", { optional: true })
   ]);
   const catalogFeedDefinitions = getCatalogFeedDefinitions(catalogConfig);
+  const sceneEditorOverrides = normalizeEditorOverrides(sceneConfig?.editorOverrides);
   ui.setDevConfigFiles?.(mergeDevConfigFiles(DEV_CONFIG_FILES, buildCatalogFeedDevConfigFiles(catalogConfig)));
   const catalogFeedEntries = await Promise.all(
     catalogFeedDefinitions.map(async (definition) => [
@@ -1970,6 +1990,9 @@ async function boot() {
     .initialize(appliedTheme || themeName)
     .then(() => {
       catalogReady = true;
+      applySceneEditorOverrides(sceneEditorOverrides, { markDirty: false });
+      editorSystem?.loadSavedState?.({ silent: true });
+      editorSystem?.refreshOutliner?.();
       refreshInteractiveSurfaces();
     })
     .catch((error) => {
@@ -1985,6 +2008,31 @@ async function boot() {
     ...(sceneContext?.getColliders?.() || []),
     ...(catalogSystem?.getColliders?.() || [])
   ];
+
+  function applySceneEditorOverrides(overrides = sceneEditorOverrides, { markDirty = false } = {}) {
+    const normalized = normalizeEditorOverrides(overrides);
+    let updated = 0;
+
+    updated += sceneContext?.applyEditablePropTransforms?.(normalized.props, { markDirty }) || 0;
+
+    for (const propId of normalized.hiddenProps) {
+      if (sceneContext?.setEditablePropVisible?.(propId, false, { markDirty })) {
+        updated += 1;
+      }
+    }
+
+    for (const shellNodeId of normalized.hiddenGeneratedNodes) {
+      if (catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, false)) {
+        updated += 1;
+      }
+    }
+
+    if (updated > 0) {
+      refreshInteractiveSurfaces();
+      editorSystem?.refreshOutliner?.();
+    }
+    return updated;
+  }
 
   controls = mobile
     ? new MobileControls({
@@ -2006,7 +2054,8 @@ async function boot() {
         getColliders: getPlayerColliders,
         onMoveDistance: (distance) => audioSystem?.registerMovementDistance(distance),
         onPointerLockChange: (locked) => ui.setPointerLockState(locked),
-        shouldRequestPointerLock: (event) => !interactionSystem?.peekActivationTarget?.(event)
+        shouldRequestPointerLock: (event) =>
+          !editorModeEnabled && !interactionSystem?.peekActivationTarget?.(event)
       });
 
   interactionDirector = new InteractionDirector({
@@ -2091,6 +2140,11 @@ async function boot() {
       camera: rendererContext.camera,
       renderer: rendererContext.renderer,
       sceneContext,
+      catalogSystem,
+      applyLookDelta: (deltaX, deltaY) => controls?.applyLookDelta?.(deltaX, deltaY),
+      clearMovementKeys: () => controls?.clearKeys?.(),
+      readSceneConfig: (source = "effective") => readEditableRuntimeConfig("scene.json", source),
+      writeSceneConfig: (target, text) => writeEditableRuntimeConfig("scene.json", target, text),
       onSceneMutated: () => {
         refreshInteractiveSurfaces();
       },
@@ -2102,7 +2156,6 @@ async function boot() {
         controls?.clearKeys?.();
       }
     });
-    editorSystem?.loadSavedState?.({ silent: true });
     refreshInteractiveSurfaces();
   }
 
@@ -2348,6 +2401,10 @@ async function boot() {
     activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
     debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
     getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
+    getGeneratedShellEntries: (roomId) => catalogSystem?.getGeneratedShellEntries?.(roomId) || [],
+    setGeneratedShellVisible: (shellNodeId, visible) =>
+      catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, visible) || false,
+    restoreGeneratedShellRoom: (roomId) => catalogSystem?.restoreGeneratedShellRoom?.(roomId) || 0,
     getEditorSnapshot: () => editorSystem?.getSnapshot?.() || null,
     saveEditorState: () => editorSystem?.saveState?.() || null,
     loadEditorState: () => editorSystem?.loadSavedState?.() ?? 0,
@@ -2356,6 +2413,7 @@ async function boot() {
       return true;
     },
     selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
+    selectGeneratedShellNode: (shellNodeId) => Boolean(editorSystem?.selectGeneratedNode?.(shellNodeId)),
     probeColliders: (position, radius) => probeColliders(position, radius),
     activateCenterArtifact: () => activateCenterArtifactTarget(),
     teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
