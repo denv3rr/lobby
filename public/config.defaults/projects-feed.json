@@ -1,8 +1,8 @@
 {
   "meta": {
     "source": "github-readme-plus-workshop",
-    "updatedAt": "2026-03-08T01:25:25.285Z",
-    "count": 4,
+    "updatedAt": "2026-03-10T10:50:12.449Z",
+    "count": 5,
     "workshopUrl": null,
     "usedFallback": false,
     "errors": []
@@ -61,6 +61,20 @@
         "core",
         "github",
         "project"
+      ],
+      "artwork": []
+    },
+    {
+      "id": "south-padre-island",
+      "title": "South Padre Island (Arma Reforger Mod)",
+      "url": "https://reforger.armaplatform.com/workshop",
+      "image": null,
+      "price": null,
+      "currency": null,
+      "tags": [
+        "reforger",
+        "workshop",
+        "core"
       ],
       "artwork": []
     }
