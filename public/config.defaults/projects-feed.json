@@ -1,7 +1,7 @@
 {
   "meta": {
     "source": "github-readme-plus-workshop",
-    "updatedAt": "2026-03-13T13:33:50.751Z",
+    "updatedAt": "2026-03-13T19:01:00.538Z",
     "count": 5,
     "workshopUrl": null,
     "usedFallback": false,
@@ -10,7 +10,7 @@
   "items": [
     {
       "id": "clear",
-      "title": "Clear",
+      "title": "clear",
       "url": "https://github.com/denv3rr/clear",
       "image": "https://opengraph.githubassets.com/1/denv3rr/clear",
       "price": null,
@@ -38,7 +38,7 @@
     },
     {
       "id": "denv3rr-github-io",
-      "title": "Denv3rr Site",
+      "title": "denv3rr.github.io",
       "url": "https://github.com/denv3rr/denv3rr.github.io",
       "image": "https://opengraph.githubassets.com/1/denv3rr/denv3rr.github.io",
       "price": null,
@@ -52,7 +52,7 @@
     },
     {
       "id": "network-explorer",
-      "title": "Network Explorer",
+      "title": "network-explorer",
       "url": "https://github.com/denv3rr/network-explorer",
       "image": "https://opengraph.githubassets.com/1/denv3rr/network-explorer",
       "price": null,
