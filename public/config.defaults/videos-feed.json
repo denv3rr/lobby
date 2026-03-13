@@ -3,12 +3,42 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-12T19:11:43.415Z",
+    "fetchedAt": "2026-03-13T03:08:10.586Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "dbjKrwJFpEA",
+      "title": "Vacation does not go according to plan #resort #rude #armareforger #disappointed",
+      "url": "https://www.youtube.com/watch?v=dbjKrwJFpEA",
+      "image": "https://i1.ytimg.com/vi/dbjKrwJFpEA/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-13T02:35:48+00:00"
+    },
+    {
+      "id": "gDrTdIv_x8U",
+      "title": "Virtual Trucking Gets Serious",
+      "url": "https://www.youtube.com/watch?v=gDrTdIv_x8U",
+      "image": "https://i4.ytimg.com/vi/gDrTdIv_x8U/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-13T00:00:54+00:00"
+    },
     {
       "id": "mtjIForabIs",
       "title": "All these happened within like 5 minutes lmao (pt. 3) #arma #armareforger",
@@ -203,36 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-01T06:35:55+00:00"
-    },
-    {
-      "id": "Q7Z_H1fu3gI",
-      "title": "Fellas? #blackhawk #arma #armareforger #funnymoments #conflict #fps #gamingclips",
-      "url": "https://www.youtube.com/watch?v=Q7Z_H1fu3gI",
-      "image": "https://i2.ytimg.com/vi/Q7Z_H1fu3gI/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-02-28T04:37:50+00:00"
-    },
-    {
-      "id": "-z5s4FqJ3jk",
-      "title": "Not sure how he didnt get me #arma #armareforger #gaming #thisisarma #armaplatform",
-      "url": "https://www.youtube.com/watch?v=-z5s4FqJ3jk",
-      "image": "https://i2.ytimg.com/vi/-z5s4FqJ3jk/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-02-27T06:45:06+00:00"
     }
   ]
 }

@@ -4,12 +4,30 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-12T19:11:43.415Z",
+    "fetchedAt": "2026-03-13T03:08:10.586Z",
     "count": 26,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "gDrTdIv_x8U",
+      "title": "Virtual Trucking Gets Serious",
+      "url": "https://www.youtube.com/watch?v=gDrTdIv_x8U",
+      "image": "https://i.ytimg.com/vi/gDrTdIv_x8U/hqdefault.jpg?sqp=-oaymwEjCNACELwBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLCRVXJoPpCB8DJedoueyBsW9imIFA",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "longform"
+      ],
+      "durationText": "1:24",
+      "durationSeconds": 84,
+      "publishedText": "3 hours ago",
+      "viewCountText": "6 views"
+    },
     {
       "id": "y-WRjMd8xgE",
       "title": "Letting Random Online Strangers Lead Me To My Death",
@@ -459,24 +477,6 @@
       "durationSeconds": 618,
       "publishedText": "2 years ago",
       "viewCountText": "141 views"
-    },
-    {
-      "id": "YX9OczfhhBE",
-      "title": "Arma Is A Movie Sometimes",
-      "url": "https://www.youtube.com/watch?v=YX9OczfhhBE",
-      "image": "https://i.ytimg.com/vi/YX9OczfhhBE/hqdefault.jpg?sqp=-oaymwEjCNACELwBSFryq4qpAxUIARUAAAAAGAElAADIQj0AgKJDeAE=&rs=AOn4CLCi-Jp_DF971Agbmx20dnkcs7w_LA",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "longform"
-      ],
-      "durationText": "1:42",
-      "durationSeconds": 102,
-      "publishedText": "2 years ago",
-      "viewCountText": "1,244 views"
     }
   ]
 }
