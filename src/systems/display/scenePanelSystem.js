@@ -21,7 +21,8 @@ export class ScenePanelSystem {
     scene = null,
     panels = [],
     onOpenUrl = null,
-    isPointerLocked = null
+    isPointerLocked = null,
+    updateIntervalMs = 100
   }) {
     this.domElement = domElement || null;
     this.camera = camera || null;
@@ -46,6 +47,21 @@ export class ScenePanelSystem {
       new THREE.Vector3(),
       new THREE.Vector3()
     ];
+    this.updateIntervalMs = clamp(Number(updateIntervalMs) || 100, 33, 250);
+    this.lastUpdateAt = -Infinity;
+    this.collectPerfStats = false;
+    this.perfStats = {
+      lastUpdateMs: 0,
+      lastUpdateAt: 0,
+      lastUpdateAttemptAt: 0,
+      updateIntervalMs: this.updateIntervalMs,
+      skippedUpdates: 0,
+      visiblePanelCount: 0,
+      hiddenPanelCount: 0,
+      panelCount: 0,
+      occlusionChecks: 0,
+      raycastCalls: 0
+    };
 
     this.setPanels(panels);
   }
@@ -68,6 +84,9 @@ export class ScenePanelSystem {
       entry.root?.remove?.();
     }
     this.panelEntries = [];
+    this.perfStats.panelCount = 0;
+    this.perfStats.visiblePanelCount = 0;
+    this.perfStats.hiddenPanelCount = 0;
   }
 
   markPointerLockSuppressed(durationMs = 320) {
@@ -108,6 +127,15 @@ export class ScenePanelSystem {
       event.preventDefault();
     });
     return element;
+  }
+
+  syncPointerLockState(pointerLocked) {
+    const pointerEvents = pointerLocked ? "none" : "auto";
+    for (const entry of this.panelEntries) {
+      if (entry?.frame) {
+        entry.frame.style.pointerEvents = pointerEvents;
+      }
+    }
   }
 
   createPanelScaffold(panel) {
@@ -272,8 +300,8 @@ export class ScenePanelSystem {
     }
 
     const galleryPanels = this.panelEntries.filter((entry) => this.getGalleryId(entry) === id);
-    const images = galleryPanels.find((entry) => this.getEffectivePanelImages(entry).length) || null;
-    const imageCount = this.getEffectivePanelImages(images).length;
+    const sourceEntry = galleryPanels.find((entry) => this.getEffectivePanelImages(entry).length) || null;
+    const imageCount = this.getEffectivePanelImages(sourceEntry).length;
     if (!imageCount) {
       return;
     }
@@ -455,6 +483,7 @@ export class ScenePanelSystem {
         return null;
       })
       .filter(Boolean);
+    this.perfStats.panelCount = this.panelEntries.length;
     this.syncGalleryPanels();
   }
 
@@ -592,6 +621,11 @@ export class ScenePanelSystem {
     this.raycaster.set(this.cameraWorldPosition, this.occlusionDirection);
     this.raycaster.camera = activeCamera || null;
     this.raycaster.far = panelDistance - 0.04;
+
+    if (this.collectPerfStats) {
+      this.perfStats.occlusionChecks += 1;
+      this.perfStats.raycastCalls += 1;
+    }
 
     let intersections = [];
     try {
@@ -938,24 +972,59 @@ export class ScenePanelSystem {
 
   update(activeCamera = this.camera) {
     const pointerLocked = this.isPointerLocked();
-    for (const entry of this.panelEntries) {
-      if (!entry?.object?.parent || entry.object.visible === false) {
-        this.hidePanel(entry);
-        continue;
-      }
+    this.syncPointerLockState(pointerLocked);
 
-      const rect = this.computePanelRect(entry, activeCamera);
-      if (!rect) {
-        this.hidePanel(entry);
-        continue;
-      }
-
-      entry.root.classList.remove("hidden");
-      entry.root.style.transform = `translate(${rect.x.toFixed(2)}px, ${rect.y.toFixed(2)}px)`;
-      entry.root.style.width = `${rect.width.toFixed(2)}px`;
-      entry.root.style.height = `${rect.height.toFixed(2)}px`;
-      entry.frame.style.pointerEvents = pointerLocked ? "none" : "auto";
+    const now = performance.now();
+    const shouldRecompute = !Number.isFinite(this.lastUpdateAt)
+      || now - this.lastUpdateAt >= this.updateIntervalMs;
+    if (!shouldRecompute) {
+      this.perfStats.skippedUpdates += 1;
+      this.perfStats.updateIntervalMs = this.updateIntervalMs;
+      this.perfStats.lastUpdateAttemptAt = now;
+      this.perfStats.lastUpdateMs = 0;
+      this.perfStats.panelCount = this.panelEntries.length;
+      return;
     }
+
+    const start = performance.now();
+    this.collectPerfStats = true;
+    this.perfStats.occlusionChecks = 0;
+    this.perfStats.raycastCalls = 0;
+    let visiblePanelCount = 0;
+    let hiddenPanelCount = 0;
+    try {
+      for (const entry of this.panelEntries) {
+        if (!entry?.object?.parent || entry.object.visible === false) {
+          this.hidePanel(entry);
+          hiddenPanelCount += 1;
+          continue;
+        }
+
+        const rect = this.computePanelRect(entry, activeCamera);
+        if (!rect) {
+          this.hidePanel(entry);
+          hiddenPanelCount += 1;
+          continue;
+        }
+
+        entry.root.classList.remove("hidden");
+        entry.root.style.transform = `translate(${rect.x.toFixed(2)}px, ${rect.y.toFixed(2)}px)`;
+        entry.root.style.width = `${rect.width.toFixed(2)}px`;
+        entry.root.style.height = `${rect.height.toFixed(2)}px`;
+        visiblePanelCount += 1;
+      }
+    } finally {
+      this.collectPerfStats = false;
+    }
+    const end = performance.now();
+    this.lastUpdateAt = end;
+    this.perfStats.lastUpdateMs = Number((end - start).toFixed(3));
+    this.perfStats.lastUpdateAt = end;
+    this.perfStats.lastUpdateAttemptAt = end;
+    this.perfStats.updateIntervalMs = this.updateIntervalMs;
+    this.perfStats.visiblePanelCount = visiblePanelCount;
+    this.perfStats.hiddenPanelCount = hiddenPanelCount;
+    this.perfStats.panelCount = this.panelEntries.length;
   }
 
   getPanelSnapshot(panelId) {
@@ -990,6 +1059,13 @@ export class ScenePanelSystem {
     return this.panelEntries
       .map((entry) => this.getPanelSnapshot(entry?.id))
       .filter(Boolean);
+  }
+
+  getDebugStats() {
+    return {
+      ...this.perfStats,
+      panelCount: this.panelEntries.length
+    };
   }
 
   activatePanelCta(panelId) {

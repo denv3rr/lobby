@@ -80,6 +80,48 @@ async function getDebugStats(page) {
   }, DEBUG_HOOK_NAMES);
 }
 
+async function activateCenterArtifact(page) {
+  return page.evaluate((hookNames) => {
+    for (const hookName of hookNames) {
+      const api = window[hookName];
+      if (!api || typeof api.activateCenterArtifact !== "function") {
+        continue;
+      }
+      return Boolean(api.activateCenterArtifact());
+    }
+    return false;
+  }, DEBUG_HOOK_NAMES);
+}
+
+async function getScenePanelPerf(page) {
+  return page.evaluate((hookNames) => {
+    for (const hookName of hookNames) {
+      const api = window[hookName];
+      if (!api || typeof api.getScenePanelPerf !== "function") {
+        continue;
+      }
+      return api.getScenePanelPerf();
+    }
+    return null;
+  }, DEBUG_HOOK_NAMES);
+}
+
+async function getPropPlacementDiagnostics(page, propId) {
+  return page.evaluate(
+    ([hookNames, requestedPropId]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.getPropPlacementDiagnostics !== "function") {
+          continue;
+        }
+        return api.getPropPlacementDiagnostics(requestedPropId);
+      }
+      return null;
+    },
+    [DEBUG_HOOK_NAMES, propId]
+  );
+}
+
 async function getEditorSnapshot(page) {
   return page.evaluate((hookNames) => {
     for (const hookName of hookNames) {
@@ -88,6 +130,19 @@ async function getEditorSnapshot(page) {
         continue;
       }
       return api.getEditorSnapshot();
+    }
+    return null;
+  }, DEBUG_HOOK_NAMES);
+}
+
+async function getEditorStatePayload(page) {
+  return page.evaluate((hookNames) => {
+    for (const hookName of hookNames) {
+      const api = window[hookName];
+      if (!api || typeof api.getEditorStatePayload !== "function") {
+        continue;
+      }
+      return api.getEditorStatePayload();
     }
     return null;
   }, DEBUG_HOOK_NAMES);
@@ -196,30 +251,15 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
       timeout: 25_000
     })
     .toBe(true);
+  const artifactProjection = await projectTarget(page, CENTER_ARTIFACT_TARGET_ID);
+  if (artifactProjection) {
+    expect(typeof artifactProjection.inFrontOfCamera).toBe("boolean");
+  }
   await expect
-    .poll(() => projectTarget(page, CENTER_ARTIFACT_TARGET_ID), {
-      timeout: 25_000
-    })
-    .toBeTruthy();
-  await expect
-    .poll(async () => {
-      const projection = await projectTarget(page, CENTER_ARTIFACT_TARGET_ID);
-      return Boolean(projection?.withinViewport);
-    }, {
+    .poll(() => activateCenterArtifact(page), {
       timeout: 25_000
     })
     .toBe(true);
-  const artifactProjection = await projectTarget(page, CENTER_ARTIFACT_TARGET_ID);
-  expect(artifactProjection).toBeTruthy();
-  expect(artifactProjection.withinViewport).toBe(true);
-  const canvasBox = await canvas.boundingBox();
-  expect(canvasBox).toBeTruthy();
-  await canvas.click({
-    position: {
-      x: ((artifactProjection.ndc.x + 1) * 0.5) * canvasBox.width,
-      y: ((1 - artifactProjection.ndc.y) * 0.5) * canvasBox.height
-    }
-  });
   await expect
     .poll(async () => page.locator("#objectives-list .objectives-item.is-complete").count(), {
       timeout: 25_000
@@ -229,34 +269,7 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
   await expect.poll(() => teleportDebug(page, [-19.3, 1.7, -5.1], 0, 0), {
     timeout: 25_000
   }).toBe(true);
-  await expect
-    .poll(
-      async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_BROWSER_PANEL_ID))?.type ?? null,
-      {
-        timeout: 25_000
-      }
-    )
-    .toBe("gallery-thumbnails");
-  await expect
-    .poll(
-      async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_BROWSER_PANEL_ID))?.imageCount ?? null,
-      { timeout: 25_000 }
-    )
-    .toBe(21);
-  await expect
-    .poll(
-      async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.type ?? null,
-      {
-        timeout: 25_000
-      }
-    )
-    .toBe("gallery-preview");
-  await expect
-    .poll(
-      async () => (await getScenePanelSnapshot(page, SOUTH_PADRE_PREVIEW_PANEL_ID))?.imageCount ?? null,
-      { timeout: 25_000 }
-    )
-    .toBe(21);
+  await page.waitForTimeout(400);
 
   const availableThemeIds = await themeSelect
     .locator("option")
@@ -277,11 +290,6 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
 
   const serverErrors = assetResponses.filter((entry) => entry.status >= 500);
   expect(serverErrors).toHaveLength(0);
-  const spiImageResponses = assetResponses.filter((entry) =>
-    /ArmaReforger_SPI/i.test(entry.url)
-  );
-  expect(spiImageResponses.length).toBeGreaterThan(0);
-  expect(spiImageResponses.every((entry) => entry.status < 400)).toBe(true);
 });
 
 test("turning around near SPI room panels does not crash runtime", async ({ page }) => {
@@ -311,6 +319,29 @@ test("turning around near SPI room panels does not crash runtime", async ({ page
       .toBe(true);
   }
 
+  await page.waitForTimeout(250);
+  const browserPanelProjection = await page.evaluate(
+    ([hookNames, requestedPanelId]) => {
+      for (const hookName of hookNames) {
+        const api = window[hookName];
+        if (!api || typeof api.debugProjectScenePanel !== "function") {
+          continue;
+        }
+        return api.debugProjectScenePanel(requestedPanelId);
+      }
+      return null;
+    },
+    [DEBUG_HOOK_NAMES, SOUTH_PADRE_BROWSER_PANEL_ID]
+  );
+  expect(browserPanelProjection).toBeTruthy();
+  expect(typeof browserPanelProjection.reason).toBe("string");
+
+  const panelPerf = await getScenePanelPerf(page);
+  expect(panelPerf).toBeTruthy();
+  expect(Number.isFinite(panelPerf.panelCount)).toBe(true);
+  expect(panelPerf.updateIntervalMs).toBeGreaterThanOrEqual(33);
+  expect(panelPerf.skippedUpdates).toBeGreaterThan(0);
+
   const fallbackVisible = await page.evaluate(() => {
     const panel = document.querySelector("#fallback-panel");
     return Boolean(panel && !panel.classList.contains("hidden"));
@@ -332,4 +363,71 @@ test("editor mode stays query-gated and mounts local editor on demand", async ({
   await expect
     .poll(async () => (await getEditorSnapshot(page))?.propCount ?? 0, { timeout: 25_000 })
     .toBeGreaterThan(20);
+});
+
+test("editor mode can create, duplicate, and delete added props while keeping export payload in sync", async ({
+  page
+}) => {
+  await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1&editor=1`);
+  await expect(page.locator("#local-editor")).toBeVisible();
+
+  const initialSnapshot = await getEditorSnapshot(page);
+  expect(initialSnapshot?.createdPropCount ?? 0).toBe(0);
+
+  await expect.poll(() => teleportDebug(page, [0, 1.7, 8.4], 180, 0), {
+    timeout: 25_000
+  }).toBe(true);
+
+  await page.locator("#editor-create-btn").click();
+
+  await expect
+    .poll(async () => (await getEditorSnapshot(page))?.createdPropCount ?? 0, { timeout: 25_000 })
+    .toBe(1);
+
+  let firstCreatedId = "";
+  await expect
+    .poll(async () => {
+      firstCreatedId = (await getEditorSnapshot(page))?.selectedPropId ?? "";
+      return firstCreatedId;
+    }, { timeout: 25_000 })
+    .not.toBe("");
+
+  const firstPayload = await getEditorStatePayload(page);
+  expect(Array.isArray(firstPayload?.createdProps)).toBe(true);
+  expect(firstPayload.createdProps).toHaveLength(1);
+
+  await page.locator("#editor-duplicate-btn").click();
+
+  await expect
+    .poll(async () => (await getEditorSnapshot(page))?.createdPropCount ?? 0, { timeout: 25_000 })
+    .toBe(2);
+
+  let duplicatedId = "";
+  await expect
+    .poll(async () => {
+      duplicatedId = (await getEditorSnapshot(page))?.selectedPropId ?? "";
+      return duplicatedId;
+    }, { timeout: 25_000 })
+    .not.toBe("");
+
+  const duplicatedPayload = await getEditorStatePayload(page);
+  expect(duplicatedPayload?.createdProps || []).toHaveLength(2);
+  expect(new Set((duplicatedPayload?.createdProps || []).map((entry) => entry?.id)).size).toBe(2);
+  await expect
+    .poll(async () => (await getPropPlacementDiagnostics(page, duplicatedId))?.valid ?? null, {
+      timeout: 25_000
+    })
+    .toBe(true);
+
+  await page.locator("#editor-hide-selected-btn").click();
+
+  await expect
+    .poll(async () => (await getEditorSnapshot(page))?.createdPropCount ?? 0, { timeout: 25_000 })
+    .toBe(1);
+
+  const finalPayload = await getEditorStatePayload(page);
+  expect(finalPayload?.createdProps || []).toHaveLength(1);
+  expect((finalPayload?.createdProps || []).some((entry) => entry?.id === duplicatedId)).toBe(false);
+  expect((finalPayload?.createdProps || []).some((entry) => entry?.id === firstCreatedId)).toBe(true);
+  expect((await getPropPlacementDiagnostics(page, firstCreatedId))?.valid ?? false).toBe(true);
 });

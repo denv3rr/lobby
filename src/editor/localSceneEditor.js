@@ -14,6 +14,14 @@ function readText(value, fallback = "") {
   return trimmed || fallback;
 }
 
+function cloneJson(value) {
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return null;
+  }
+}
+
 function toRounded(value, digits = 4) {
   const numeric = Number(value);
   if (!Number.isFinite(numeric)) {
@@ -43,7 +51,8 @@ function isEditableTarget(target) {
 function normalizeEditorOverrides(payload) {
   const state = normalizeSavedState(payload);
   return {
-    version: 2,
+    version: 3,
+    createdProps: state.createdProps,
     props: state.props,
     hiddenProps: normalizeStringList(state.hiddenProps),
     hiddenGeneratedNodes: normalizeStringList(state.hiddenGeneratedNodes)
@@ -53,6 +62,7 @@ function normalizeEditorOverrides(payload) {
 function hasEditorOverrideContent(payload) {
   const normalized = normalizeEditorOverrides(payload);
   return (
+    normalized.createdProps.length > 0 ||
     Object.keys(normalized.props).length > 0 ||
     normalized.hiddenProps.length > 0 ||
     normalized.hiddenGeneratedNodes.length > 0
@@ -62,13 +72,20 @@ function hasEditorOverrideContent(payload) {
 function normalizeSavedState(payload) {
   if (!payload || typeof payload !== "object") {
     return {
-      version: 2,
+      version: 3,
+      createdProps: [],
       props: {},
       hiddenProps: [],
       hiddenGeneratedNodes: []
     };
   }
 
+  const createdProps = Array.isArray(payload.createdProps)
+    ? payload.createdProps
+        .filter((entry) => entry && typeof entry === "object" && !Array.isArray(entry))
+        .map((entry) => cloneJson(entry))
+        .filter(Boolean)
+    : [];
   const source = payload.props && typeof payload.props === "object" ? payload.props : {};
   const props = {};
   for (const [propId, transform] of Object.entries(source)) {
@@ -92,8 +109,9 @@ function normalizeSavedState(payload) {
   }
 
   return {
-    version: 2,
+    version: 3,
     updatedAt: readText(payload.updatedAt, ""),
+    createdProps,
     props,
     hiddenProps: normalizeStringList(payload.hiddenProps),
     hiddenGeneratedNodes: normalizeStringList(payload.hiddenGeneratedNodes)
@@ -161,57 +179,150 @@ export function createLocalSceneEditor({
   root.dataset.ui = "true";
   root.innerHTML = `
     <header class="editor-panel-head" data-ui>
-      <h2 data-ui>Local Editor</h2>
-      <p class="editor-panel-subtitle" data-ui>Dev-only scene authoring</p>
+      <p class="editor-panel-kicker" data-ui>World Builder</p>
+      <div class="editor-panel-title-row" data-ui>
+        <div data-ui>
+          <h2 data-ui>Local Scene Editor</h2>
+          <p class="editor-panel-subtitle" data-ui>Dev-only authoring with safer modular placement and local exports.</p>
+        </div>
+        <div class="editor-panel-badge-row" data-ui>
+          <span class="editor-panel-badge" data-ui>Dev Only</span>
+          <span id="editor-mode-badge" class="editor-panel-badge editor-panel-badge-active" data-ui>Select</span>
+        </div>
+      </div>
     </header>
-    <div class="editor-panel-row editor-mode-row" data-ui>
-      <button type="button" data-mode="select" data-ui>Select</button>
-      <button type="button" data-mode="translate" data-ui>Move</button>
-      <button type="button" data-mode="rotate" data-ui>Rotate</button>
-      <button type="button" data-mode="scale" data-ui>Scale</button>
-      <label class="editor-panel-checkbox" data-ui>
-        <input id="editor-snap-toggle" type="checkbox" checked data-ui />
-        Snap
-      </label>
+    <section class="editor-panel-section editor-toolbar-section" data-ui>
+      <div class="editor-panel-row editor-mode-row" data-ui>
+        <button type="button" data-mode="select" data-ui>Select</button>
+        <button type="button" data-mode="translate" data-ui>Move</button>
+        <button type="button" data-mode="rotate" data-ui>Rotate</button>
+        <button type="button" data-mode="scale" data-ui>Scale</button>
+        <label class="editor-panel-checkbox" data-ui>
+          <input id="editor-snap-toggle" type="checkbox" checked data-ui />
+          Snap
+        </label>
+      </div>
+      <p class="editor-panel-hint" data-ui>RMB look, RMB+WASD move, click to select, Q/W/E/R switches tools. New pieces auto-seek a safer nearby placement instead of spawning into door lanes.</p>
+    </section>
+    <section class="editor-panel-section editor-create-section" data-ui>
+      <div class="editor-section-head" data-ui>
+        <div data-ui>
+          <h3 data-ui>Asset Browser</h3>
+          <p data-ui>Filter primitives and discovered scene models before placing them.</p>
+        </div>
+      </div>
+      <div class="editor-panel-row editor-create-row" data-ui>
+        <input
+          id="editor-preset-filter"
+          class="editor-search-input"
+          type="search"
+          placeholder="Filter assets, walls, models..."
+          autocomplete="off"
+          data-ui
+        />
+        <select id="editor-create-preset" data-ui></select>
+        <button id="editor-create-btn" type="button" data-ui>Place Asset</button>
+        <button id="editor-duplicate-btn" type="button" data-ui>Duplicate</button>
+      </div>
+    </section>
+    <div class="editor-panel-columns" data-ui>
+      <section class="editor-panel-section editor-outliner-section" data-ui>
+        <div class="editor-section-head" data-ui>
+          <div data-ui>
+            <h3 data-ui>Scene Props</h3>
+            <p data-ui>Pick authored objects by id or search term.</p>
+          </div>
+        </div>
+        <input
+          id="editor-prop-filter"
+          class="editor-search-input"
+          type="search"
+          placeholder="Search props, ids, modules..."
+          autocomplete="off"
+          data-ui
+        />
+        <label class="editor-panel-label" data-ui>
+          Props
+          <select id="editor-prop-list" size="9" data-ui></select>
+        </label>
+      </section>
+      <section class="editor-panel-section editor-shell-section" data-ui>
+        <div class="editor-section-head" data-ui>
+          <div data-ui>
+            <h3 data-ui>Generated Shell</h3>
+            <p data-ui>Inspect catalog rooms, connectors, and shell pieces.</p>
+          </div>
+        </div>
+        <input
+          id="editor-generated-filter"
+          class="editor-search-input"
+          type="search"
+          placeholder="Search rooms, walls, shell ids..."
+          autocomplete="off"
+          data-ui
+        />
+        <label class="editor-panel-label" data-ui>
+          Generated Shell
+          <select id="editor-generated-list" size="8" data-ui></select>
+        </label>
+      </section>
     </div>
-    <p class="editor-panel-hint" data-ui>RMB look, RMB+WASD move, click to select, Q/W/E/R for tools.</p>
-    <label class="editor-panel-label" data-ui>
-      Props
-      <select id="editor-prop-list" size="9" data-ui></select>
-    </label>
-    <label class="editor-panel-label" data-ui>
-      Generated Shell
-      <select id="editor-generated-list" size="8" data-ui></select>
-    </label>
-    <div class="editor-panel-row editor-transform-row" data-ui>
-      <code id="editor-transform-readout" data-ui>Nothing selected.</code>
-    </div>
-    <div class="editor-panel-row editor-source-row" data-ui>
-      <code id="editor-source-readout" data-ui>No source path.</code>
-    </div>
-    <div class="editor-panel-row editor-selection-actions-row" data-ui>
-      <button id="editor-hide-selected-btn" type="button" data-ui>Hide Selected</button>
-      <button id="editor-restore-selected-btn" type="button" data-ui>Restore Selected</button>
-      <button id="editor-restore-room-btn" type="button" data-ui>Restore Room</button>
-    </div>
-    <div class="editor-panel-row editor-actions-row" data-ui>
-      <button id="editor-refresh-btn" type="button" data-ui>Refresh</button>
-      <button id="editor-save-btn" type="button" data-ui>Save Session</button>
-      <button id="editor-load-btn" type="button" data-ui>Load Session</button>
-      <button id="editor-clear-btn" type="button" data-ui>Clear Session</button>
-      <button id="editor-copy-path-btn" type="button" data-ui>Copy Path</button>
-      <button id="editor-copy-btn" type="button" data-ui>Copy JSON</button>
-    </div>
-    <div class="editor-panel-row editor-export-row" data-ui>
-      <button id="editor-export-local-btn" type="button" data-ui>Export Local Scene</button>
-      <button id="editor-export-defaults-btn" type="button" data-ui>Export Defaults</button>
-    </div>
-    <p id="editor-status" class="editor-status" data-ui></p>
+    <section class="editor-panel-section editor-inspector-section" data-ui>
+      <div class="editor-section-head" data-ui>
+        <div data-ui>
+          <h3 data-ui>Selection Inspector</h3>
+          <p data-ui>Source mapping, transform state, and placement health.</p>
+        </div>
+      </div>
+      <div id="editor-selection-chips" class="editor-chip-row" data-ui></div>
+      <div class="editor-panel-row editor-transform-row" data-ui>
+        <code id="editor-transform-readout" data-ui>Nothing selected.</code>
+      </div>
+      <div class="editor-panel-row editor-source-row" data-ui>
+        <code id="editor-source-readout" data-ui>No source path.</code>
+      </div>
+      <div class="editor-panel-row editor-placement-row" data-ui>
+        <code id="editor-placement-readout" data-ui>Placement diagnostics unavailable.</code>
+      </div>
+      <div class="editor-panel-row editor-selection-actions-row" data-ui>
+        <button id="editor-hide-selected-btn" type="button" data-ui>Delete / Hide Selected</button>
+        <button id="editor-restore-selected-btn" type="button" data-ui>Restore Selected</button>
+        <button id="editor-resolve-placement-btn" type="button" data-ui>Resolve Placement</button>
+        <button id="editor-restore-room-btn" type="button" data-ui>Restore Room</button>
+      </div>
+    </section>
+    <section class="editor-panel-section editor-actions-shell" data-ui>
+      <div class="editor-section-head" data-ui>
+        <div data-ui>
+          <h3 data-ui>Session And Export</h3>
+          <p data-ui>Refresh, copy, persist locally, or promote the current override set.</p>
+        </div>
+      </div>
+      <div class="editor-panel-row editor-actions-row" data-ui>
+        <button id="editor-refresh-btn" type="button" data-ui>Refresh</button>
+        <button id="editor-save-btn" type="button" data-ui>Save Session</button>
+        <button id="editor-load-btn" type="button" data-ui>Load Session</button>
+        <button id="editor-clear-btn" type="button" data-ui>Clear Session</button>
+        <button id="editor-copy-path-btn" type="button" data-ui>Copy Path</button>
+        <button id="editor-copy-btn" type="button" data-ui>Copy JSON</button>
+      </div>
+      <div class="editor-panel-row editor-export-row" data-ui>
+        <button id="editor-export-local-btn" type="button" data-ui>Export Local Scene</button>
+        <button id="editor-export-defaults-btn" type="button" data-ui>Export Defaults</button>
+      </div>
+      <p id="editor-status" class="editor-status" data-ui aria-live="polite"></p>
+    </section>
   `;
   host.appendChild(root);
 
   const propList = root.querySelector("#editor-prop-list");
   const generatedList = root.querySelector("#editor-generated-list");
+  const createPresetList = root.querySelector("#editor-create-preset");
+  const presetFilterInput = root.querySelector("#editor-preset-filter");
+  const propFilterInput = root.querySelector("#editor-prop-filter");
+  const generatedFilterInput = root.querySelector("#editor-generated-filter");
+  const createButton = root.querySelector("#editor-create-btn");
+  const duplicateButton = root.querySelector("#editor-duplicate-btn");
   const snapToggle = root.querySelector("#editor-snap-toggle");
   const refreshButton = root.querySelector("#editor-refresh-btn");
   const saveButton = root.querySelector("#editor-save-btn");
@@ -223,10 +334,14 @@ export function createLocalSceneEditor({
   const exportDefaultsButton = root.querySelector("#editor-export-defaults-btn");
   const hideSelectedButton = root.querySelector("#editor-hide-selected-btn");
   const restoreSelectedButton = root.querySelector("#editor-restore-selected-btn");
+  const resolvePlacementButton = root.querySelector("#editor-resolve-placement-btn");
   const restoreRoomButton = root.querySelector("#editor-restore-room-btn");
   const statusLabel = root.querySelector("#editor-status");
   const readout = root.querySelector("#editor-transform-readout");
   const sourceReadout = root.querySelector("#editor-source-readout");
+  const placementReadout = root.querySelector("#editor-placement-readout");
+  const selectionChips = root.querySelector("#editor-selection-chips");
+  const modeBadge = root.querySelector("#editor-mode-badge");
   const modeButtons = [...root.querySelectorAll("[data-mode]")];
 
   const transformControls = new TransformControls(camera, domElement);
@@ -253,6 +368,146 @@ export function createLocalSceneEditor({
   let lastLookClientY = 0;
   const pickRaycaster = new THREE.Raycaster();
   const pickPointer = new THREE.Vector2();
+  const defaultCreatePresets = [
+    {
+      id: "primitive:box",
+      label: "Box",
+      category: "Structures",
+      config: {
+        type: "primitive",
+        primitive: "box",
+        position: [0, 0.5, 0],
+        scale: [1, 1, 1],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        material: {
+          color: "#8a7f73"
+        }
+      }
+    },
+    {
+      id: "primitive:wall",
+      label: "Wall Block",
+      category: "Structures",
+      config: {
+        type: "primitive",
+        primitive: "box",
+        position: [0, 1.5, 0],
+        scale: [3, 3, 0.18],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        material: {
+          color: "#797164",
+          roughness: 0.92,
+          metalness: 0.06
+        }
+      }
+    },
+    {
+      id: "primitive:glass-wall",
+      label: "Glass Wall",
+      category: "Structures",
+      config: {
+        type: "primitive",
+        primitive: "box",
+        position: [0, 1.5, 0],
+        scale: [3, 3, 0.12],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        material: {
+          color: "#9ec7d4",
+          emissiveColor: "#9ec7d4",
+          emissiveIntensity: 0.05,
+          opacity: 0.16,
+          transparent: true,
+          doubleSided: true,
+          roughness: 0.16,
+          metalness: 0.08
+        }
+      }
+    },
+    {
+      id: "primitive:sphere",
+      label: "Sphere",
+      category: "Decor",
+      config: {
+        type: "primitive",
+        primitive: "sphere",
+        position: [0, 0.5, 0],
+        scale: [1, 1, 1],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        material: {
+          color: "#87a4b3"
+        }
+      }
+    },
+    {
+      id: "primitive:cylinder",
+      label: "Cylinder",
+      category: "Decor",
+      config: {
+        type: "primitive",
+        primitive: "cylinder",
+        position: [0, 0.7, 0],
+        scale: [1, 1.4, 1],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        material: {
+          color: "#7a6f63"
+        }
+      }
+    },
+    {
+      id: "primitive:plane",
+      label: "Plane",
+      category: "Surfaces",
+      config: {
+        type: "primitive",
+        primitive: "plane",
+        position: [0, 1.8, 0],
+        scale: [2.2, 1.6, 1],
+        rotation: [0, 180, 0],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        collider: false,
+        material: {
+          color: "#d4dde4",
+          roughness: 0.55,
+          metalness: 0.04
+        }
+      }
+    },
+    {
+      id: "primitive:torus",
+      label: "Torus",
+      category: "Decor",
+      config: {
+        type: "primitive",
+        primitive: "torus",
+        position: [0, 2.2, 0],
+        scale: [1.2, 1.2, 0.12],
+        rotation: [90, 0, 0],
+        allowCatalogOverlap: false,
+        allowDoorwayBlock: false,
+        allowPortalBlock: false,
+        collider: false,
+        material: {
+          color: "#f2b0d6",
+          emissiveColor: "#ff84c6",
+          emissiveIntensity: 0.18,
+          roughness: 0.24,
+          metalness: 0.12
+        }
+      }
+    }
+  ];
 
   function setStatus(text, tone = "muted") {
     if (!statusLabel) {
@@ -294,11 +549,153 @@ export function createLocalSceneEditor({
     return sceneContext.getPropState?.(selectedPropId) || null;
   }
 
+  function getSelectedPropConfig(options = {}) {
+    if (!selectedPropId) {
+      return null;
+    }
+    return sceneContext.getEditablePropConfig?.(selectedPropId, options) || null;
+  }
+
+  function getEditorCreatedCount() {
+    return sceneContext.getEditorCreatedProps?.().length || 0;
+  }
+
   function getSelectedGeneratedEntry() {
     if (!selectedGeneratedNodeId) {
       return null;
     }
     return getGeneratedEntries().find((entry) => entry.id === selectedGeneratedNodeId) || null;
+  }
+
+  function getCreationPresets() {
+    const presets = defaultCreatePresets.map((entry) => ({
+      id: entry.id,
+      label: entry.label,
+      category: readText(entry.category, "Primitives"),
+      config: cloneJson(entry.config) || {}
+    }));
+    const seenModels = new Set();
+
+    for (const propId of getEditableIds()) {
+      const config = sceneContext.getEditablePropConfig?.(propId, { includeSource: false }) || null;
+      const modelPath = readText(config?.model, "");
+      if (!modelPath || seenModels.has(modelPath)) {
+        continue;
+      }
+      seenModels.add(modelPath);
+      const labelBase = readText(modelPath.split("/").pop(), modelPath).replace(/\.glb$/i, "");
+      presets.push({
+        id: `model:${modelPath}`,
+        label: `Model: ${labelBase}`,
+        category: "Scene Models",
+        config: {
+          type: "model",
+          model: modelPath,
+          position: [0, 0, 0],
+          scale: Array.isArray(config?.scale) ? config.scale.slice(0, 3) : [1, 1, 1],
+          rotation: Array.isArray(config?.rotation) ? config.rotation.slice(0, 3) : [0, 0, 0],
+          collider: config?.collider !== false,
+          modelPlacement: cloneJson(config?.modelPlacement) || undefined,
+          modelFallback: cloneJson(config?.modelFallback) || undefined
+        }
+      });
+    }
+
+    return presets;
+  }
+
+  function refreshCreationPresets() {
+    if (!createPresetList) {
+      return;
+    }
+
+    const previous = readText(createPresetList.value, "");
+    const presets = getCreationPresets();
+    const filterQuery = readText(presetFilterInput?.value, "").toLowerCase();
+    const filteredPresets = presets.filter((preset) => {
+      if (!filterQuery) {
+        return true;
+      }
+      return `${preset.label} ${preset.id} ${preset.category}`.toLowerCase().includes(filterQuery);
+    });
+    createPresetList.innerHTML = "";
+    const groupedPresets = new Map();
+    for (const preset of filteredPresets) {
+      const category = readText(preset.category, "Assets");
+      if (!groupedPresets.has(category)) {
+        groupedPresets.set(category, []);
+      }
+      groupedPresets.get(category).push(preset);
+    }
+    for (const [category, entries] of groupedPresets.entries()) {
+      const group = document.createElement("optgroup");
+      group.label = category;
+      for (const preset of entries) {
+        const option = document.createElement("option");
+        option.value = preset.id;
+        option.textContent = preset.label;
+        group.append(option);
+      }
+      createPresetList.append(group);
+    }
+    createPresetList.value = filteredPresets.some((entry) => entry.id === previous)
+      ? previous
+      : filteredPresets[0]?.id || "";
+  }
+
+  function getSelectedCreationPreset() {
+    const presetId = readText(createPresetList?.value, "");
+    return getCreationPresets().find((entry) => entry.id === presetId) || null;
+  }
+
+  function getPlacementAnchor() {
+    const selectedObject = getSelectedObject();
+    if (selectedObject) {
+      return {
+        x: selectedObject.position.x + 0.8,
+        y: selectedObject.position.y,
+        z: selectedObject.position.z + 0.8
+      };
+    }
+
+    const player = sceneContext?.player || null;
+    const floorY = Number(sceneContext?.floorY);
+    if (!player) {
+      return {
+        x: 0,
+        y: Number.isFinite(floorY) ? floorY : 0,
+        z: 0
+      };
+    }
+
+    const forward = new THREE.Vector3(0, 0, -1);
+    forward.applyEuler(new THREE.Euler(0, player.rotation.y, 0, "YXZ"));
+    forward.y = 0;
+    if (forward.lengthSq() <= 0.0001) {
+      forward.set(0, 0, -1);
+    }
+    forward.normalize().multiplyScalar(2.6);
+
+    return {
+      x: player.position.x + forward.x,
+      y: Number.isFinite(floorY) ? floorY : Math.max(0, player.position.y - 1.7),
+      z: player.position.z + forward.z
+    };
+  }
+
+  function buildUniquePropId(baseId = "editor_prop") {
+    const root = readText(baseId, "editor_prop")
+      .toLowerCase()
+      .replace(/[^a-z0-9_]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "editor_prop";
+    const existingIds = new Set(getEditableIds());
+    let attempt = 1;
+    let candidate = `${root}_${attempt}`;
+    while (existingIds.has(candidate)) {
+      attempt += 1;
+      candidate = `${root}_${attempt}`;
+    }
+    return candidate;
   }
 
   function getSelectedSceneObject() {
@@ -363,24 +760,76 @@ export function createLocalSceneEditor({
       button.classList.toggle("is-active", selected);
       button.setAttribute("aria-pressed", selected ? "true" : "false");
     }
+    if (modeBadge) {
+      modeBadge.textContent =
+        nextMode === "translate"
+          ? "Move"
+          : nextMode === "rotate"
+            ? "Rotate"
+            : nextMode === "scale"
+              ? "Scale"
+              : "Select";
+    }
     syncTransformAttachment();
+  }
+
+  function renderSelectionChips(items = []) {
+    if (!selectionChips) {
+      return;
+    }
+    selectionChips.innerHTML = "";
+    for (const item of items) {
+      const label = readText(item?.label, "");
+      if (!label) {
+        continue;
+      }
+      const chip = document.createElement("span");
+      chip.className = "editor-chip";
+      chip.dataset.tone = readText(item?.tone, "neutral");
+      chip.textContent = label;
+      selectionChips.appendChild(chip);
+    }
+    selectionChips.classList.toggle("is-empty", selectionChips.childElementCount === 0);
+  }
+
+  function getSelectedPlacementDiagnostics() {
+    if (!selectedPropId) {
+      return null;
+    }
+    return sceneContext.getEditablePropPlacementDiagnostics?.(selectedPropId) || null;
   }
 
   function updateActionState() {
     const selectedType = getSelectedType();
     const propState = getSelectedPropState();
     const generatedEntry = getSelectedGeneratedEntry();
+    const placementDiagnostics = getSelectedPlacementDiagnostics();
     const hasSelection = Boolean(selectedType);
+    const canDuplicate = selectedType === "prop" && Boolean(getSelectedPropConfig({ includeSource: false }));
+    const canCreate = Boolean(getSelectedCreationPreset());
+
+    if (createButton) {
+      createButton.disabled = !canCreate;
+    }
+    if (duplicateButton) {
+      duplicateButton.disabled = !canDuplicate;
+    }
 
     if (hideSelectedButton) {
+      if (selectedType === "prop" && propState?.editorCreated === true) {
+        hideSelectedButton.textContent = "Delete Added";
+      } else {
+        hideSelectedButton.textContent = "Delete / Hide Selected";
+      }
       hideSelectedButton.disabled =
         !hasSelection ||
-        (selectedType === "prop" && propState?.editorHidden === true) ||
+        (selectedType === "prop" && propState?.editorCreated !== true && propState?.editorHidden === true) ||
         (selectedType === "generated" && generatedEntry?.visible === false);
     }
     if (restoreSelectedButton) {
       restoreSelectedButton.disabled =
         !hasSelection ||
+        (selectedType === "prop" && propState?.editorCreated === true) ||
         (selectedType === "prop" && propState?.editorHidden !== true) ||
         (selectedType === "generated" &&
           generatedEntry?.visible !== false &&
@@ -388,6 +837,13 @@ export function createLocalSceneEditor({
     }
     if (restoreRoomButton) {
       restoreRoomButton.disabled = !generatedEntry;
+    }
+    if (resolvePlacementButton) {
+      resolvePlacementButton.disabled =
+        selectedType !== "prop" ||
+        !selectedPropId ||
+        !placementDiagnostics ||
+        placementDiagnostics.valid === true;
     }
     if (copyPathButton) {
       copyPathButton.disabled =
@@ -399,16 +855,19 @@ export function createLocalSceneEditor({
 
   function refreshReadout() {
     const selectedType = getSelectedType();
-    if (!readout || !sourceReadout) {
+    if (!readout || !sourceReadout || !placementReadout) {
       return;
     }
 
     if (selectedType === "prop") {
       const transform = sceneContext.getEditablePropTransform?.(selectedPropId);
       const state = getSelectedPropState();
+      const placementDiagnostics = getSelectedPlacementDiagnostics();
       if (!transform || !state) {
         readout.textContent = "Nothing selected.";
         sourceReadout.textContent = "No source path.";
+        placementReadout.textContent = "Placement diagnostics unavailable.";
+        renderSelectionChips([]);
         updateActionState();
         return;
       }
@@ -416,9 +875,10 @@ export function createLocalSceneEditor({
       const [px, py, pz] = transform.position || [0, 0, 0];
       const [rx, ry, rz] = transform.rotation || [0, 0, 0];
       const [sx, sy, sz] = transform.scale || [1, 1, 1];
+      const createdLabel = state.editorCreated ? " | created locally" : "";
       const hiddenLabel = state.editorHidden ? " | hidden locally" : "";
       readout.textContent =
-        `Prop ${selectedPropId}${hiddenLabel} | ` +
+        `Prop ${selectedPropId}${createdLabel}${hiddenLabel} | ` +
         `P ${toRounded(px, 2)}, ${toRounded(py, 2)}, ${toRounded(pz, 2)} | ` +
         `R ${toRounded(rx, 1)}, ${toRounded(ry, 1)}, ${toRounded(rz, 1)} | ` +
         `S ${toRounded(sx, 2)}, ${toRounded(sy, 2)}, ${toRounded(sz, 2)}`;
@@ -430,7 +890,49 @@ export function createLocalSceneEditor({
         ? sourceGroupId
           ? `${configFile} :: ${sourcePath} | group ${sourceGroupId}`
           : `${configFile} :: ${sourcePath}`
-        : "Runtime-only object.";
+        : state.editorCreated
+          ? "Runtime-only editor object. Export scene overrides to persist it."
+          : "Runtime-only object.";
+      const chips = [];
+      chips.push({
+        label: state.editorCreated ? "Added Locally" : "Shipped Prop",
+        tone: state.editorCreated ? "info" : "neutral"
+      });
+      if (state.editorHidden) {
+        chips.push({
+          label: "Hidden",
+          tone: "warn"
+        });
+      }
+      if (state.sourceGroupId) {
+        chips.push({
+          label: `Group ${state.sourceGroupId}`,
+          tone: "neutral"
+        });
+      }
+      if (Array.isArray(state.moduleIds) && state.moduleIds.length) {
+        chips.push({
+          label: `Modules ${state.moduleIds.join(", ")}`,
+          tone: "info"
+        });
+      }
+      if (placementDiagnostics?.valid) {
+        chips.push({
+          label: "Placement Clear",
+          tone: "success"
+        });
+      } else if (placementDiagnostics?.issueCount) {
+        chips.push({
+          label: `${placementDiagnostics.issueCount} Placement Issue${placementDiagnostics.issueCount === 1 ? "" : "s"}`,
+          tone: "warn"
+        });
+      }
+      renderSelectionChips(chips);
+      placementReadout.textContent = placementDiagnostics?.valid
+        ? "Placement clear. Door, portal, catalog, and occupied-footprint checks passed."
+        : placementDiagnostics?.issues?.length
+          ? `Placement issues: ${placementDiagnostics.issues.map((issue) => `${issue.label} (${issue.id})`).join(" • ")}`
+          : "Placement diagnostics unavailable.";
       updateActionState();
       return;
     }
@@ -456,12 +958,29 @@ export function createLocalSceneEditor({
       sourceReadout.textContent =
         `${readText(entry.sourceConfigFile, "catalog.json")} :: ${readText(entry.sourcePath, "catalog.rooms")} | ` +
         `${readText(entry.partId, "generated-shell")}`;
+      placementReadout.textContent = "Generated shell pieces are topology-driven. Hide, restore, or rebuild them from this inspector.";
+      renderSelectionChips([
+        {
+          label: `${entry.roomId} Room ${entry.roomIndex + 1}`,
+          tone: "info"
+        },
+        {
+          label: entry.visible ? "Visible" : "Hidden",
+          tone: entry.visible ? "success" : "warn"
+        },
+        {
+          label: `${entry.enabledColliderCount}/${entry.colliderCount} Colliders`,
+          tone: "neutral"
+        }
+      ]);
       updateActionState();
       return;
     }
 
     readout.textContent = "Nothing selected.";
     sourceReadout.textContent = "No source path.";
+    placementReadout.textContent = "Placement diagnostics unavailable.";
+    renderSelectionChips([]);
     updateActionState();
   }
 
@@ -484,13 +1003,14 @@ export function createLocalSceneEditor({
     if (!state) {
       return id;
     }
+    const addedPrefix = state.editorCreated ? "[added] " : "";
     if (state.editorHidden) {
-      return `[hidden] ${id}`;
+      return `${addedPrefix}[hidden] ${id}`;
     }
     if (state.visible === false) {
-      return `[culled] ${id}`;
+      return `${addedPrefix}[culled] ${id}`;
     }
-    return id;
+    return `${addedPrefix}${id}`;
   }
 
   function buildGeneratedOptionLabel(entry) {
@@ -499,6 +1019,37 @@ export function createLocalSceneEditor({
     }
     const hiddenPrefix = entry.visible ? "" : "[hidden] ";
     return `[${entry.roomId} ${entry.roomIndex + 1}] ${hiddenPrefix}${entry.label}`;
+  }
+
+  function getFilteredPropIds() {
+    const filterQuery = readText(propFilterInput?.value, "").toLowerCase();
+    const ids = getEditableIds();
+    if (!filterQuery) {
+      return ids;
+    }
+    return ids.filter((id) => {
+      const state = sceneContext.getPropState?.(id) || null;
+      const haystack = [
+        id,
+        readText(state?.sourcePath, ""),
+        readText(state?.sourceGroupId, ""),
+        ...(Array.isArray(state?.moduleIds) ? state.moduleIds : [])
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(filterQuery);
+    });
+  }
+
+  function getFilteredGeneratedEntries() {
+    const filterQuery = readText(generatedFilterInput?.value, "").toLowerCase();
+    const entries = getGeneratedEntries();
+    if (!filterQuery) {
+      return entries;
+    }
+    return entries.filter((entry) =>
+      `${entry.roomId} ${entry.label} ${entry.partId} ${entry.sourcePath}`.toLowerCase().includes(filterQuery)
+    );
   }
 
   function selectProp(propId) {
@@ -556,7 +1107,7 @@ export function createLocalSceneEditor({
       return;
     }
 
-    const ids = getEditableIds();
+    const ids = getFilteredPropIds();
     const previous = selectedPropId || readText(propList.value, "");
     propList.innerHTML = "";
     for (const id of ids) {
@@ -578,7 +1129,7 @@ export function createLocalSceneEditor({
       return;
     }
 
-    const entries = getGeneratedEntries();
+    const entries = getFilteredGeneratedEntries();
     const previous = selectedGeneratedNodeId || readText(generatedList.value, "");
     generatedList.innerHTML = "";
     for (const entry of entries) {
@@ -596,6 +1147,7 @@ export function createLocalSceneEditor({
   }
 
   function refreshOutliner() {
+    refreshCreationPresets();
     refreshPropOutliner();
     refreshGeneratedOutliner();
     refreshReadout();
@@ -604,6 +1156,10 @@ export function createLocalSceneEditor({
   function buildSerializableState() {
     const props = {};
     for (const id of getEditableIds()) {
+      const state = sceneContext.getPropState?.(id) || null;
+      if (state?.editorCreated === true) {
+        continue;
+      }
       const transform = sceneContext.getEditablePropTransform?.(id);
       if (!transform) {
         continue;
@@ -611,9 +1167,13 @@ export function createLocalSceneEditor({
       props[id] = transform;
     }
     return {
-      version: 2,
+      version: 3,
+      createdProps: sceneContext.getEditorCreatedProps?.() || [],
       props,
-      hiddenProps: sceneContext.getHiddenEditablePropIds?.() || [],
+      hiddenProps: (sceneContext.getHiddenEditablePropIds?.() || []).filter((id) => {
+        const state = sceneContext.getPropState?.(id) || null;
+        return state?.editorCreated !== true;
+      }),
       hiddenGeneratedNodes: catalogSystem?.getHiddenGeneratedShellNodeIds?.() || []
     };
   }
@@ -692,13 +1252,16 @@ export function createLocalSceneEditor({
     return updatedCount;
   }
 
-  function applyState(state, { markDirty = true } = {}) {
+  async function applyState(state, { markDirty = true } = {}) {
     const normalized = normalizeSavedState(state);
+    const updatedCreatedProps =
+      (await sceneContext.setEditorCreatedProps?.(normalized.createdProps, { markDirty })) || 0;
     const updatedTransforms =
       sceneContext.applyEditablePropTransforms?.(normalized.props, { markDirty }) || 0;
     const updatedHiddenProps = applyHiddenPropState(normalized.hiddenProps, { markDirty });
     const updatedHiddenGenerated = applyHiddenGeneratedState(normalized.hiddenGeneratedNodes);
-    const updated = updatedTransforms + updatedHiddenProps + updatedHiddenGenerated;
+    const updated =
+      updatedCreatedProps + updatedTransforms + updatedHiddenProps + updatedHiddenGenerated;
     if (updated > 0) {
       onSceneMutated?.();
       refreshOutliner();
@@ -710,13 +1273,13 @@ export function createLocalSceneEditor({
     const payload = buildSerializableState();
     writeStoredState(payload);
     setStatus(
-      `Saved ${Object.keys(payload.props).length} props, ${payload.hiddenProps.length} hidden props, and ${payload.hiddenGeneratedNodes.length} hidden shell pieces locally.`,
+      `Saved ${Object.keys(payload.props).length} props, ${payload.createdProps.length} added props, ${payload.hiddenProps.length} hidden props, and ${payload.hiddenGeneratedNodes.length} hidden shell pieces locally.`,
       "success"
     );
     return payload;
   }
 
-  function loadSavedState({ silent = false } = {}) {
+  async function loadSavedState({ silent = false } = {}) {
     const payload = readStoredState();
     if (!payload) {
       if (!silent) {
@@ -724,7 +1287,7 @@ export function createLocalSceneEditor({
       }
       return 0;
     }
-    const applied = applyState(payload, { markDirty: true });
+    const applied = await applyState(payload, { markDirty: true });
     if (!silent) {
       setStatus(`Loaded ${applied} local editor changes.`, "success");
     }
@@ -788,6 +1351,161 @@ export function createLocalSceneEditor({
     }
 
     setStatus("Select a prop or generated shell piece first.", "warn");
+    return false;
+  }
+
+  function buildCreatedPropFromPreset(preset) {
+    const config = cloneJson(preset?.config) || {};
+    const anchor = getPlacementAnchor();
+    const offset = Array.isArray(config.position) ? config.position.slice(0, 3) : [0, 0, 0];
+    const yaw = toRounded(THREE.MathUtils.radToDeg(sceneContext?.player?.rotation?.y || 0), 3);
+    const baseName =
+      config.type === "model"
+        ? readText(readText(config.model, "").split("/").pop(), "model").replace(/\.glb$/i, "")
+        : readText(config.primitive, "prop");
+    config.id = buildUniquePropId(baseName);
+    config.position = [
+      toRounded(anchor.x + (Number(offset[0]) || 0), 4),
+      toRounded(anchor.y + (Number(offset[1]) || 0), 4),
+      toRounded(anchor.z + (Number(offset[2]) || 0), 4)
+    ];
+    config.rotation = Array.isArray(config.rotation) ? config.rotation.slice(0, 3) : [0, yaw, 0];
+    if (
+      config.primitive === "box" ||
+      config.primitive === "plane" ||
+      preset?.id === "primitive:wall" ||
+      preset?.id === "primitive:glass-wall"
+    ) {
+      config.rotation = [config.rotation[0] || 0, yaw, config.rotation[2] || 0];
+    }
+    config.scale = Array.isArray(config.scale) ? config.scale.slice(0, 3) : [1, 1, 1];
+    if (config.allowCatalogOverlap == null) {
+      config.allowCatalogOverlap = false;
+    }
+    if (config.allowDoorwayBlock == null) {
+      config.allowDoorwayBlock = false;
+    }
+    if (config.allowPortalBlock == null) {
+      config.allowPortalBlock = false;
+    }
+    delete config.sourceConfigFile;
+    delete config.sourcePath;
+    delete config.sourceGroupId;
+    delete config.editorCreated;
+    return config;
+  }
+
+  async function createPropFromPreset() {
+    const preset = getSelectedCreationPreset();
+    if (!preset) {
+      setStatus("Choose an asset preset first.", "warn");
+      return false;
+    }
+
+    const config = buildCreatedPropFromPreset(preset);
+    const created = await sceneContext.createEditorCreatedProp?.(config, { markDirty: true });
+    if (!created) {
+      setStatus("Failed to create the selected asset.", "warn");
+      return false;
+    }
+
+    onSceneMutated?.();
+    refreshOutliner();
+    selectProp(config.id);
+    const placementResult = sceneContext.resolveEditablePropPlacement?.(config.id, {
+      markDirty: true
+    });
+    if (placementResult?.moved) {
+      refreshOutliner();
+      selectProp(config.id);
+    }
+    setMode("translate");
+    setStatus(
+      placementResult?.moved
+        ? `Placed ${config.id} and nudged it clear of nearby blocked lanes.`
+        : `Placed ${config.id}.`,
+      "success"
+    );
+    return config.id;
+  }
+
+  async function duplicateSelectedProp() {
+    const baseConfig = getSelectedPropConfig({ includeSource: false });
+    if (!baseConfig || !selectedPropId) {
+      setStatus("Select a prop before duplicating it.", "warn");
+      return false;
+    }
+
+    const basePosition = Array.isArray(baseConfig.position) ? baseConfig.position : [0, 0, 0];
+    const created = await sceneContext.duplicateEditableProp?.(
+      selectedPropId,
+      {
+        id: buildUniquePropId(`${selectedPropId}_copy`),
+        position: [
+          toRounded((Number(basePosition[0]) || 0) + 0.8, 4),
+          toRounded(Number(basePosition[1]) || 0, 4),
+          toRounded((Number(basePosition[2]) || 0) + 0.8, 4)
+        ]
+      },
+      { markDirty: true }
+    );
+    const nextId = readText(created?.userData?.propId, "");
+    if (!created || !nextId) {
+      setStatus("Failed to duplicate the selected prop.", "warn");
+      return false;
+    }
+
+    onSceneMutated?.();
+    refreshOutliner();
+    selectProp(nextId);
+    const placementResult = sceneContext.resolveEditablePropPlacement?.(nextId, {
+      markDirty: true
+    });
+    if (placementResult?.moved) {
+      refreshOutliner();
+      selectProp(nextId);
+    }
+    setMode("translate");
+    setStatus(
+      placementResult?.moved
+        ? `Duplicated ${selectedPropId} as ${nextId} and resolved its spawn footprint.`
+        : `Duplicated ${selectedPropId} as ${nextId}.`,
+      "success"
+    );
+    return nextId;
+  }
+
+  function resolveSelectedPlacement() {
+    if (!selectedPropId) {
+      setStatus("Select a prop before resolving placement.", "warn");
+      return false;
+    }
+
+    const result = sceneContext.resolveEditablePropPlacement?.(selectedPropId, {
+      markDirty: true
+    });
+    if (!result) {
+      setStatus("Placement resolution is unavailable for this prop.", "warn");
+      return false;
+    }
+
+    if (result.valid && result.moved) {
+      onSceneMutated?.();
+      refreshOutliner();
+      selectProp(selectedPropId);
+      setStatus(`Resolved ${selectedPropId} to the nearest safe footprint.`, "success");
+      return true;
+    }
+    if (result.valid) {
+      setStatus(`${selectedPropId} is already clear of doorway, portal, and occupancy conflicts.`, "muted");
+      return true;
+    }
+
+    setStatus(
+      `No safe placement found for ${selectedPropId}. ${result.issues?.map((issue) => issue.label).join(", ") || "Check nearby blockers."}`,
+      "warn"
+    );
+    refreshReadout();
     return false;
   }
 
@@ -911,7 +1629,7 @@ export function createLocalSceneEditor({
           return;
         case "Delete":
         case "Backspace":
-          hideSelected();
+          deleteSelected();
           event.preventDefault();
           event.stopPropagation();
           return;
@@ -1033,6 +1751,26 @@ export function createLocalSceneEditor({
     }
   }
 
+  function deleteSelected() {
+    const selectedType = getSelectedType();
+    const propState = getSelectedPropState();
+    if (selectedType === "prop" && selectedPropId && propState?.editorCreated === true) {
+      const deletedId = selectedPropId;
+      clearSelection();
+      if (sceneContext.removeEditorCreatedProp?.(deletedId, { markDirty: true })) {
+        onSceneMutated?.();
+        refreshOutliner();
+        setStatus(`Deleted ${deletedId}.`, "success");
+        return true;
+      }
+      setStatus(`Failed to delete ${deletedId}.`, "warn");
+      return false;
+    }
+
+    hideSelected();
+    return true;
+  }
+
   function restoreSelected() {
     const selectedType = getSelectedType();
     if (selectedType === "prop" && selectedPropId) {
@@ -1118,6 +1856,13 @@ export function createLocalSceneEditor({
       sceneContext.commitEditablePropTransform?.(selectedPropId, { markDirty: true });
       onSceneMutated?.();
       refreshReadout();
+      const placementDiagnostics = getSelectedPlacementDiagnostics();
+      if (placementDiagnostics && !placementDiagnostics.valid) {
+        setStatus(
+          `Placement warning for ${selectedPropId}: ${placementDiagnostics.issues.map((issue) => issue.label).join(", ")}. Use Resolve Placement to nudge it clear.`,
+          "warn"
+        );
+      }
     }
   });
 
@@ -1154,11 +1899,30 @@ export function createLocalSceneEditor({
     refreshOutliner();
     setStatus("Outliners refreshed.", "muted");
   });
+  createPresetList?.addEventListener("change", () => {
+    updateActionState();
+  });
+  presetFilterInput?.addEventListener("input", () => {
+    refreshCreationPresets();
+    updateActionState();
+  });
+  propFilterInput?.addEventListener("input", () => {
+    refreshPropOutliner();
+  });
+  generatedFilterInput?.addEventListener("input", () => {
+    refreshGeneratedOutliner();
+  });
+  createButton?.addEventListener("click", () => {
+    void createPropFromPreset();
+  });
+  duplicateButton?.addEventListener("click", () => {
+    void duplicateSelectedProp();
+  });
   saveButton?.addEventListener("click", () => {
     saveState();
   });
   loadButton?.addEventListener("click", () => {
-    loadSavedState();
+    void loadSavedState();
   });
   clearButton?.addEventListener("click", () => {
     clearState();
@@ -1176,10 +1940,13 @@ export function createLocalSceneEditor({
     void exportStateToConfig("defaults");
   });
   hideSelectedButton?.addEventListener("click", () => {
-    hideSelected();
+    deleteSelected();
   });
   restoreSelectedButton?.addEventListener("click", () => {
     restoreSelected();
+  });
+  resolvePlacementButton?.addEventListener("click", () => {
+    resolveSelectedPlacement();
   });
   restoreRoomButton?.addEventListener("click", () => {
     restoreSelectedRoom();
@@ -1217,6 +1984,11 @@ export function createLocalSceneEditor({
     loadSavedState,
     saveState,
     clearState,
+    createFromPreset: createPropFromPreset,
+    duplicateSelected: duplicateSelectedProp,
+    resolveSelectedPlacement,
+    deleteSelected,
+    buildState: buildSerializableState,
     getSnapshot: () => ({
       selectionType: getSelectedType(),
       selectedPropId,
@@ -1226,6 +1998,8 @@ export function createLocalSceneEditor({
         readText(getSelectedGeneratedEntry()?.sourcePath, ""),
       mode: activeMode,
       propCount: getEditableIds().length,
+      createdPropCount: getEditorCreatedCount(),
+      creationPresetCount: getCreationPresets().length,
       generatedCount: getGeneratedEntries().length,
       hiddenPropCount: sceneContext.getHiddenEditablePropIds?.().length || 0,
       hiddenGeneratedCount: catalogSystem?.getHiddenGeneratedShellNodeIds?.().length || 0,

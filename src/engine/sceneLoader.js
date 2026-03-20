@@ -1022,6 +1022,102 @@ function boundsOverlap2D(a, b) {
   return a.minX <= b.maxX && a.maxX >= b.minX && a.minZ <= b.maxZ && a.maxZ >= b.minZ;
 }
 
+function expandBounds2D(bounds, padding = 0) {
+  const amount = Math.max(0, Number(padding) || 0);
+  if (!bounds || amount <= 0) {
+    return bounds ? { ...bounds } : null;
+  }
+  return {
+    minX: bounds.minX - amount,
+    maxX: bounds.maxX + amount,
+    minZ: bounds.minZ - amount,
+    maxZ: bounds.maxZ + amount
+  };
+}
+
+export function normalizePlacementPolicy(prop = {}) {
+  const placement = isObject(prop?.placement) ? prop.placement : {};
+  return {
+    avoidCatalog: placement.avoidCatalog ?? prop.allowCatalogOverlap !== true,
+    avoidDoorways: placement.avoidDoorways ?? prop.allowDoorwayBlock !== true,
+    avoidPortals: placement.avoidPortals ?? prop.allowPortalBlock !== true,
+    avoidProps: placement.avoidProps ?? prop.collider !== false,
+    clearance: THREE.MathUtils.clamp(Number(placement.clearance) || 0.12, 0, 1.5),
+    searchStep: THREE.MathUtils.clamp(Number(placement.searchStep) || 0.5, 0.1, 2),
+    searchRadius: THREE.MathUtils.clamp(Number(placement.searchRadius) || 6, 0.5, 24)
+  };
+}
+
+export function collectPlacementIssuesForBounds(
+  bounds,
+  { prop = {}, catalogZones = [], safetyZones = [], colliders = [], ignoreId = "" } = {}
+) {
+  if (!bounds) {
+    return [];
+  }
+
+  const normalizedIgnoreId = readText(ignoreId, "");
+  const policy = normalizePlacementPolicy(prop);
+  const paddedBounds = expandBounds2D(bounds, policy.clearance) || bounds;
+  const issues = [];
+
+  if (policy.avoidCatalog) {
+    for (const zone of Array.isArray(catalogZones) ? catalogZones : []) {
+      if (!boundsOverlap2D(paddedBounds, zone)) {
+        continue;
+      }
+      issues.push({
+        type: "catalog",
+        id: readText(zone.id, "catalog-zone"),
+        label: "Catalog lane",
+        severity: "error"
+      });
+    }
+  }
+
+  for (const zone of Array.isArray(safetyZones) ? safetyZones : []) {
+    const kind = readText(zone?.kind, "");
+    if (kind === "doorway" && !policy.avoidDoorways) {
+      continue;
+    }
+    if (kind === "portal" && !policy.avoidPortals) {
+      continue;
+    }
+    if (!boundsOverlap2D(paddedBounds, zone)) {
+      continue;
+    }
+    issues.push({
+      type: kind || "safety-zone",
+      id: readText(zone?.id, kind || "safety-zone"),
+      label: kind === "doorway" ? "Door clearance" : kind === "portal" ? "Portal clearance" : "Reserved zone",
+      severity: "error"
+    });
+  }
+
+  if (policy.avoidProps) {
+    for (const collider of Array.isArray(colliders) ? colliders : []) {
+      if (!collider || collider.enabled === false) {
+        continue;
+      }
+      const colliderId = readText(collider.id, "");
+      if (normalizedIgnoreId && colliderId === normalizedIgnoreId) {
+        continue;
+      }
+      if (!boundsOverlap2D(paddedBounds, collider)) {
+        continue;
+      }
+      issues.push({
+        type: "prop",
+        id: colliderId || readText(collider.tag, "prop"),
+        label: "Occupied footprint",
+        severity: "warn"
+      });
+    }
+  }
+
+  return issues;
+}
+
 function computeCatalogRoomCapacity(config = {}) {
   const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
   const width = Math.max(1, Number(size[0]) || 8.6);
@@ -1462,6 +1558,18 @@ export async function loadScene({
   function removeCollidersByTag(tag) {
     for (let i = colliders.length - 1; i >= 0; i -= 1) {
       if (colliders[i].tag === tag) {
+        colliders.splice(i, 1);
+      }
+    }
+  }
+
+  function removeCollidersById(id) {
+    const normalizedId = readText(id, "");
+    if (!normalizedId) {
+      return;
+    }
+    for (let i = colliders.length - 1; i >= 0; i -= 1) {
+      if (readText(colliders[i]?.id, "") === normalizedId) {
         colliders.splice(i, 1);
       }
     }
@@ -2400,6 +2508,9 @@ export async function loadScene({
   const dynamicProps = [];
   const visibilityEntries = [];
   const editorHiddenPropIds = new Set();
+  const editorCreatedPropOrder = [];
+  const editorCreatedPropConfigsById = new Map();
+  const editorCreatedPropTag = "__editor_override__";
   let sceneRevision = 0;
   let activePropMaterialOverrideIds = new Set();
   let glowLightCount = 0;
@@ -2520,38 +2631,99 @@ export async function loadScene({
     };
   }
 
-  function isBlockedByCatalogZone(object) {
+  function getPlacementIssuesForObject(object, prop = {}, { ignoreId = "" } = {}) {
     const bounds = getObjectBounds2D(object);
-    if (!bounds) {
-      return false;
-    }
+    return collectPlacementIssuesForBounds(bounds, {
+      prop,
+      catalogZones: catalogProtectedZones,
+      safetyZones: propSafetyZones,
+      colliders,
+      ignoreId
+    });
+  }
 
-    for (const zone of catalogProtectedZones) {
-      if (boundsOverlap2D(bounds, zone)) {
-        return true;
-      }
-    }
-    return false;
+  function isBlockedByCatalogZone(object) {
+    return getPlacementIssuesForObject(object, {}).some((issue) => issue.type === "catalog");
   }
 
   function isBlockedByPropSafetyZone(object, prop = {}) {
-    const bounds = getObjectBounds2D(object);
-    if (!bounds) {
-      return false;
+    return getPlacementIssuesForObject(object, prop).some(
+      (issue) => issue.type === "doorway" || issue.type === "portal"
+    );
+  }
+
+  function buildPlacementResolutionOffsets(step = 0.5, maxRadius = 6) {
+    const safeStep = Math.max(0.1, Number(step) || 0.5);
+    const safeRadius = Math.max(safeStep, Number(maxRadius) || 6);
+    const offsets = [{ x: 0, z: 0, distanceSq: 0 }];
+    for (let dz = -safeRadius; dz <= safeRadius; dz += safeStep) {
+      for (let dx = -safeRadius; dx <= safeRadius; dx += safeStep) {
+        if (Math.abs(dx) < 0.001 && Math.abs(dz) < 0.001) {
+          continue;
+        }
+        const distanceSq = dx * dx + dz * dz;
+        if (distanceSq > safeRadius * safeRadius + 0.001) {
+          continue;
+        }
+        offsets.push({ x: dx, z: dz, distanceSq });
+      }
+    }
+    offsets.sort((a, b) => a.distanceSq - b.distanceSq);
+    return offsets;
+  }
+
+  function resolvePlacementForObject(object, prop = {}, { ignoreId = "" } = {}) {
+    if (!object) {
+      return {
+        valid: false,
+        moved: false,
+        issues: []
+      };
     }
 
-    for (const zone of propSafetyZones) {
-      if (zone.kind === "portal" && prop.allowPortalBlock === true) {
+    const policy = normalizePlacementPolicy(prop);
+    const originalPosition = object.position.clone();
+    object.updateMatrixWorld(true);
+    const originalIssues = getPlacementIssuesForObject(object, prop, { ignoreId });
+    if (!originalIssues.length) {
+      return {
+        valid: true,
+        moved: false,
+        issues: [],
+        position: [originalPosition.x, originalPosition.y, originalPosition.z]
+      };
+    }
+
+    const offsets = buildPlacementResolutionOffsets(policy.searchStep, policy.searchRadius);
+    for (const offset of offsets) {
+      if (offset.distanceSq <= 0.0001) {
         continue;
       }
-      if (zone.kind === "doorway" && prop.allowDoorwayBlock === true) {
-        continue;
-      }
-      if (boundsOverlap2D(bounds, zone)) {
-        return true;
+      object.position.set(
+        originalPosition.x + offset.x,
+        originalPosition.y,
+        originalPosition.z + offset.z
+      );
+      object.updateMatrixWorld(true);
+      const issues = getPlacementIssuesForObject(object, prop, { ignoreId });
+      if (!issues.length) {
+        return {
+          valid: true,
+          moved: true,
+          issues: [],
+          position: [object.position.x, object.position.y, object.position.z]
+        };
       }
     }
-    return false;
+
+    object.position.copy(originalPosition);
+    object.updateMatrixWorld(true);
+    return {
+      valid: false,
+      moved: false,
+      issues: originalIssues,
+      position: [originalPosition.x, originalPosition.y, originalPosition.z]
+    };
   }
 
   function applyResolvedVisibility(entry) {
@@ -3201,6 +3373,9 @@ export async function loadScene({
     const shouldCancel =
       typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
     const skipDeferred = options.skipDeferred === true;
+    const resolvePlacement = options.resolvePlacement === true;
+    const enforcePlacement =
+      resolvePlacement || prop?.editorCreated === true || isObject(prop?.placement);
     if (shouldCancel()) {
       return null;
     }
@@ -3224,6 +3399,8 @@ export async function loadScene({
     wrapper.userData.sourceConfigFile = readText(prop.sourceConfigFile, "");
     wrapper.userData.sourcePath = readText(prop.sourcePath, "");
     wrapper.userData.sourceGroupId = readText(prop.sourceGroupId, "");
+    wrapper.userData.editorCreated = prop.editorCreated === true;
+    wrapper.userData.editorSerializableConfig = cloneConfig(prop) || {};
     wrapper.userData.baseMaterialConfig = cloneConfig(prop.material || {});
     wrapper.userData.materialManaged = prop.type !== "model" && prop.type !== "composite";
     wrapper.position.copy(toVector3(prop.position || [0, 0, 0]));
@@ -3274,11 +3451,22 @@ export async function loadScene({
     const scale = prop.scale || [1, 1, 1];
     wrapper.scale.set(scale[0] || 1, scale[1] || 1, scale[2] || 1);
     wrapper.updateMatrixWorld(true);
-    if (prop.allowCatalogOverlap !== true && isBlockedByCatalogZone(wrapper)) {
-      disposeManagedObjectResources(wrapper);
-      return null;
+    let placementIssues = [];
+    if (enforcePlacement) {
+      const placementIgnoreId = readText(prop.id, "");
+      placementIssues = getPlacementIssuesForObject(wrapper, prop, {
+        ignoreId: placementIgnoreId
+      });
+      if (placementIssues.length && resolvePlacement) {
+        const resolvedPlacement = resolvePlacementForObject(wrapper, prop, {
+          ignoreId: placementIgnoreId
+        });
+        if (resolvedPlacement?.valid) {
+          placementIssues = [];
+        }
+      }
     }
-    if (isBlockedByPropSafetyZone(wrapper, prop)) {
+    if (placementIssues.length) {
       disposeManagedObjectResources(wrapper);
       return null;
     }
@@ -3419,63 +3607,94 @@ export async function loadScene({
     activePropMaterialOverrideIds = nextIds;
   }
 
-  function removePropsByTag(tag) {
-    removeCollidersByTag(tag);
-    for (let i = propRecords.length - 1; i >= 0; i -= 1) {
-      const item = propRecords[i];
-      if (item.userData.themeTag === tag) {
-        if (item.userData?.propId) {
-          propRecordsById.delete(item.userData.propId);
-          activePropMaterialOverrideIds.delete(item.userData.propId);
-        }
-        item.traverse((child) => {
-          if (child.isPointLight && child.userData?.fromPropGlow) {
-            glowLightCount = Math.max(0, glowLightCount - 1);
-          }
-        });
-        disposeManagedObjectResources(item);
-        scene.remove(item);
-        item.clear();
-        propRecords.splice(i, 1);
-        markSceneDirty();
-        for (let j = animatedTextures.length - 1; j >= 0; j -= 1) {
-          if (animatedTextures[j].owner === item) {
-            animatedTextures.splice(j, 1);
-          }
-        }
-        for (let j = dynamicProps.length - 1; j >= 0; j -= 1) {
-          if (dynamicProps[j].object === item) {
-            dynamicProps.splice(j, 1);
-          }
-        }
-        for (let j = propInteractionTargets.length - 1; j >= 0; j -= 1) {
-          if (propInteractionTargets[j].userData?.owner === item) {
-            propInteractionTargets.splice(j, 1);
-          }
-        }
-        for (let j = displayPanels.length - 1; j >= 0; j -= 1) {
-          if (displayPanels[j].object === item) {
-            displayPanels.splice(j, 1);
-          }
-        }
-        for (let j = visibilityEntries.length - 1; j >= 0; j -= 1) {
-          if (visibilityEntries[j].object === item) {
-            visibilityEntries.splice(j, 1);
-          }
-        }
-        for (const [moduleId, record] of propModules.entries()) {
-          record.members = record.members.filter((member) => member.object !== item);
-          record.deferredEntries = (record.deferredEntries || []).filter(
-            (entry) => entry?.prop?.id !== item.userData?.propId
-          );
-          if (!record.members.length) {
-            const hasDeferredEntries = Array.isArray(record.deferredEntries) && record.deferredEntries.length;
-            if (!hasDeferredEntries) {
-              propModules.delete(moduleId);
-            }
-          }
+  function removePropObject(item, { markDirty = true } = {}) {
+    if (!item) {
+      return false;
+    }
+
+    const propId = readText(item.userData?.propId, "");
+    if (propId) {
+      propRecordsById.delete(propId);
+      activePropMaterialOverrideIds.delete(propId);
+      editorHiddenPropIds.delete(propId);
+      editorCreatedPropConfigsById.delete(propId);
+      const createdIndex = editorCreatedPropOrder.indexOf(propId);
+      if (createdIndex >= 0) {
+        editorCreatedPropOrder.splice(createdIndex, 1);
+      }
+      removeCollidersById(propId);
+    }
+
+    item.traverse((child) => {
+      if (child.isPointLight && child.userData?.fromPropGlow) {
+        glowLightCount = Math.max(0, glowLightCount - 1);
+      }
+    });
+
+    disposeManagedObjectResources(item);
+    scene.remove(item);
+    item.clear();
+
+    const recordIndex = propRecords.indexOf(item);
+    if (recordIndex >= 0) {
+      propRecords.splice(recordIndex, 1);
+    }
+
+    for (let j = animatedTextures.length - 1; j >= 0; j -= 1) {
+      if (animatedTextures[j].owner === item) {
+        animatedTextures.splice(j, 1);
+      }
+    }
+    for (let j = dynamicProps.length - 1; j >= 0; j -= 1) {
+      if (dynamicProps[j].object === item) {
+        dynamicProps.splice(j, 1);
+      }
+    }
+    for (let j = propInteractionTargets.length - 1; j >= 0; j -= 1) {
+      if (propInteractionTargets[j].userData?.owner === item) {
+        propInteractionTargets.splice(j, 1);
+      }
+    }
+    for (let j = displayPanels.length - 1; j >= 0; j -= 1) {
+      if (displayPanels[j].object === item) {
+        displayPanels.splice(j, 1);
+      }
+    }
+    for (let j = visibilityEntries.length - 1; j >= 0; j -= 1) {
+      if (visibilityEntries[j].object === item) {
+        visibilityEntries.splice(j, 1);
+      }
+    }
+    for (const [moduleId, record] of propModules.entries()) {
+      record.members = record.members.filter((member) => member.object !== item);
+      record.deferredEntries = (record.deferredEntries || []).filter(
+        (entry) => entry?.prop?.id !== propId
+      );
+      if (!record.members.length) {
+        const hasDeferredEntries = Array.isArray(record.deferredEntries) && record.deferredEntries.length;
+        if (!hasDeferredEntries) {
+          propModules.delete(moduleId);
         }
       }
+    }
+
+    if (markDirty) {
+      markSceneDirty();
+    }
+    return true;
+  }
+
+  function removePropsByTag(tag) {
+    removeCollidersByTag(tag);
+    let removed = 0;
+    for (let i = propRecords.length - 1; i >= 0; i -= 1) {
+      const item = propRecords[i];
+      if (item.userData.themeTag === tag && removePropObject(item, { markDirty: false })) {
+        removed += 1;
+      }
+    }
+    if (removed) {
+      markSceneDirty();
     }
   }
 
@@ -3631,6 +3850,67 @@ export async function loadScene({
     };
   }
 
+  function sanitizeEditablePropConfig(config, { includeSource = true } = {}) {
+    const sanitized = cloneConfig(config) || {};
+    if (!includeSource) {
+      delete sanitized.sourceConfigFile;
+      delete sanitized.sourcePath;
+      delete sanitized.sourceGroupId;
+      delete sanitized.editorCreated;
+    }
+    return sanitized;
+  }
+
+  function getEditablePropConfig(propId, { includeSource = true } = {}) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+
+    const config = sanitizeEditablePropConfig(object.userData?.editorSerializableConfig, {
+      includeSource
+    });
+    if (!isObject(config)) {
+      return null;
+    }
+
+    const transform = serializeEditableTransform(object);
+    if (transform) {
+      config.position = transform.position;
+      config.rotation = transform.rotation;
+      config.scale = transform.scale;
+    }
+    if (includeSource) {
+      config.sourceConfigFile = readText(object.userData?.sourceConfigFile, "");
+      config.sourcePath = readText(object.userData?.sourcePath, "");
+      const sourceGroupId = readText(object.userData?.sourceGroupId, "");
+      if (sourceGroupId) {
+        config.sourceGroupId = sourceGroupId;
+      } else {
+        delete config.sourceGroupId;
+      }
+      if (object.userData?.editorCreated === true) {
+        config.editorCreated = true;
+      }
+    }
+    return config;
+  }
+
+  function annotateEditorCreatedPropSource(prop, index) {
+    const annotated = sanitizeEditablePropConfig(prop, { includeSource: false });
+    annotated.editorCreated = true;
+    annotated.sourceConfigFile = "scene.json";
+    annotated.sourcePath = `editorOverrides.createdProps[${index}]`;
+    delete annotated.sourceGroupId;
+    return annotated;
+  }
+
+  function getEditorCreatedProps() {
+    return editorCreatedPropOrder
+      .map((propId) => getEditablePropConfig(propId, { includeSource: false }))
+      .filter(Boolean);
+  }
+
   function getEditablePropObject(propId) {
     const id = readText(propId, "");
     if (!id) {
@@ -3645,6 +3925,129 @@ export async function loadScene({
 
   function getHiddenEditablePropIds() {
     return [...editorHiddenPropIds].sort((a, b) => a.localeCompare(b));
+  }
+
+  async function createEditorCreatedProp(prop, { markDirty = true } = {}) {
+    const baseConfig = sanitizeEditablePropConfig(prop, { includeSource: false });
+    const propId = readText(baseConfig?.id, "");
+    if (!propId || propRecordsById.has(propId) || editorCreatedPropConfigsById.has(propId)) {
+      return null;
+    }
+
+    const annotated = annotateEditorCreatedPropSource(baseConfig, editorCreatedPropOrder.length);
+    const created = await instantiateProp(annotated, editorCreatedPropTag, {
+      resolvePlacement: true
+    });
+    if (!created) {
+      return null;
+    }
+
+    const transform = serializeEditableTransform(created);
+    const persistedConfig = sanitizeEditablePropConfig(baseConfig, { includeSource: false });
+    const serializedConfig = cloneConfig(annotated) || {};
+    if (transform) {
+      persistedConfig.position = transform.position;
+      persistedConfig.rotation = transform.rotation;
+      persistedConfig.scale = transform.scale;
+      serializedConfig.position = transform.position;
+      serializedConfig.rotation = transform.rotation;
+      serializedConfig.scale = transform.scale;
+    }
+    created.userData.editorCreated = true;
+    created.userData.editorSerializableConfig = serializedConfig;
+    editorCreatedPropConfigsById.set(propId, persistedConfig);
+    editorCreatedPropOrder.push(propId);
+    if (markDirty) {
+      markSceneDirty();
+    }
+    return created;
+  }
+
+  async function duplicateEditableProp(sourcePropId, duplicateProp = null, options = {}) {
+    const sourceId = readText(sourcePropId, "");
+    if (!sourceId) {
+      return null;
+    }
+
+    const baseConfig = getEditablePropConfig(sourceId, { includeSource: false });
+    if (!baseConfig) {
+      return null;
+    }
+
+    const overrideConfig = isObject(duplicateProp) ? cloneConfig(duplicateProp) || {} : {};
+    const merged = mergeConfigObjects(baseConfig, overrideConfig) || {};
+    const nextId = readText(merged.id, "");
+    if (!nextId || nextId === sourceId || propRecordsById.has(nextId) || editorCreatedPropConfigsById.has(nextId)) {
+      return null;
+    }
+
+    return createEditorCreatedProp(merged, options);
+  }
+
+  function removeEditorCreatedProp(propId, { markDirty = true } = {}) {
+    const object = getEditablePropObject(propId);
+    if (!object || object.userData?.editorCreated !== true) {
+      return false;
+    }
+    return removePropObject(object, { markDirty });
+  }
+
+  async function setEditorCreatedProps(props = [], { markDirty = true } = {}) {
+    const nextProps = Array.isArray(props) ? props : [];
+    let updatedCount = 0;
+
+    const existingIds = [...editorCreatedPropOrder];
+    for (const propId of existingIds) {
+      if (removeEditorCreatedProp(propId, { markDirty: false })) {
+        updatedCount += 1;
+      }
+    }
+
+    editorCreatedPropOrder.length = 0;
+    editorCreatedPropConfigsById.clear();
+
+    let createdIndex = 0;
+    for (const prop of nextProps) {
+      if (!isObject(prop)) {
+        continue;
+      }
+      const baseConfig = sanitizeEditablePropConfig(prop, { includeSource: false });
+      const propId = readText(baseConfig?.id, "");
+      if (!propId || propRecordsById.has(propId) || editorCreatedPropConfigsById.has(propId)) {
+        continue;
+      }
+
+      const annotated = annotateEditorCreatedPropSource(baseConfig, createdIndex);
+      const created = await instantiateProp(annotated, editorCreatedPropTag, {
+        resolvePlacement: true
+      });
+      if (!created) {
+        continue;
+      }
+
+      const transform = serializeEditableTransform(created);
+      const persistedConfig = sanitizeEditablePropConfig(baseConfig, { includeSource: false });
+      const serializedConfig = cloneConfig(annotated) || {};
+      if (transform) {
+        persistedConfig.position = transform.position;
+        persistedConfig.rotation = transform.rotation;
+        persistedConfig.scale = transform.scale;
+        serializedConfig.position = transform.position;
+        serializedConfig.rotation = transform.rotation;
+        serializedConfig.scale = transform.scale;
+      }
+      created.userData.editorCreated = true;
+      created.userData.editorSerializableConfig = serializedConfig;
+      editorCreatedPropConfigsById.set(propId, persistedConfig);
+      editorCreatedPropOrder.push(propId);
+      createdIndex += 1;
+      updatedCount += 1;
+    }
+
+    if (updatedCount && markDirty) {
+      markSceneDirty();
+    }
+    return updatedCount;
   }
 
   function commitEditablePropTransform(propId, { markDirty = true } = {}) {
@@ -3668,6 +4071,34 @@ export async function loadScene({
       markSceneDirty();
     }
     return serializeEditableTransform(object);
+  }
+
+  function getEditablePropPlacementDiagnostics(propId) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+
+    const config = sanitizeEditablePropConfig(object.userData?.editorSerializableConfig, {
+      includeSource: false
+    });
+    const issues = getPlacementIssuesForObject(object, config || {}, { ignoreId: readText(propId, "") });
+    const bounds = getObjectBounds2D(object);
+    return {
+      id: readText(propId, ""),
+      valid: issues.length === 0,
+      issueCount: issues.length,
+      issues,
+      policy: normalizePlacementPolicy(config || {}),
+      bounds: bounds
+        ? {
+            minX: Number(bounds.minX.toFixed(4)),
+            maxX: Number(bounds.maxX.toFixed(4)),
+            minZ: Number(bounds.minZ.toFixed(4)),
+            maxZ: Number(bounds.maxZ.toFixed(4))
+          }
+        : null
+    };
   }
 
   function rebuildEditablePropCollider(propId, object) {
@@ -3702,6 +4133,28 @@ export async function loadScene({
       return null;
     }
     return serializeEditableTransform(object);
+  }
+
+  function resolveEditablePropPlacement(propId, { markDirty = true } = {}) {
+    const object = getEditablePropObject(propId);
+    if (!object) {
+      return null;
+    }
+
+    const config = sanitizeEditablePropConfig(object.userData?.editorSerializableConfig, {
+      includeSource: false
+    });
+    const result = resolvePlacementForObject(object, config || {}, { ignoreId: readText(propId, "") });
+    if (!result?.valid || !result.moved) {
+      return result;
+    }
+
+    rebuildEditablePropCollider(propId, object);
+    commitEditablePropTransform(propId, { markDirty });
+    return {
+      ...result,
+      transform: getEditablePropTransform(propId)
+    };
   }
 
   function setEditablePropTransform(propId, transform = {}, options = {}) {
@@ -3845,6 +4298,7 @@ export async function loadScene({
       id,
       visible: object.visible !== false,
       editorHidden: editorHiddenPropIds.has(id),
+      editorCreated: object.userData?.editorCreated === true,
       moduleIds,
       sourceConfigFile: readText(object.userData?.sourceConfigFile, ""),
       sourcePath: readText(object.userData?.sourcePath, ""),
@@ -3949,11 +4403,19 @@ export async function loadScene({
     getEditablePropIds,
     getHiddenEditablePropIds,
     getEditablePropObject,
+    getEditablePropConfig,
     getEditablePropTransform,
+    getEditablePropPlacementDiagnostics,
     setEditablePropTransform,
     setEditablePropVisible,
     commitEditablePropTransform,
+    resolveEditablePropPlacement,
     applyEditablePropTransforms,
+    getEditorCreatedProps,
+    setEditorCreatedProps,
+    createEditorCreatedProp,
+    duplicateEditableProp,
+    removeEditorCreatedProp,
     getPropState,
     getSceneRevision: () => sceneRevision,
     updateDynamicProps,

@@ -702,6 +702,11 @@ function cloneJson(value) {
 function normalizeEditorOverrides(payload) {
   const source = isObject(payload) ? payload : {};
   const props = isObject(source.props) ? cloneJson(source.props) || {} : {};
+  const createdProps = Array.isArray(source.createdProps)
+    ? source.createdProps
+        .map((entry) => (isObject(entry) ? cloneJson(entry) : null))
+        .filter((entry) => isObject(entry))
+    : [];
   const hiddenProps = [...new Set((Array.isArray(source.hiddenProps) ? source.hiddenProps : [])
     .map((entry) => readText(entry, ""))
     .filter(Boolean))].sort((a, b) => a.localeCompare(b));
@@ -712,6 +717,7 @@ function normalizeEditorOverrides(payload) {
   )].sort((a, b) => a.localeCompare(b));
 
   return {
+    createdProps,
     props,
     hiddenProps,
     hiddenGeneratedNodes
@@ -1988,10 +1994,10 @@ async function boot() {
   let catalogReady = false;
   const catalogInitPromise = catalogSystem
     .initialize(appliedTheme || themeName)
-    .then(() => {
+    .then(async () => {
       catalogReady = true;
-      applySceneEditorOverrides(sceneEditorOverrides, { markDirty: false });
-      editorSystem?.loadSavedState?.({ silent: true });
+      await applySceneEditorOverrides(sceneEditorOverrides, { markDirty: false });
+      await editorSystem?.loadSavedState?.({ silent: true });
       editorSystem?.refreshOutliner?.();
       refreshInteractiveSurfaces();
     })
@@ -2009,10 +2015,11 @@ async function boot() {
     ...(catalogSystem?.getColliders?.() || [])
   ];
 
-  function applySceneEditorOverrides(overrides = sceneEditorOverrides, { markDirty = false } = {}) {
+  async function applySceneEditorOverrides(overrides = sceneEditorOverrides, { markDirty = false } = {}) {
     const normalized = normalizeEditorOverrides(overrides);
     let updated = 0;
 
+    updated += (await sceneContext?.setEditorCreatedProps?.(normalized.createdProps, { markDirty })) || 0;
     updated += sceneContext?.applyEditablePropTransforms?.(normalized.props, { markDirty }) || 0;
 
     for (const propId of normalized.hiddenProps) {
@@ -2117,7 +2124,7 @@ async function boot() {
     camera: rendererContext.camera,
     targets: getInteractionTargets(),
     isPointerLocked: () => controls?.isPointerLocked?.() || false,
-    syncMatrices: () => rendererContext.scene?.updateMatrixWorld?.(true),
+    syncMatrices: () => rendererContext.scene?.updateMatrixWorld?.(),
     onHover: (target) => {
       ui.setPortalPrompt(target?.type === "portal" ? target : null);
     },
@@ -2144,7 +2151,9 @@ async function boot() {
       applyLookDelta: (deltaX, deltaY) => controls?.applyLookDelta?.(deltaX, deltaY),
       clearMovementKeys: () => controls?.clearKeys?.(),
       readSceneConfig: (source = "effective") => readEditableRuntimeConfig("scene.json", source),
-      writeSceneConfig: (target, text) => writeEditableRuntimeConfig("scene.json", target, text),
+      writeSceneConfig: import.meta.env.DEV
+        ? (target, text) => writeEditableRuntimeConfig("scene.json", target, text)
+        : null,
       onSceneMutated: () => {
         refreshInteractiveSurfaces();
       },
@@ -2338,6 +2347,7 @@ async function boot() {
             stabilityDelta: driftSnapshot.stabilityDelta ?? 0
           }
         : null,
+      scenePanels: scenePanelSystem?.getDebugStats?.() || null,
       stability: stabilitySystem
         ? {
             value: Number(stabilityState?.stability?.toFixed?.(4) || 0),
@@ -2382,36 +2392,55 @@ async function boot() {
     getCatalogRoomSnapshot: (roomId) => catalogSystem?.getRoomSnapshot?.(roomId) || null,
     estimateCatalogRoomCount: (roomId, itemCount) =>
       catalogSystem?.estimateRoomCount?.(roomId, itemCount) ?? null,
-    getScenePanelIds: () =>
-      (scenePanelSystem?.getPanelSnapshots?.() ||
-        (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
-          id: typeof entry?.id === "string" ? entry.id.trim() : ""
-        })))
+    getScenePanelIds: () => {
+      const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
+      const panelSource = runtimePanels.length
+        ? runtimePanels
+        : (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+            id: typeof entry?.id === "string" ? entry.id.trim() : ""
+          }));
+      return panelSource
         .map((entry) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
-        .filter(Boolean),
-    getScenePanels: () =>
-      scenePanelSystem?.getPanelSnapshots?.() ||
-      (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+        .filter(Boolean);
+    },
+    getScenePanels: () => {
+      const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
+      if (runtimePanels.length) {
+        return runtimePanels;
+      }
+      return (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
         id: typeof entry?.id === "string" ? entry.id.trim() : "",
         type: entry?.type || null,
         imageCount: Array.isArray(entry?.images) ? entry.images.length : 0,
         visible: entry?.object?.visible !== false,
         ctaUrl: typeof entry?.cta?.url === "string" ? entry.cta.url : ""
-      })),
+      }));
+    },
     activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
     debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
+    getScenePanelPerf: () => scenePanelSystem?.getDebugStats?.() || null,
     getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
+    getPropPlacementDiagnostics: (propId) =>
+      sceneContext?.getEditablePropPlacementDiagnostics?.(propId) || null,
+    resolvePropPlacement: (propId, markDirty = true) =>
+      sceneContext?.resolveEditablePropPlacement?.(propId, {
+        markDirty: markDirty !== false
+      }) || null,
     getGeneratedShellEntries: (roomId) => catalogSystem?.getGeneratedShellEntries?.(roomId) || [],
     setGeneratedShellVisible: (shellNodeId, visible) =>
       catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, visible) || false,
     restoreGeneratedShellRoom: (roomId) => catalogSystem?.restoreGeneratedShellRoom?.(roomId) || 0,
     getEditorSnapshot: () => editorSystem?.getSnapshot?.() || null,
+    getEditorStatePayload: () => editorSystem?.buildState?.() || null,
     saveEditorState: () => editorSystem?.saveState?.() || null,
-    loadEditorState: () => editorSystem?.loadSavedState?.() ?? 0,
+    loadEditorState: async () => (await editorSystem?.loadSavedState?.()) ?? 0,
     clearEditorState: () => {
       editorSystem?.clearState?.();
       return true;
     },
+    createEditorPreset: async () => (await editorSystem?.createFromPreset?.()) || false,
+    duplicateSelectedEditorProp: async () => (await editorSystem?.duplicateSelected?.()) || false,
+    deleteSelectedEditorItem: () => editorSystem?.deleteSelected?.() || false,
     selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
     selectGeneratedShellNode: (shellNodeId) => Boolean(editorSystem?.selectGeneratedNode?.(shellNodeId)),
     probeColliders: (position, radius) => probeColliders(position, radius),
@@ -2460,7 +2489,7 @@ async function boot() {
       refreshInteractiveSurfaces();
       editorSystem?.refreshOutliner?.();
     }
-    rendererContext.scene?.updateMatrixWorld?.(true);
+    rendererContext.scene?.updateMatrixWorld?.();
     scenePanelSystem?.update(rendererContext.camera);
     interactionSystem?.update();
     themeSystem?.update(delta);

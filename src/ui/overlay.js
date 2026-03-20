@@ -41,8 +41,8 @@ export function createOverlay({
   const editorButtonLabel = editorActive ? "Close Editor" : "Open Editor";
   const editorNote = editorSupported
     ? editorActive
-      ? "Editor is active. RMB look plus Q/W/E/R editing is available, with local session saves and scene override export."
-      : "Local editor is available here. It opens the current scene authoring shell for selecting, moving, and exporting scene overrides."
+      ? "Editor is active. RMB look plus Q/W/E/R editing is available, with create/duplicate/delete tools, local session saves, and scene override export."
+      : "Local editor is available here. It opens the current scene authoring shell for selecting, creating, moving, and exporting scene overrides."
     : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
 
   mount.innerHTML = `
@@ -51,69 +51,97 @@ export function createOverlay({
 
       <div class="ui-layer">
         <div class="settings-panel ${settingsVisible ? "" : "hidden"}" data-ui>
-          <h1>Lobby</h1>
-          <label class="${themeHiddenClass}">
-            Theme
-            <select id="theme-select" data-ui></select>
-          </label>
-          <label class="${qualityHiddenClass}">
-            Quality
-            <select id="quality-select" data-ui>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-            </select>
-          </label>
-          <p id="control-hint" class="control-hint ${hintHiddenClass}"></p>
+          <div class="settings-panel-headline" data-ui>
+            <p class="settings-kicker" data-ui>Seperet Lobby</p>
+            <div class="settings-title-row" data-ui>
+              <div data-ui>
+                <h1 data-ui>Command Deck</h1>
+                <p class="settings-summary" data-ui>Runtime controls, world-state HUD, and local authoring live here without taking over the whole screen.</p>
+              </div>
+              <span class="settings-mode-pill" data-ui>${isMobile ? "Touch Runtime" : "Desktop Runtime"}</span>
+            </div>
+          </div>
+          <div class="settings-panel-grid" data-ui>
+            <section class="settings-card settings-card-runtime" data-ui>
+              <div class="settings-card-head" data-ui>
+                <h2 data-ui>Session Controls</h2>
+                <p data-ui>Theme, quality, and movement context.</p>
+              </div>
+              <label class="${themeHiddenClass}">
+                Theme
+                <select id="theme-select" data-ui></select>
+              </label>
+              <label class="${qualityHiddenClass}">
+                Quality
+                <select id="quality-select" data-ui>
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <p id="control-hint" class="control-hint ${hintHiddenClass}"></p>
+            </section>
 
-          <section id="dev-panel" class="dev-panel ${devPanelHiddenClass}" data-ui>
-            <div class="dev-panel-head">
-              <h2>Dev Menu</h2>
-              <span id="dev-mode-badge" class="dev-mode-badge">${devModeLabel}</span>
-            </div>
-            <label class="dev-label">
-              Config
-              <select id="dev-config-file" data-ui></select>
-            </label>
-            <label class="dev-label">
-              Load Source
-              <select id="dev-config-source" data-ui>
-                <option value="effective">Effective</option>
-                <option value="local">Local Override</option>
-                <option value="defaults">Deploy Defaults</option>
-              </select>
-            </label>
-            <textarea
-              id="dev-config-editor"
-              class="dev-config-editor"
-              spellcheck="false"
-              data-ui
-            ></textarea>
-            <p id="dev-config-status" class="dev-config-status">
-              Local save writes to public/config. Deploy save writes to public/config.defaults.
-            </p>
-            <div class="dev-actions">
-              <button id="dev-load-btn" type="button" data-ui>Reload</button>
-              <button id="dev-save-local-btn" type="button" data-ui>Set Local</button>
-              <button id="dev-save-defaults-btn" type="button" data-ui>Save Deploy</button>
-              <button id="dev-delete-local-btn" type="button" data-ui>Clear Local</button>
-              <button id="dev-reload-runtime-btn" type="button" data-ui>Reload App</button>
-              <button
-                id="dev-editor-toggle-btn"
-                type="button"
+            <section id="dev-panel" class="dev-panel settings-card ${devPanelHiddenClass}" data-ui>
+              <div class="dev-panel-head">
+                <div data-ui>
+                  <h2>Config Console</h2>
+                  <p class="dev-panel-subtitle" data-ui>Local-only editing and runtime reload tools.</p>
+                </div>
+                <span id="dev-mode-badge" class="dev-mode-badge">${devModeLabel}</span>
+              </div>
+              <label class="dev-label">
+                Config
+                <select id="dev-config-file" data-ui></select>
+              </label>
+              <label class="dev-label">
+                Load Source
+                <select id="dev-config-source" data-ui>
+                  <option value="effective">Effective</option>
+                  <option value="local">Local Override</option>
+                  <option value="defaults">Deploy Defaults</option>
+                </select>
+              </label>
+              <textarea
+                id="dev-config-editor"
+                class="dev-config-editor"
+                spellcheck="false"
                 data-ui
-                ${editorSupported ? "" : "disabled"}
-              >${editorButtonLabel}</button>
-            </div>
-            <p id="dev-editor-note" class="dev-config-status" data-tone="${editorSupported ? "info" : "muted"}">
-              ${editorNote}
-            </p>
-          </section>
+              ></textarea>
+              <p id="dev-config-status" class="dev-config-status">
+                Local save writes to public/config. Deploy save writes to public/config.defaults.
+              </p>
+              <div class="dev-actions">
+                <button id="dev-load-btn" type="button" data-ui>Reload</button>
+                <button id="dev-save-local-btn" type="button" data-ui>Set Local</button>
+                <button id="dev-save-defaults-btn" type="button" data-ui>Save Deploy</button>
+                <button id="dev-delete-local-btn" type="button" data-ui>Clear Local</button>
+                <button id="dev-reload-runtime-btn" type="button" data-ui>Reload App</button>
+                <button
+                  id="dev-editor-toggle-btn"
+                  type="button"
+                  data-ui
+                  ${editorSupported ? "" : "disabled"}
+                >${editorButtonLabel}</button>
+              </div>
+              <p id="dev-editor-note" class="dev-config-status" data-tone="${editorSupported ? "info" : "muted"}">
+                ${editorNote}
+              </p>
+            </section>
+          </div>
         </div>
 
-        <div id="portal-prompt" class="portal-prompt"></div>
+        <div id="portal-prompt" class="portal-prompt" role="status" aria-live="polite"></div>
 
-        <div id="inspect-panel" class="inspect-panel hidden${enableInspectPanel ? "" : " hidden"}" data-ui>
+        <div
+          id="inspect-panel"
+          class="inspect-panel hidden${enableInspectPanel ? "" : " hidden"}"
+          data-ui
+          role="dialog"
+          aria-modal="false"
+          aria-labelledby="inspect-title"
+          tabindex="-1"
+        >
           <article class="inspect-card" data-ui>
             <button id="inspect-close-btn" class="inspect-close" type="button" data-ui>
               Close
@@ -232,6 +260,7 @@ export function createOverlay({
   let objectivesPanelVisible = false;
   let activeDevFile = "";
   let devBusy = false;
+  let lastInspectFocus = null;
 
   function resolveStabilityState(value, explicitState) {
     const override = readText(explicitState, "");
@@ -485,8 +514,8 @@ export function createOverlay({
       const active = Boolean(devMenu?.editorActive);
       devEditorNote.textContent = supported
         ? active
-          ? "Editor is active. RMB look plus Q/W/E/R editing is available, with local session saves and scene override export."
-          : "Local editor is available here. It opens the current scene authoring shell for selecting, moving, and exporting scene overrides."
+          ? "Editor is active. RMB look plus Q/W/E/R editing is available, with create/duplicate/delete tools, local session saves, and scene override export."
+          : "Local editor is available here. It opens the current scene authoring shell for selecting, creating, moving, and exporting scene overrides."
         : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
       devEditorNote.dataset.tone = supported ? "info" : "muted";
     }
@@ -767,6 +796,14 @@ export function createOverlay({
     inspectTags.classList.add("hidden");
     inspectActions.innerHTML = "";
     inspectActions.classList.add("hidden");
+    if (
+      lastInspectFocus &&
+      typeof lastInspectFocus.focus === "function" &&
+      document.contains(lastInspectFocus)
+    ) {
+      lastInspectFocus.focus();
+    }
+    lastInspectFocus = null;
   }
 
   function showInspectPanel(data) {
@@ -827,7 +864,13 @@ export function createOverlay({
     }
     inspectActions.classList.toggle("hidden", !normalized.actions.length);
 
+    if (!inspectPanel.contains(document.activeElement)) {
+      lastInspectFocus = document.activeElement;
+    }
     inspectPanel.classList.remove("hidden");
+    queueMicrotask(() => {
+      inspectCloseButton?.focus?.();
+    });
     return true;
   }
 

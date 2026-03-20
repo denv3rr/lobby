@@ -55,3 +55,10 @@ jobs:
         env:
           PLAYWRIGHT_SERVER_MODE: preview
         run: npm run test:e2e:smoke
+
+      - name: Modular room regression tests
+        env:
+          PLAYWRIGHT_SERVER_MODE: preview
+        run: >
+          npx playwright test --config=playwright.config.mjs tests/e2e/modular-showcase.spec.mjs
+          -g "south padre room is a static lobby annex with linked gallery screens and a new-tab portal|south padre rifle stays centered, rotates in place, and links to center-artifact emissive pulse|south padre gallery panels stay hidden behind neighboring room walls and appear inside SPI|screening hall keeps overflow in a single widened room instead of cloning south|hidden screening shell walls stay collider-disabled after a catalog rebuild"

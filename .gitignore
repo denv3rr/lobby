@@ -31,8 +31,10 @@ public/assets/**/README.*
 
 # Local runtime config overrides (dev-only)
 public/config/*.json
+public/config.local/
 
 # Editor and local env
+.local/
 .vscode/
 .idea/
 .codex/
@@ -51,6 +53,7 @@ public/config/*.json
 *.rej
 
 # E2E artifacts
+coverage/
 test-results/
 playwright-report/
 .playwright/

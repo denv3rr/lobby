@@ -149,6 +149,95 @@ function normalizePlaylistWallConfig(config = null) {
   };
 }
 
+function normalizeShellNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? Number(numeric.toFixed(4)) : fallback;
+}
+
+function normalizeShellVector(value, fallback) {
+  const source = Array.isArray(value) ? value : fallback;
+  return [0, 1, 2].map((index) => normalizeShellNumber(source?.[index], fallback[index] || 0));
+}
+
+function normalizeShellConnectorConfig(value, fallbackDoor = null) {
+  if (value === false) {
+    return null;
+  }
+
+  const config = value === true ? { enabled: true } : isObject(value) ? value : {};
+  if (config.enabled === false) {
+    return null;
+  }
+
+  return {
+    enabled: true,
+    width: normalizeShellNumber(
+      config.width,
+      normalizeShellNumber(fallbackDoor?.width, 2.4)
+    ),
+    height: normalizeShellNumber(
+      config.height,
+      normalizeShellNumber(fallbackDoor?.height, 3)
+    )
+  };
+}
+
+function buildRoomShellSignature(
+  roomId,
+  config,
+  required,
+  materialMode = "standard",
+  presentationWallConfig = null,
+  playlistWallConfig = null
+) {
+  const safeConfig = isObject(config) ? config : {};
+  const resolvedEntrySide = normalizeEntrySide(
+    safeConfig.entrySide,
+    roomId === "shop" ? "east" : "west"
+  );
+  const connectorDoor = isObject(safeConfig.connectorDoor)
+    ? {
+        width: normalizeShellNumber(safeConfig.connectorDoor.width, 2.4),
+        height: normalizeShellNumber(safeConfig.connectorDoor.height, 3)
+      }
+    : null;
+  const connectors = isObject(safeConfig.connectors)
+    ? {
+        front: normalizeShellConnectorConfig(safeConfig.connectors.front, connectorDoor),
+        back: normalizeShellConnectorConfig(safeConfig.connectors.back, connectorDoor)
+      }
+    : { front: null, back: null };
+
+  return JSON.stringify({
+    roomId,
+    required: Math.max(1, Math.floor(Number(required) || 1)),
+    size: normalizeShellVector(safeConfig.size, [8, 4.6, 9.6]),
+    origin: normalizeShellVector(safeConfig.origin, [0, 0, 0]),
+    step: normalizeShellVector(safeConfig.expansion?.step, [0, 0, 0]),
+    entrySide: resolvedEntrySide,
+    rotationY: normalizeShellNumber(safeConfig.rotationY, 0),
+    materialMode: readText(materialMode, "standard"),
+    showEntryFrame: safeConfig.showEntryFrame !== false,
+    label: readText(safeConfig.label, roomId),
+    accentColor: readText(safeConfig.accentColor, ""),
+    titleColor: readText(safeConfig.titleColor, ""),
+    connectorDoor,
+    connectors,
+    presentationWall: isObject(presentationWallConfig)
+      ? {
+          ...presentationWallConfig,
+          allRooms: safeConfig.presentationWall?.allRooms === true
+        }
+      : null,
+    playlistWall: isObject(playlistWallConfig)
+      ? {
+          ...playlistWallConfig,
+          allRooms: safeConfig.playlistWall?.allRooms === true
+        }
+      : null
+  });
+}
+
 function extractYoutubeVideoId(item = {}) {
   const preferredId = typeof item?.id === "string" ? item.id.trim() : "";
   if (/^[A-Za-z0-9_-]{11}$/.test(preferredId)) {
@@ -465,6 +554,7 @@ export class CatalogRoomSystem {
     this.presentationLayer = null;
     this.presentationOverlays = new Map();
     this.playlistOverlays = new Map();
+    this.roomShellSignatures = new Map();
     this.screenCenterWorld = new THREE.Vector3();
     this.screenNormalWorld = new THREE.Vector3();
     this.screenQuaternion = new THREE.Quaternion();
@@ -1702,6 +1792,7 @@ export class CatalogRoomSystem {
     this.hidePlaylistOverlay(roomId);
     this.removePlaylistOverlay(roomId);
     this.playlistWalls.delete(roomId);
+    this.roomShellSignatures.delete(roomId);
     this.roomNodes.delete(roomId);
     this.colliders = this.colliders.filter((entry) => entry.roomId !== roomId);
   }
@@ -2361,28 +2452,55 @@ export class CatalogRoomSystem {
   }
 
   reconcileRoomCount(roomId, config, required) {
-    this.colliders = this.colliders.filter((entry) => entry.roomId !== roomId);
-    this.unregisterGeneratedShellObjects(roomId, 0);
-    this.hidePresentationOverlay(roomId);
-    this.presentationWalls.delete(roomId);
-    this.hidePlaylistOverlay(roomId);
-    this.playlistWalls.delete(roomId);
-    const current = this.getRoomNodes(roomId);
-    if (current.length > required) {
-      this.removeRoomsByIndex(roomId, required);
+    const normalizedRoomId = readText(roomId, "");
+    if (!normalizedRoomId) {
+      return;
     }
 
-    // Rebuild connectors if room count changed.
-    const finalNodes = this.getRoomNodes(roomId);
+    const safeRequired = Math.max(1, Math.floor(Number(required) || 1));
+    const materialMode = this.getQualityProfileValue("catalogMaterialMode", "standard");
+    const presentationWallConfig = this.getPresentationWallConfig(normalizedRoomId, config, 0);
+    const playlistWallConfig = this.getPlaylistWallConfig(normalizedRoomId, config, 0);
+    const shellSignature = buildRoomShellSignature(
+      normalizedRoomId,
+      config,
+      safeRequired,
+      materialMode,
+      presentationWallConfig,
+      playlistWallConfig
+    );
+    const current = this.getRoomNodes(normalizedRoomId);
+    const shellSignatureMatches = this.roomShellSignatures.get(normalizedRoomId) === shellSignature;
+    const shellNodesIntact =
+      current.length === safeRequired &&
+      current.every((node) => node?.group?.parent === this.root);
+
+    if (shellSignatureMatches && shellNodesIntact) {
+      return;
+    }
+
+    this.colliders = this.colliders.filter((entry) => entry.roomId !== normalizedRoomId);
+    this.unregisterGeneratedShellObjects(normalizedRoomId, 0);
+    this.hidePresentationOverlay(normalizedRoomId);
+    this.presentationWalls.delete(normalizedRoomId);
+    this.hidePlaylistOverlay(normalizedRoomId);
+    this.playlistWalls.delete(normalizedRoomId);
+    if (current.length > safeRequired) {
+      this.removeRoomsByIndex(normalizedRoomId, safeRequired);
+    }
+
+    // Rebuild connectors if the shell layout changed or the room count changed.
+    const finalNodes = this.getRoomNodes(normalizedRoomId);
     for (const node of finalNodes) {
       disposeObjectResources(node.group);
       this.root.remove(node.group);
       node.group.clear();
     }
-    this.roomNodes.set(roomId, []);
-    for (let index = 0; index < required; index += 1) {
-      this.createRoomShell(roomId, config, index, required);
+    this.roomNodes.set(normalizedRoomId, []);
+    for (let index = 0; index < safeRequired; index += 1) {
+      this.createRoomShell(normalizedRoomId, config, index, safeRequired);
     }
+    this.roomShellSignatures.set(normalizedRoomId, shellSignature);
   }
 
   async createCard(roomId, roomNode, item, placement, index, token, options = {}) {
@@ -2820,5 +2938,6 @@ export class CatalogRoomSystem {
     this.dynamicCards.length = 0;
     this.colliders.length = 0;
     this.roomNodes.clear();
+    this.roomShellSignatures.clear();
   }
 }
