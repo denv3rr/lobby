@@ -3,17 +3,42 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-20T03:09:52.318Z",
+    "fetchedAt": "2026-03-20T07:13:31.095Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 404 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "lmKTvfFGHoY",
+      "title": "Sleep paralysis demon raid #readyornot #raid",
+      "url": "https://www.youtube.com/watch?v=lmKTvfFGHoY",
+      "image": "https://i1.ytimg.com/vi/lmKTvfFGHoY/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-20T03:50:36+00:00"
+    },
+    {
+      "id": "lPv-fT7UTtg",
+      "title": "“Hands up!” 😎 lmao #readyornot #hostage #rescue #bank #hostagecrisis",
+      "url": "https://www.youtube.com/watch?v=lPv-fT7UTtg",
+      "image": "https://i1.ytimg.com/vi/lPv-fT7UTtg/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-20T03:41:17+00:00"
+    },
     {
       "id": "dbjKrwJFpEA",
       "title": "Vacation does not go according to plan #resort #rude #armareforger #disappointed",
@@ -208,36 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-03T22:22:52+00:00"
-    },
-    {
-      "id": "NfltOZKVsp4",
-      "title": "Dude I could not see a thing #arma #minigun #funnymoments",
-      "url": "https://www.youtube.com/watch?v=NfltOZKVsp4",
-      "image": "https://i3.ytimg.com/vi/NfltOZKVsp4/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-03T00:40:41+00:00"
-    },
-    {
-      "id": "BQhFgEMAXOw",
-      "title": "the tactical trees caught our fall pretty well (which we planned for) #arma #armareforger",
-      "url": "https://www.youtube.com/watch?v=BQhFgEMAXOw",
-      "image": "https://i3.ytimg.com/vi/BQhFgEMAXOw/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-01T06:35:55+00:00"
     }
   ]
 }
