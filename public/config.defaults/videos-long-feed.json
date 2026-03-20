@@ -4,7 +4,7 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-20T07:13:31.095Z",
+    "fetchedAt": "2026-03-20T13:34:28.813Z",
     "count": 26,
     "usedFallback": false,
     "errors": []
@@ -43,7 +43,7 @@
       ],
       "durationText": "22:07",
       "durationSeconds": 1327,
-      "publishedText": "3 weeks ago",
+      "publishedText": "1 month ago",
       "viewCountText": "35 views"
     },
     {
