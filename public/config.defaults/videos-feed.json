@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-21T18:54:13.049Z",
+    "fetchedAt": "2026-03-22T03:20:44.367Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "RXuZi3xc8mU",
+      "title": "Fellas what would you have done #armareforger #conflict #arma #funnymoments #fails",
+      "url": "https://www.youtube.com/watch?v=RXuZi3xc8mU",
+      "image": "https://i3.ytimg.com/vi/RXuZi3xc8mU/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-21T22:08:30+00:00"
+    },
     {
       "id": "29i132bodZ0",
       "title": "jumpscare #conflict #armareforger #arma #m4",
@@ -218,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-04T03:49:38+00:00"
-    },
-    {
-      "id": "FXgG7oMjs40",
-      "title": "Pt. 2 of that last clip lol #armareforger #armor #conflict #fps #nvg",
-      "url": "https://www.youtube.com/watch?v=FXgG7oMjs40",
-      "image": "https://i3.ytimg.com/vi/FXgG7oMjs40/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-04T01:26:14+00:00"
     }
   ]
 }
