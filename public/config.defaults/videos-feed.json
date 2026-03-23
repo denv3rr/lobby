@@ -3,17 +3,57 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-23T03:23:41.706Z",
+    "fetchedAt": "2026-03-23T07:39:06.379Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 500 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "KI7hmdj0JzM",
+      "title": "If you ignore the mandatory tasks, this was so dope come on 🤙 #readyornot #mlg #jk #raid #breach",
+      "url": "https://www.youtube.com/watch?v=KI7hmdj0JzM",
+      "image": "https://i4.ytimg.com/vi/KI7hmdj0JzM/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-23T05:24:51+00:00"
+    },
+    {
+      "id": "YSCY09I-4mY",
+      "title": "Out of nowhere… #readyornot #breach #explosion",
+      "url": "https://www.youtube.com/watch?v=YSCY09I-4mY",
+      "image": "https://i2.ytimg.com/vi/YSCY09I-4mY/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-23T05:00:33+00:00"
+    },
+    {
+      "id": "EdpFtgRNcc0",
+      "title": "Medevac or super mega terror pilot? 🤔 #arma #armareforger #mystery #warcrimes #funnymoments #fps",
+      "url": "https://www.youtube.com/watch?v=EdpFtgRNcc0",
+      "image": "https://i2.ytimg.com/vi/EdpFtgRNcc0/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-23T01:07:07+00:00"
+    },
     {
       "id": "RXuZi3xc8mU",
       "title": "Fellas what would you have done #armareforger #conflict #arma #funnymoments #fails",
@@ -193,51 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-05T23:16:37+00:00"
-    },
-    {
-      "id": "q7i6y1paLu8",
-      "title": "Fireworks experiment nearly claims a man #arma #conflict #fps",
-      "url": "https://www.youtube.com/watch?v=q7i6y1paLu8",
-      "image": "https://i2.ytimg.com/vi/q7i6y1paLu8/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-05T03:42:44+00:00"
-    },
-    {
-      "id": "NAnA6Kxyv3o",
-      "title": "ngl almost ran out there 😂 #arma #gaming",
-      "url": "https://www.youtube.com/watch?v=NAnA6Kxyv3o",
-      "image": "https://i3.ytimg.com/vi/NAnA6Kxyv3o/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-05T02:49:49+00:00"
-    },
-    {
-      "id": "BONauiCvkvg",
-      "title": "He actually did see it coming #cannon",
-      "url": "https://www.youtube.com/watch?v=BONauiCvkvg",
-      "image": "https://i3.ytimg.com/vi/BONauiCvkvg/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-04T03:49:38+00:00"
     }
   ]
 }
