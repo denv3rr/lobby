@@ -4,7 +4,7 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-23T19:13:05.741Z",
+    "fetchedAt": "2026-03-24T03:13:09.482Z",
     "count": 26,
     "usedFallback": false,
     "errors": []
@@ -25,8 +25,8 @@
       ],
       "durationText": "1:24",
       "durationSeconds": 84,
-      "publishedText": "10 days ago",
-      "viewCountText": "20 views"
+      "publishedText": "11 days ago",
+      "viewCountText": "21 views"
     },
     {
       "id": "y-WRjMd8xgE",
@@ -116,7 +116,7 @@
       "durationText": "2:29",
       "durationSeconds": 149,
       "publishedText": "2 months ago",
-      "viewCountText": "9 views"
+      "viewCountText": "10 views"
     },
     {
       "id": "Rzh5GLTaFWg",
@@ -295,7 +295,7 @@
       ],
       "durationText": "3:09",
       "durationSeconds": 189,
-      "publishedText": "1 year ago",
+      "publishedText": "2 years ago",
       "viewCountText": "32 views"
     },
     {

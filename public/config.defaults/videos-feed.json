@@ -3,12 +3,42 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-23T19:13:05.741Z",
+    "fetchedAt": "2026-03-24T03:13:09.482Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "PFxbeV5I4Ek",
+      "title": "Friendly turns out to not be a friendly #arma #conflict #yellowstone #armareforger #fps #m4",
+      "url": "https://www.youtube.com/watch?v=PFxbeV5I4Ek",
+      "image": "https://i1.ytimg.com/vi/PFxbeV5I4Ek/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-24T03:05:04+00:00"
+    },
+    {
+      "id": "YtQ0MP-94Ug",
+      "title": "ridiculous peek lol #arma #armareforger #funnymoments #conflict #fps",
+      "url": "https://www.youtube.com/watch?v=YtQ0MP-94Ug",
+      "image": "https://i2.ytimg.com/vi/YtQ0MP-94Ug/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-23T19:21:59+00:00"
+    },
     {
       "id": "KI7hmdj0JzM",
       "title": "If you ignore the mandatory tasks, this was so dope come on 🤙 #readyornot #mlg #jk #raid #breach",
@@ -203,36 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-07T21:40:50+00:00"
-    },
-    {
-      "id": "IUXclVHekm0",
-      "title": "We ran right into this guy… #armareforger #arma #conflict #gaming",
-      "url": "https://www.youtube.com/watch?v=IUXclVHekm0",
-      "image": "https://i2.ytimg.com/vi/IUXclVHekm0/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-07T17:48:16+00:00"
-    },
-    {
-      "id": "T94EbTQzHX4",
-      "title": "Gunner POV is pretty dope in Reforger #arma #fps #conflict",
-      "url": "https://www.youtube.com/watch?v=T94EbTQzHX4",
-      "image": "https://i1.ytimg.com/vi/T94EbTQzHX4/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-05T23:16:37+00:00"
     }
   ]
 }
