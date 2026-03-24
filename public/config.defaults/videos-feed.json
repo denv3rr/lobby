@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-24T13:51:01.026Z",
+    "fetchedAt": "2026-03-24T19:21:31.418Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "xBWIIoAQS-Y",
+      "title": "Left in the cold in Reforger #arma #funnymoments #armareforger #conflict #gaming #helicopter #fps",
+      "url": "https://www.youtube.com/watch?v=xBWIIoAQS-Y",
+      "image": "https://i1.ytimg.com/vi/xBWIIoAQS-Y/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-24T19:09:30+00:00"
+    },
     {
       "id": "PFxbeV5I4Ek",
       "title": "Friendly turns out to not be a friendly #arma #conflict #yellowstone #armareforger #fps #m4",
@@ -218,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-09T06:23:38+00:00"
-    },
-    {
-      "id": "RbnqMO2_bms",
-      "title": "Surrounded pilots refuse to give up #arma #funnymoments #gamingclips #armareforger #fps #thisisarma",
-      "url": "https://www.youtube.com/watch?v=RbnqMO2_bms",
-      "image": "https://i3.ytimg.com/vi/RbnqMO2_bms/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-07T21:40:50+00:00"
     }
   ]
 }
