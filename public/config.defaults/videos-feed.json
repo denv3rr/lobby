@@ -3,17 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-26T03:27:04.301Z",
+    "fetchedAt": "2026-03-26T07:36:16.193Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 500 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "Ym3FWM1R368",
+      "title": "Hilarious timing from whoever did that #thanks #armareforger #conflict #fps #buildingdemolition",
+      "url": "https://www.youtube.com/watch?v=Ym3FWM1R368",
+      "image": "https://i2.ytimg.com/vi/Ym3FWM1R368/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-25T20:42:12+00:00"
+    },
     {
       "id": "xBWIIoAQS-Y",
       "title": "Left in the cold in Reforger #arma #funnymoments #armareforger #conflict #gaming #helicopter #fps",
@@ -223,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-09T18:23:39+00:00"
-    },
-    {
-      "id": "bgLSFxa1rFA",
-      "title": "How many seconds does it take to get to the center of a proper ambush location? #arma",
-      "url": "https://www.youtube.com/watch?v=bgLSFxa1rFA",
-      "image": "https://i3.ytimg.com/vi/bgLSFxa1rFA/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-09T06:23:38+00:00"
     }
   ]
 }
