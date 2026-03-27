@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-03-26T19:32:08.254Z",
+    "fetchedAt": "2026-03-27T03:29:36.774Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "KurApZZa1xY",
+      "title": "AP rounds on Reforger are crazy #armareforger #gaming #fps #conflict",
+      "url": "https://www.youtube.com/watch?v=KurApZZa1xY",
+      "image": "https://i4.ytimg.com/vi/KurApZZa1xY/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-03-26T20:44:45+00:00"
+    },
     {
       "id": "Ym3FWM1R368",
       "title": "Hilarious timing from whoever did that #thanks #armareforger #conflict #fps #buildingdemolition",
@@ -218,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-10T00:07:05+00:00"
-    },
-    {
-      "id": "GAb_C6gSroM",
-      "title": "Kinda took a while for his guys to look that way for some reason #armareforger #gaming #conflict",
-      "url": "https://www.youtube.com/watch?v=GAb_C6gSroM",
-      "image": "https://i4.ytimg.com/vi/GAb_C6gSroM/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-09T18:23:39+00:00"
     }
   ]
 }
