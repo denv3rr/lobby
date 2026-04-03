@@ -3,17 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-03T03:27:35.048Z",
+    "fetchedAt": "2026-04-03T07:37:06.350Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 500 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "b2822Dbyg68",
+      "title": "Lowkey ambient #armareforger #map #mods #ambientsounds",
+      "url": "https://www.youtube.com/watch?v=b2822Dbyg68",
+      "image": "https://i3.ytimg.com/vi/b2822Dbyg68/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-04-02T18:32:52+00:00"
+    },
     {
       "id": "KurApZZa1xY",
       "title": "AP rounds on Reforger are crazy #armareforger #gaming #fps #conflict",
@@ -223,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-13T00:00:54+00:00"
-    },
-    {
-      "id": "mtjIForabIs",
-      "title": "All these happened within like 5 minutes lmao (pt. 3) #arma #armareforger",
-      "url": "https://www.youtube.com/watch?v=mtjIForabIs",
-      "image": "https://i2.ytimg.com/vi/mtjIForabIs/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-10T00:07:05+00:00"
     }
   ]
 }
