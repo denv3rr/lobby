@@ -173,20 +173,20 @@ export function createLocalSceneEditor({
     mount ||
     document.body;
 
-  const root = document.createElement("section");
+  const root = host.querySelector?.("#local-editor") || document.createElement("section");
   root.id = "local-editor";
   root.className = "editor-panel";
   root.dataset.ui = "true";
   root.innerHTML = `
     <header class="editor-panel-head" data-ui>
-      <p class="editor-panel-kicker" data-ui>World Builder</p>
+      <p class="editor-panel-kicker" data-ui>Scene Tools</p>
       <div class="editor-panel-title-row" data-ui>
         <div data-ui>
           <h2 data-ui>Local Scene Editor</h2>
-          <p class="editor-panel-subtitle" data-ui>Dev-only authoring with safer modular placement and local exports.</p>
+          <p class="editor-panel-subtitle" data-ui>Local editing for layout, transforms, and export.</p>
         </div>
         <div class="editor-panel-badge-row" data-ui>
-          <span class="editor-panel-badge" data-ui>Dev Only</span>
+          <span class="editor-panel-badge" data-ui>Local</span>
           <span id="editor-mode-badge" class="editor-panel-badge editor-panel-badge-active" data-ui>Select</span>
         </div>
       </div>
@@ -202,7 +202,7 @@ export function createLocalSceneEditor({
           Snap
         </label>
       </div>
-      <p class="editor-panel-hint" data-ui>RMB look, RMB+WASD move, click to select, Q/W/E/R switches tools. New pieces auto-seek a safer nearby placement instead of spawning into door lanes.</p>
+      <p class="editor-panel-hint" data-ui>RMB look, RMB+WASD move, click to select, and use Q/W/E/R to switch tools.</p>
     </section>
     <section class="editor-panel-section editor-create-section" data-ui>
       <div class="editor-section-head" data-ui>
@@ -313,7 +313,9 @@ export function createLocalSceneEditor({
       <p id="editor-status" class="editor-status" data-ui aria-live="polite"></p>
     </section>
   `;
-  host.appendChild(root);
+  if (!root.isConnected) {
+    host.appendChild(root);
+  }
 
   const propList = root.querySelector("#editor-prop-list");
   const generatedList = root.querySelector("#editor-generated-list");

@@ -17,6 +17,12 @@ import { createOverlay } from "./ui/overlay.js";
 import { isFeedRuntimeConfigFile, selectPreferredFeedRuntimeSource } from "./utils/runtimeConfigFeeds.js";
 import { createPerfHud } from "./ui/perfHud.js";
 import { resolvePublicPath } from "./utils/path.js";
+import {
+  normalizeExternalUrl,
+  shouldEnableLocalDebugUi,
+  shouldEnableLocalEditor,
+  isLocalAuthoringHostName
+} from "./utils/runtimePolicy.js";
 
 const BUILD_ID = import.meta.env.VITE_BUILD_ID || "";
 const THEME_STORAGE_KEY = "lobby.theme.v1";
@@ -100,26 +106,6 @@ function isMobileDevice() {
     window.matchMedia("(pointer: coarse)").matches ||
     /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)
   );
-}
-
-function isLocalAuthoringHost() {
-  const hostname = readText(window.location.hostname, "").toLowerCase();
-  if (!hostname) {
-    return false;
-  }
-  return (
-    hostname === "localhost" ||
-    hostname === "127.0.0.1" ||
-    hostname === "::1" ||
-    hostname.endsWith(".local")
-  );
-}
-
-function shouldEnableLocalEditor(params, { isDev = false } = {}) {
-  if (params?.get("editor") !== "1") {
-    return false;
-  }
-  return isDev || isLocalAuthoringHost();
 }
 
 function withBuildId(path) {
@@ -840,7 +826,7 @@ function normalizeModuleTriggerIds(value) {
 
 function normalizeModuleTriggers(rawTriggers, zones) {
   // Rear-hall staging uses generic public labels in-scene, so module ids remain the stable
-  // internal handles for future agents to identify which hidden space each trigger controls.
+  // internal handles for identifying which hidden space each trigger controls.
   const normalized = [];
   const seen = new Set();
   for (const entry of Array.isArray(rawTriggers) ? rawTriggers : []) {
@@ -979,18 +965,24 @@ async function boot() {
   }
   const mobile = isMobileDevice();
   const isDev = import.meta.env.DEV;
+  const localAuthoringHost = isLocalAuthoringHostName(window.location.hostname);
   const params = new URLSearchParams(window.location.search);
   const hasThemeQuery = params.has("theme");
-  const debugUiParam = params.get("debugui") === "1";
+  const localDebugUiEnabled = shouldEnableLocalDebugUi(params, {
+    isDev,
+    hostname: window.location.hostname
+  });
   const sceneUiEnabled = params.get("sceneui") !== "0";
-  const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
-  const devMenuEnabled = isDev || debugUiParam;
-  const editorSupported = isDev || isLocalAuthoringHost();
+  const allowThemeSelector = sceneUiEnabled && localDebugUiEnabled;
+  const devMenuEnabled = localDebugUiEnabled;
+  const editorSupported = isDev || localAuthoringHost;
   const editorModeEnabled = shouldEnableLocalEditor(params, {
-    isDev
+    isDev,
+    hostname: window.location.hostname
   });
   const inspectUiEnabled = editorModeEnabled;
-  const perfEnabled = params.get("perf") === "1";
+  const perfEnabled = localDebugUiEnabled && params.get("perf") === "1";
+  const runtimeDebugApiEnabled = localDebugUiEnabled || editorModeEnabled;
 
   let rendererContext = null;
   let controls = null;
@@ -1015,6 +1007,7 @@ async function boot() {
   let driftSystem = null;
   let driftSnapshot = null;
   let stabilitySystem = null;
+  let cache = null;
   let centerArtifactActivated = false;
   let centerArtifactSceneFxStrength = 0;
   let centerArtifactOwner = null;
@@ -1491,8 +1484,11 @@ async function boot() {
   }
 
   function openExternalUrl(url) {
-    const targetUrl = typeof url === "string" ? url.trim() : "";
+    const targetUrl = normalizeExternalUrl(url, {
+      baseUrl: window.location.href
+    });
     if (!targetUrl) {
+      showTransientPrompt("Link unavailable.");
       return false;
     }
     document.exitPointerLock?.();
@@ -1809,9 +1805,36 @@ async function boot() {
       if (catalogSystem && nextProfile) {
         catalogSystem.setQualityProfile?.(nextProfile);
       }
+      scenePanelSystem?.setUpdateIntervalMs?.(
+        Math.round((nextProfile?.visibilityUpdateInterval || 0.12) * 1000)
+      );
       saveQualitySelection(quality, { mirrorLegacyDevKey: isDev });
     }
   });
+  mountRuntimeDebugApi();
+  if (editorModeEnabled && !app.querySelector("#local-editor")) {
+    const editorHost = app.querySelector(".ui-layer") || app;
+    const placeholder = document.createElement("section");
+    placeholder.id = "local-editor";
+    placeholder.className = "editor-panel";
+    placeholder.dataset.ui = "true";
+    placeholder.innerHTML = `
+      <header class="editor-panel-head" data-ui>
+        <p class="editor-panel-kicker" data-ui>Scene Tools</p>
+        <div class="editor-panel-title-row" data-ui>
+          <div data-ui>
+            <h2 data-ui>Local Scene Editor</h2>
+            <p class="editor-panel-subtitle" data-ui>Loading editor tools.</p>
+          </div>
+          <div class="editor-panel-badge-row" data-ui>
+            <span class="editor-panel-badge" data-ui>Local</span>
+            <span class="editor-panel-badge editor-panel-badge-active" data-ui>Loading</span>
+          </div>
+        </div>
+      </header>
+    `;
+    editorHost.appendChild(placeholder);
+  }
   ui.hideFallback();
   ui.showLoading({
     title: "Entering Lobby",
@@ -1897,7 +1920,7 @@ async function boot() {
     perfHud = createPerfHud({ mount: app });
   }
 
-  const cache = new AssetCache();
+  cache = new AssetCache();
   const qualityProfile = rendererContext.getQualityProfile(quality);
   sceneContext = await loadScene({
     scene: rendererContext.scene,
@@ -1923,7 +1946,8 @@ async function boot() {
     scene: rendererContext.scene,
     panels: sceneContext?.getDisplayPanels?.() || [],
     onOpenUrl: (url) => openExternalUrl(url),
-    isPointerLocked: () => controls?.isPointerLocked?.() || false
+    isPointerLocked: () => controls?.isPointerLocked?.() || false,
+    updateIntervalMs: Math.round((qualityProfile?.visibilityUpdateInterval || 0.12) * 1000)
   });
   ui.setLoadingState({
     message: "Linking portals and systems."
@@ -1979,7 +2003,6 @@ async function boot() {
     themeSystem.resetToBaseState();
     ui.setTheme(availableThemeIds[0] || "lobby");
   }
-
   const { CatalogRoomSystem } = await import("./systems/catalog/catalogRoomSystem.js");
   catalogSystem = new CatalogRoomSystem({
     scene: rendererContext.scene,
@@ -2360,119 +2383,140 @@ async function boot() {
     };
   }
 
-  window.__LOBBY_DEBUG = {
-    getStats: (options = {}) =>
-      getDebugStats({
-        includeRaycasts: true,
-        ...options
-      }),
-    setTheme: async (themeName) =>
-      applyThemeSelection(themeName, {
-        playStinger: true,
-        persist: false,
-        hideInspectPanel: false
-      }),
-    getDriftSnapshot: () => driftSystem?.getSnapshot?.() || null,
-    resetDrift: (seed) => driftSystem?.reset?.(seed),
-    getModuleStates: () => sceneContext?.getPropModuleStates?.() || [],
-    setModuleVisibility: (moduleId, visible) => {
-      const updated = sceneContext?.setPropModulesVisible?.([moduleId], visible) || [];
-      refreshInteractiveSurfaces();
-      return updated;
-    },
-    toggleModuleVisibility: (moduleId) => {
-      const updated = sceneContext?.togglePropModulesVisible?.([moduleId]) || [];
-      refreshInteractiveSurfaces();
-      return updated;
-    },
-    playScreeningItem: (roomId, itemId) =>
-      catalogSystem?.playScreenVideo?.({ roomId, itemId }) || false,
-    getScreeningState: () => catalogSystem?.getScreeningState?.() || null,
-    getCatalogRoomIds: () => catalogSystem?.getConfiguredRoomIds?.() || [],
-    getCatalogRoomSnapshot: (roomId) => catalogSystem?.getRoomSnapshot?.(roomId) || null,
-    estimateCatalogRoomCount: (roomId, itemCount) =>
-      catalogSystem?.estimateRoomCount?.(roomId, itemCount) ?? null,
-    getScenePanelIds: () => {
-      const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
-      const panelSource = runtimePanels.length
-        ? runtimePanels
-        : (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
-            id: typeof entry?.id === "string" ? entry.id.trim() : ""
-          }));
-      return panelSource
-        .map((entry) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
-        .filter(Boolean);
-    },
-    getScenePanels: () => {
-      const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
-      if (runtimePanels.length) {
-        return runtimePanels;
-      }
-      return (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
-        id: typeof entry?.id === "string" ? entry.id.trim() : "",
-        type: entry?.type || null,
-        imageCount: Array.isArray(entry?.images) ? entry.images.length : 0,
-        visible: entry?.object?.visible !== false,
-        ctaUrl: typeof entry?.cta?.url === "string" ? entry.cta.url : ""
-      }));
-    },
-    activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
-    debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
-    getScenePanelPerf: () => scenePanelSystem?.getDebugStats?.() || null,
-    getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
-    getPropPlacementDiagnostics: (propId) =>
-      sceneContext?.getEditablePropPlacementDiagnostics?.(propId) || null,
-    resolvePropPlacement: (propId, markDirty = true) =>
-      sceneContext?.resolveEditablePropPlacement?.(propId, {
-        markDirty: markDirty !== false
-      }) || null,
-    getGeneratedShellEntries: (roomId) => catalogSystem?.getGeneratedShellEntries?.(roomId) || [],
-    setGeneratedShellVisible: (shellNodeId, visible) =>
-      catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, visible) || false,
-    restoreGeneratedShellRoom: (roomId) => catalogSystem?.restoreGeneratedShellRoom?.(roomId) || 0,
-    getEditorSnapshot: () => editorSystem?.getSnapshot?.() || null,
-    getEditorStatePayload: () => editorSystem?.buildState?.() || null,
-    saveEditorState: () => editorSystem?.saveState?.() || null,
-    loadEditorState: async () => (await editorSystem?.loadSavedState?.()) ?? 0,
-    clearEditorState: () => {
-      editorSystem?.clearState?.();
-      return true;
-    },
-    createEditorPreset: async () => (await editorSystem?.createFromPreset?.()) || false,
-    duplicateSelectedEditorProp: async () => (await editorSystem?.duplicateSelected?.()) || false,
-    deleteSelectedEditorItem: () => editorSystem?.deleteSelected?.() || false,
-    selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
-    selectGeneratedShellNode: (shellNodeId) => Boolean(editorSystem?.selectGeneratedNode?.(shellNodeId)),
-    probeColliders: (position, radius) => probeColliders(position, radius),
-    activateCenterArtifact: () => activateCenterArtifactTarget(),
-    teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
-    focusCatalogRoomWall: (roomId, wall, distance) => focusCatalogRoomWall(roomId, wall, distance),
-    getInteractionTargetIds: () =>
-      getInteractionTargets()
-        .map((target) => (typeof target?.id === "string" ? target.id.trim() : ""))
-        .filter(Boolean),
-    projectInteractionTarget: (targetId) => projectInteractionTarget(targetId),
-    getPortalIds: () =>
-      (sceneContext?.portals || [])
-        .map((portal) => (typeof portal?.id === "string" ? portal.id.trim() : ""))
-        .filter(Boolean),
-    pickTargetAt: (x = 0, y = 0) => interactionSystem?.debugPickAtNdc?.(x, y)?.id || null,
-    getHoveredTargetId: () => interactionSystem?.hoveredTarget?.id || null,
-    findAnyTargetHit: () => interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
-    findAnyPortalHit: () => interactionSystem?.debugFindAnyPortalHit?.()?.id || null,
-    activateAnyPortal: () => Boolean(interactionSystem?.debugActivateAnyPortal?.()),
-    activatePortal: (portalId) =>
-      interactionDirector?.runInteraction?.({
-        type: "portal",
-        portalId
-      }) || false,
-    activateHoveredOrAnyTarget: () =>
-      Boolean(interactionSystem?.debugActivateHoveredOrAnyTarget?.())
-  };
-  debugApiMounted = true;
+  function createRuntimeDebugApi() {
+    return {
+      getStats: (options = {}) =>
+        getDebugStats({
+          includeRaycasts: true,
+          ...options
+        }),
+      setTheme: async (themeName) =>
+        applyThemeSelection(themeName, {
+          playStinger: true,
+          persist: false,
+          hideInspectPanel: false
+        }),
+      getDriftSnapshot: () => driftSystem?.getSnapshot?.() || null,
+      resetDrift: (seed) => driftSystem?.reset?.(seed),
+      getModuleStates: () => sceneContext?.getPropModuleStates?.() || [],
+      setModuleVisibility: (moduleId, visible) => {
+        const updated = sceneContext?.setPropModulesVisible?.([moduleId], visible) || [];
+        refreshInteractiveSurfaces();
+        return updated;
+      },
+      toggleModuleVisibility: (moduleId) => {
+        const updated = sceneContext?.togglePropModulesVisible?.([moduleId]) || [];
+        refreshInteractiveSurfaces();
+        return updated;
+      },
+      playScreeningItem: (roomId, itemId) =>
+        catalogSystem?.playScreenVideo?.({ roomId, itemId }) || false,
+      getScreeningState: () => catalogSystem?.getScreeningState?.() || null,
+      getCatalogRoomIds: () => catalogSystem?.getConfiguredRoomIds?.() || [],
+      getCatalogRoomSnapshot: (roomId) => catalogSystem?.getRoomSnapshot?.(roomId) || null,
+      estimateCatalogRoomCount: (roomId, itemCount) =>
+        catalogSystem?.estimateRoomCount?.(roomId, itemCount) ?? null,
+      getScenePanelIds: () => {
+        const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
+        const panelSource = runtimePanels.length
+          ? runtimePanels
+          : (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+              id: typeof entry?.id === "string" ? entry.id.trim() : ""
+            }));
+        return panelSource
+          .map((entry) => (typeof entry?.id === "string" ? entry.id.trim() : ""))
+          .filter(Boolean);
+      },
+      getScenePanels: () => {
+        const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
+        if (runtimePanels.length) {
+          return runtimePanels;
+        }
+        return (sceneContext?.getDisplayPanels?.() || []).map((entry) => ({
+          id: typeof entry?.id === "string" ? entry.id.trim() : "",
+          type: entry?.type || null,
+          imageCount: Array.isArray(entry?.images) ? entry.images.length : 0,
+          visible: entry?.object?.visible !== false,
+          ctaUrl: typeof entry?.cta?.url === "string" ? entry.cta.url : ""
+        }));
+      },
+      activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
+      debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
+      getScenePanelPerf: () => scenePanelSystem?.getDebugStats?.() || null,
+      getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
+      getPropPlacementDiagnostics: (propId) =>
+        sceneContext?.getEditablePropPlacementDiagnostics?.(propId) || null,
+      resolvePropPlacement: (propId, markDirty = true) =>
+        sceneContext?.resolveEditablePropPlacement?.(propId, {
+          markDirty: markDirty !== false
+        }) || null,
+      getGeneratedShellEntries: (roomId) => catalogSystem?.getGeneratedShellEntries?.(roomId) || [],
+      setGeneratedShellVisible: (shellNodeId, visible) =>
+        catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, visible) || false,
+      restoreGeneratedShellRoom: (roomId) => catalogSystem?.restoreGeneratedShellRoom?.(roomId) || 0,
+      getEditorSnapshot: () => editorSystem?.getSnapshot?.() || null,
+      getEditorStatePayload: () => editorSystem?.buildState?.() || null,
+      saveEditorState: () => editorSystem?.saveState?.() || null,
+      loadEditorState: async () => (await editorSystem?.loadSavedState?.()) ?? 0,
+      clearEditorState: () => {
+        editorSystem?.clearState?.();
+        return true;
+      },
+      createEditorPreset: async () => (await editorSystem?.createFromPreset?.()) || false,
+      duplicateSelectedEditorProp: async () => (await editorSystem?.duplicateSelected?.()) || false,
+      deleteSelectedEditorItem: () => editorSystem?.deleteSelected?.() || false,
+      selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
+      selectGeneratedShellNode: (shellNodeId) => Boolean(editorSystem?.selectGeneratedNode?.(shellNodeId)),
+      probeColliders: (position, radius) => probeColliders(position, radius),
+      activateCenterArtifact: () => activateCenterArtifactTarget(),
+      teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),
+      focusCatalogRoomWall: (roomId, wall, distance) => focusCatalogRoomWall(roomId, wall, distance),
+      getInteractionTargetIds: () =>
+        getInteractionTargets()
+          .map((target) => (typeof target?.id === "string" ? target.id.trim() : ""))
+          .filter(Boolean),
+      projectInteractionTarget: (targetId) => projectInteractionTarget(targetId),
+      getPortalIds: () =>
+        (sceneContext?.portals || [])
+          .map((portal) => (typeof portal?.id === "string" ? portal.id.trim() : ""))
+          .filter(Boolean),
+      pickTargetAt: (x = 0, y = 0) => interactionSystem?.debugPickAtNdc?.(x, y)?.id || null,
+      getHoveredTargetId: () => interactionSystem?.hoveredTarget?.id || null,
+      findAnyTargetHit: () => interactionSystem?.debugFindAnyTargetHit?.()?.id || null,
+      findAnyPortalHit: () => interactionSystem?.debugFindAnyPortalHit?.()?.id || null,
+      activateAnyPortal: () => Boolean(interactionSystem?.debugActivateAnyPortal?.()),
+      activatePortal: (portalId) =>
+        interactionDirector?.runInteraction?.({
+          type: "portal",
+          portalId
+        }) || false,
+      activateHoveredOrAnyTarget: () =>
+        Boolean(interactionSystem?.debugActivateHoveredOrAnyTarget?.())
+    };
+  }
+
+  function mountRuntimeDebugApi() {
+    if (!runtimeDebugApiEnabled || debugApiMounted) {
+      return;
+    }
+    window.__LOBBY_DEBUG = createRuntimeDebugApi();
+    debugApiMounted = true;
+  }
 
   const clock = new THREE.Clock();
   let sceneInteractive = false;
+  let rendererWarmupStarted = false;
+
+  function startRendererWarmup() {
+    if (rendererWarmupStarted || editorModeEnabled || !rendererContext) {
+      return;
+    }
+    rendererWarmupStarted = true;
+    Promise.resolve(rendererContext.precompile?.()).catch((error) => {
+      console.warn("Renderer warmup skipped", error);
+    });
+  }
+
   rendererContext.renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), 0.05);
     const elapsed = clock.elapsedTime;
@@ -2511,6 +2555,7 @@ async function boot() {
     if (!sceneInteractive) {
       sceneInteractive = true;
       ui.hideLoading();
+      startRendererWarmup();
     }
     perfHud?.update({
       delta,
@@ -2532,6 +2577,7 @@ async function boot() {
     if (debugApiMounted) {
       delete window.__LOBBY_DEBUG;
     }
+    cache?.dispose?.();
     rendererContext?.dispose?.();
   });
 
@@ -2564,16 +2610,19 @@ async function attemptBoot() {
     const mobile = isMobileDevice();
     const isDev = import.meta.env.DEV;
     const params = new URLSearchParams(window.location.search);
-    const debugUiParam = params.get("debugui") === "1";
+    const localDebugUiEnabled = shouldEnableLocalDebugUi(params, {
+      isDev,
+      hostname: window.location.hostname
+    });
     const sceneUiEnabled = params.get("sceneui") !== "0";
-    const allowThemeSelector = sceneUiEnabled && (isDev || debugUiParam);
+    const allowThemeSelector = sceneUiEnabled && localDebugUiEnabled;
     const fallbackSceneConfig = await loadOptionalSceneConfig();
     const fallbackLinks = getFallbackLinks(fallbackSceneConfig);
 
     const ui = createOverlay({
       mount: app,
       isMobile: mobile,
-      showDevPanel: isDev || debugUiParam,
+      showDevPanel: localDebugUiEnabled,
       showThemePanel: allowThemeSelector,
       onEnableSound: async () => {},
       onThemeChange: () => {},

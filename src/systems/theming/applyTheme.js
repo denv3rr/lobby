@@ -472,7 +472,67 @@ function applyTextureRepeat(texture, repeat) {
   texture.repeat.set(repeat[0] || 1, repeat[1] || 1);
 }
 
-async function applyMaterialFromConfig(material, config, cache, animatedTextures) {
+function disposeTransientTextures(textures) {
+  const seen = new Set();
+  for (const texture of Array.isArray(textures) ? textures : []) {
+    if (!texture || seen.has(texture)) {
+      continue;
+    }
+    seen.add(texture);
+    disposeOwnedTexture(texture);
+  }
+}
+
+async function resolveMaterialTextures(config, cache) {
+  const mapTexture = await resolveTexture(config, cache);
+  let emissiveTexture = null;
+
+  if (config.emissiveMap === "$map" && mapTexture) {
+    emissiveTexture = mapTexture;
+  } else if (config.emissiveMap) {
+    emissiveTexture = await cache.loadTexture(config.emissiveMap);
+  }
+
+  return {
+    mapTexture,
+    emissiveTexture
+  };
+}
+
+function registerAnimatedTexture(animatedTextures, config, mapTexture) {
+  if (!mapTexture) {
+    return;
+  }
+
+  if (Array.isArray(config.textureScroll)) {
+    animatedTextures.push({
+      texture: mapTexture,
+      scrollX: config.textureScroll[0] || 0,
+      scrollY: config.textureScroll[1] || 0,
+      animatedImage: Boolean(config.animatedTexture)
+    });
+    return;
+  }
+
+  if (config.animatedTexture) {
+    animatedTextures.push({
+      texture: mapTexture,
+      scrollX: 0,
+      scrollY: 0,
+      animatedImage: true
+    });
+  }
+}
+
+async function applyMaterialFromConfig(material, config, cache, animatedTextures, options = {}) {
+  const shouldCancel =
+    typeof options.shouldCancel === "function" ? options.shouldCancel : () => false;
+  const nextTextures = await resolveMaterialTextures(config, cache);
+  if (shouldCancel()) {
+    disposeTransientTextures([nextTextures.mapTexture, nextTextures.emissiveTexture]);
+    return false;
+  }
+
   disposeOwnedTexture(material.map);
   disposeOwnedTexture(material.emissiveMap);
   material.color.set(config.color || "#777777");
@@ -483,39 +543,19 @@ async function applyMaterialFromConfig(material, config, cache, animatedTextures
   material.roughness = config.roughness ?? material.roughness ?? 0.9;
   material.metalness = config.metalness ?? material.metalness ?? 0.02;
 
-  const mapTexture = await resolveTexture(config, cache);
-  if (mapTexture) {
-    applyTextureRepeat(mapTexture, config.textureRepeat);
-    material.map = mapTexture;
+  if (nextTextures.mapTexture) {
+    applyTextureRepeat(nextTextures.mapTexture, config.textureRepeat);
+    material.map = nextTextures.mapTexture;
   }
 
-  if (config.emissiveMap === "$map" && mapTexture) {
-    material.emissiveMap = mapTexture;
-  } else if (config.emissiveMap) {
-    const emissiveTexture = await cache.loadTexture(config.emissiveMap);
-    if (emissiveTexture) {
-      applyTextureRepeat(emissiveTexture, config.textureRepeat);
-      material.emissiveMap = emissiveTexture;
-    }
+  if (nextTextures.emissiveTexture) {
+    applyTextureRepeat(nextTextures.emissiveTexture, config.textureRepeat);
+    material.emissiveMap = nextTextures.emissiveTexture;
   }
 
-  if (Array.isArray(config.textureScroll) && mapTexture) {
-    animatedTextures.push({
-      texture: mapTexture,
-      scrollX: config.textureScroll[0] || 0,
-      scrollY: config.textureScroll[1] || 0,
-      animatedImage: Boolean(config.animatedTexture)
-    });
-  } else if (config.animatedTexture && mapTexture) {
-    animatedTextures.push({
-      texture: mapTexture,
-      scrollX: 0,
-      scrollY: 0,
-      animatedImage: true
-    });
-  }
-
+  registerAnimatedTexture(animatedTextures, config, nextTextures.mapTexture);
   material.needsUpdate = true;
+  return true;
 }
 
 function createThemeLight(lightConfig, qualityProfile) {
@@ -816,19 +856,28 @@ export class ThemeSystem {
           this.sceneContext.roomMaterials.wall,
           mergedRoomConfig.wallMaterial || {},
           this.cache,
-          this.animatedTextures
+          this.animatedTextures,
+          {
+            shouldCancel: () => token !== this.applyToken
+          }
         ),
         applyMaterialFromConfig(
           this.sceneContext.roomMaterials.floor,
           mergedRoomConfig.floorMaterial || {},
           this.cache,
-          this.animatedTextures
+          this.animatedTextures,
+          {
+            shouldCancel: () => token !== this.applyToken
+          }
         ),
         applyMaterialFromConfig(
           this.sceneContext.roomMaterials.ceiling,
           mergedRoomConfig.ceilingMaterial || {},
           this.cache,
-          this.animatedTextures
+          this.animatedTextures,
+          {
+            shouldCancel: () => token !== this.applyToken
+          }
         )
       ]);
       if (token !== this.applyToken) {

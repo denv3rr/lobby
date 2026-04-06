@@ -3,6 +3,63 @@ import { resolvePublicPath } from "../utils/path.js";
 
 let gltfLoaderPromise = null;
 
+function disposeTexture(texture) {
+  if (!texture) {
+    return;
+  }
+
+  texture.dispose?.();
+  const sourceData = texture.source?.data;
+  if (sourceData && typeof sourceData.close === "function") {
+    try {
+      sourceData.close();
+    } catch {}
+  }
+}
+
+function disposeMaterialTextures(material) {
+  if (!material) {
+    return;
+  }
+
+  const seen = new Set();
+  for (const key of [
+    "map",
+    "alphaMap",
+    "aoMap",
+    "bumpMap",
+    "displacementMap",
+    "emissiveMap",
+    "envMap",
+    "lightMap",
+    "metalnessMap",
+    "normalMap",
+    "roughnessMap"
+  ]) {
+    const texture = material[key];
+    if (!texture || seen.has(texture)) {
+      continue;
+    }
+    seen.add(texture);
+    disposeTexture(texture);
+  }
+}
+
+function disposeObjectResources(root) {
+  root?.traverse?.((node) => {
+    node.geometry?.dispose?.();
+    if (Array.isArray(node.material)) {
+      for (const material of node.material) {
+        disposeMaterialTextures(material);
+        material?.dispose?.();
+      }
+      return;
+    }
+    disposeMaterialTextures(node.material);
+    node.material?.dispose?.();
+  });
+}
+
 async function getGLTFLoader() {
   if (!gltfLoaderPromise) {
     gltfLoaderPromise = import("three/examples/jsm/loaders/GLTFLoader.js").then(
@@ -106,5 +163,30 @@ export class AssetCache {
 
     const gltf = await this.modelCache.get(src);
     return gltf || null;
+  }
+
+  dispose() {
+    const texturePromises = [...this.textureCache.values()];
+    const modelPromises = [...this.modelCache.values()];
+    this.textureCache.clear();
+    this.modelCache.clear();
+
+    for (const promise of texturePromises) {
+      Promise.resolve(promise)
+        .then((texture) => {
+          disposeTexture(texture);
+        })
+        .catch(() => {});
+    }
+
+    for (const promise of modelPromises) {
+      Promise.resolve(promise)
+        .then((gltf) => {
+          if (gltf?.scene) {
+            disposeObjectResources(gltf.scene);
+          }
+        })
+        .catch(() => {});
+    }
   }
 }

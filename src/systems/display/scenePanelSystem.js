@@ -66,6 +66,11 @@ export class ScenePanelSystem {
     this.setPanels(panels);
   }
 
+  setUpdateIntervalMs(updateIntervalMs = this.updateIntervalMs) {
+    this.updateIntervalMs = clamp(Number(updateIntervalMs) || this.updateIntervalMs || 100, 33, 250);
+    this.perfStats.updateIntervalMs = this.updateIntervalMs;
+  }
+
   ensureLayer() {
     if (this.layer?.isConnected) {
       return this.layer;
@@ -975,11 +980,15 @@ export class ScenePanelSystem {
     this.syncPointerLockState(pointerLocked);
 
     const now = performance.now();
+    const visibleIntervalMs = Math.max(this.updateIntervalMs, 180);
+    const idleIntervalMs = Math.max(visibleIntervalMs, 260);
+    const activeIntervalMs =
+      this.perfStats.visiblePanelCount > 0 ? visibleIntervalMs : idleIntervalMs;
     const shouldRecompute = !Number.isFinite(this.lastUpdateAt)
-      || now - this.lastUpdateAt >= this.updateIntervalMs;
+      || now - this.lastUpdateAt >= activeIntervalMs;
     if (!shouldRecompute) {
       this.perfStats.skippedUpdates += 1;
-      this.perfStats.updateIntervalMs = this.updateIntervalMs;
+      this.perfStats.updateIntervalMs = activeIntervalMs;
       this.perfStats.lastUpdateAttemptAt = now;
       this.perfStats.lastUpdateMs = 0;
       this.perfStats.panelCount = this.panelEntries.length;
@@ -1021,7 +1030,7 @@ export class ScenePanelSystem {
     this.perfStats.lastUpdateMs = Number((end - start).toFixed(3));
     this.perfStats.lastUpdateAt = end;
     this.perfStats.lastUpdateAttemptAt = end;
-    this.perfStats.updateIntervalMs = this.updateIntervalMs;
+    this.perfStats.updateIntervalMs = activeIntervalMs;
     this.perfStats.visiblePanelCount = visiblePanelCount;
     this.perfStats.hiddenPanelCount = hiddenPanelCount;
     this.perfStats.panelCount = this.panelEntries.length;

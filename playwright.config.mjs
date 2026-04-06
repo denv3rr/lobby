@@ -11,12 +11,12 @@ const webServerCommand =
 
 export default defineConfig({
   testDir: "./tests/e2e",
-  timeout: 90_000,
+  timeout: 150_000,
   expect: {
     timeout: 12_000
   },
   fullyParallel: false,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",

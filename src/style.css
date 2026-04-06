@@ -205,6 +205,7 @@ a:focus-visible {
 .scene-panel-layer {
   position: absolute;
   inset: 0;
+  z-index: 1;
   pointer-events: none;
   overflow: hidden;
 }
@@ -472,6 +473,7 @@ a:focus-visible {
   pointer-events: none;
   position: absolute;
   inset: 0;
+  z-index: 20;
 }
 
 .ui-layer::before {
@@ -514,6 +516,7 @@ a:focus-visible {
   position: absolute;
   top: 0.9rem;
   left: 0.9rem;
+  z-index: 50;
   width: min(46rem, calc(100vw - 1.8rem));
   max-height: calc(100vh - 1.8rem);
   overflow: auto;
@@ -770,6 +773,7 @@ a:focus-visible {
   position: absolute;
   left: 1rem;
   top: 15.4rem;
+  z-index: 60;
   width: min(50rem, calc(100vw - 2rem));
   max-height: calc(100vh - 16.4rem);
   overflow: auto;
@@ -1025,6 +1029,7 @@ a:focus-visible {
   position: absolute;
   left: 50%;
   bottom: 1.15rem;
+  z-index: 35;
   transform: translateX(-50%);
   min-height: 1.7rem;
   min-width: 14rem;
@@ -1046,6 +1051,7 @@ a:focus-visible {
   position: absolute;
   right: 1rem;
   top: 8rem;
+  z-index: 55;
   width: min(24rem, calc(100vw - 2rem));
 }
 
@@ -1113,6 +1119,7 @@ a:focus-visible {
   position: absolute;
   right: 0.9rem;
   bottom: 3.2rem;
+  z-index: 30;
   width: min(21rem, calc(100vw - 2rem));
   display: grid;
   gap: 0.5rem;
@@ -1290,6 +1297,7 @@ a:focus-visible {
   position: absolute;
   right: 0.9rem;
   bottom: 1rem;
+  z-index: 40;
 }
 
 .sound-chip {
@@ -1308,9 +1316,10 @@ a:focus-visible {
 }
 
 .loading-panel {
-  pointer-events: none;
+  pointer-events: auto;
   position: absolute;
   inset: 0;
+  z-index: 70;
   display: grid;
   place-items: center;
   background: rgba(3, 6, 9, 0.38);
@@ -1376,6 +1385,7 @@ a:focus-visible {
   pointer-events: auto;
   position: absolute;
   inset: 1rem;
+  z-index: 80;
   overflow: auto;
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
@@ -1444,11 +1454,12 @@ a:focus-visible {
     left: 1rem;
     right: 1rem;
     width: auto;
-    bottom: 3.95rem;
+    bottom: 7.2rem;
   }
 
   .portal-prompt {
     width: calc(100vw - 2rem);
+    bottom: 4.3rem;
     text-align: center;
   }
 
@@ -1456,7 +1467,7 @@ a:focus-visible {
     right: 1rem;
     left: 1rem;
     top: auto;
-    bottom: 4.9rem;
+    bottom: 5.8rem;
     width: auto;
     max-height: min(40vh, calc(100vh - 6.2rem));
     overflow: auto;
@@ -1467,7 +1478,7 @@ a:focus-visible {
     right: 1rem;
     width: auto;
     top: auto;
-    bottom: 4.9rem;
+    bottom: 5.8rem;
     max-height: min(48vh, calc(100vh - 6.4rem));
     overflow: auto;
   }

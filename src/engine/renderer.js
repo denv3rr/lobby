@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { OutputPass } from "three/addons/postprocessing/OutputPass.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
 import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
@@ -182,14 +183,34 @@ function resolvePostProcessingSettings(profile, overrides) {
   };
 }
 
+function getViewportSize(mount) {
+  const bounds = mount?.getBoundingClientRect?.();
+  const width = Math.max(
+    1,
+    Math.round(bounds?.width || mount?.clientWidth || window.innerWidth || 1)
+  );
+  const height = Math.max(
+    1,
+    Math.round(bounds?.height || mount?.clientHeight || window.innerHeight || 1)
+  );
+  return { width, height };
+}
+
 export function createRenderer({ mount, quality = "medium" }) {
   let activeQuality = quality;
   let activePostOverrides = {};
   let useComposer = false;
+  let composer = null;
+  let renderPass = null;
+  let bloomPass = null;
+  let vignettePass = null;
+  let outputPass = null;
+  let resizeObserver = null;
   const scene = new THREE.Scene();
+  let viewportSize = getViewportSize(mount);
   const camera = new THREE.PerspectiveCamera(
     72,
-    window.innerWidth / window.innerHeight,
+    viewportSize.width / viewportSize.height,
     0.1,
     200
   );
@@ -201,32 +222,70 @@ export function createRenderer({ mount, quality = "medium" }) {
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 0.9;
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  renderer.info.autoReset = false;
+  renderer.setSize(viewportSize.width, viewportSize.height, false);
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
+  renderer.domElement.style.display = "block";
 
-  const composer = new EffectComposer(renderer);
-  const renderPass = new RenderPass(scene, camera);
-  composer.addPass(renderPass);
+  function ensureComposer() {
+    if (composer) {
+      return composer;
+    }
 
-  const bloomPass = new UnrealBloomPass(
-    new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.62,
-    0.84,
-    0.22
-  );
-  composer.addPass(bloomPass);
+    composer = new EffectComposer(renderer);
+    renderPass = new RenderPass(scene, camera);
+    composer.addPass(renderPass);
 
-  const vignettePass = new ShaderPass(VIGNETTE_SHADER);
-  composer.addPass(vignettePass);
+    bloomPass = new UnrealBloomPass(
+      new THREE.Vector2(viewportSize.width, viewportSize.height),
+      0.62,
+      0.84,
+      0.22
+    );
+    composer.addPass(bloomPass);
+
+    vignettePass = new ShaderPass(VIGNETTE_SHADER);
+    composer.addPass(vignettePass);
+
+    outputPass = new OutputPass();
+    composer.addPass(outputPass);
+
+    composer.setPixelRatio?.(renderer.getPixelRatio());
+    composer.setSize(viewportSize.width, viewportSize.height);
+    return composer;
+  }
+
+  function disposeComposer() {
+    outputPass?.dispose?.();
+    vignettePass?.dispose?.();
+    bloomPass?.dispose?.();
+    renderPass?.dispose?.();
+    composer?.dispose?.();
+    composer = null;
+    renderPass = null;
+    bloomPass = null;
+    vignettePass = null;
+    outputPass = null;
+  }
 
   function applyCurrentSettings() {
     const profile = QUALITY_PROFILES[activeQuality] || QUALITY_PROFILES.medium;
+    viewportSize = getViewportSize(mount);
     applyRendererQuality(renderer, activeQuality);
-    composer.setPixelRatio?.(renderer.getPixelRatio());
-    composer.setSize(window.innerWidth, window.innerHeight);
 
     const post = resolvePostProcessingSettings(profile, activePostOverrides);
     useComposer = post.enabled !== false;
+
+    if (!useComposer) {
+      disposeComposer();
+      return;
+    }
+
+    ensureComposer();
+    composer.setPixelRatio?.(renderer.getPixelRatio());
+    composer.setSize(viewportSize.width, viewportSize.height);
 
     bloomPass.enabled = useComposer && post.bloomEnabled !== false;
     bloomPass.strength = post.bloomStrength ?? bloomPass.strength;
@@ -237,6 +296,7 @@ export function createRenderer({ mount, quality = "medium" }) {
     vignettePass.uniforms.offset.value = post.vignetteOffset ?? vignettePass.uniforms.offset.value;
     vignettePass.uniforms.darkness.value =
       post.vignetteDarkness ?? vignettePass.uniforms.darkness.value;
+    outputPass.enabled = useComposer;
   }
 
   applyCurrentSettings();
@@ -253,6 +313,7 @@ export function createRenderer({ mount, quality = "medium" }) {
   }
 
   function render() {
+    renderer.info.reset();
     if (useComposer) {
       composer.render();
       return;
@@ -260,14 +321,37 @@ export function createRenderer({ mount, quality = "medium" }) {
     renderer.render(scene, camera);
   }
 
+  async function precompile() {
+    try {
+      if (typeof renderer.compileAsync === "function") {
+        await renderer.compileAsync(scene, camera);
+        return true;
+      }
+      if (typeof renderer.compile === "function") {
+        renderer.compile(scene, camera);
+        return true;
+      }
+    } catch (error) {
+      console.warn("Renderer precompile skipped", error);
+    }
+    return false;
+  }
+
   function onResize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    viewportSize = getViewportSize(mount);
+    camera.aspect = viewportSize.width / viewportSize.height;
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(viewportSize.width, viewportSize.height, false);
     applyCurrentSettings();
   }
 
   window.addEventListener("resize", onResize);
+  if (typeof ResizeObserver === "function" && mount) {
+    resizeObserver = new ResizeObserver(() => {
+      onResize();
+    });
+    resizeObserver.observe(mount);
+  }
 
   return {
     scene,
@@ -280,12 +364,14 @@ export function createRenderer({ mount, quality = "medium" }) {
         ...QUALITY_PROFILES[resolved]
       };
     },
+    precompile,
     render,
     setQuality,
     setPostProcessingOverrides,
     dispose() {
       window.removeEventListener("resize", onResize);
-      composer.dispose?.();
+      resizeObserver?.disconnect?.();
+      disposeComposer();
       renderer.dispose();
       renderer.domElement.remove();
     }

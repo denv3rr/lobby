@@ -41,9 +41,9 @@ export function createOverlay({
   const editorButtonLabel = editorActive ? "Close Editor" : "Open Editor";
   const editorNote = editorSupported
     ? editorActive
-      ? "Editor is active. RMB look plus Q/W/E/R editing is available, with create/duplicate/delete tools, local session saves, and scene override export."
-      : "Local editor is available here. It opens the current scene authoring shell for selecting, creating, moving, and exporting scene overrides."
-    : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
+      ? "Editor is active. Use RMB look with Q/W/E/R tools to move and adjust scene items."
+      : "Scene editor is available while running locally."
+    : "Scene editor is available on local builds only.";
 
   mount.innerHTML = `
     <div class="lobby-root">
@@ -52,20 +52,20 @@ export function createOverlay({
       <div class="ui-layer">
         <div class="settings-panel ${settingsVisible ? "" : "hidden"}" data-ui>
           <div class="settings-panel-headline" data-ui>
-            <p class="settings-kicker" data-ui>Seperet Lobby</p>
+            <p class="settings-kicker" data-ui>Settings</p>
             <div class="settings-title-row" data-ui>
               <div data-ui>
-                <h1 data-ui>Command Deck</h1>
-                <p class="settings-summary" data-ui>Runtime controls, world-state HUD, and local authoring live here without taking over the whole screen.</p>
+                <h1 data-ui>Scene Controls</h1>
+                <p class="settings-summary" data-ui>Adjust visuals, audio, and local scene tools.</p>
               </div>
-              <span class="settings-mode-pill" data-ui>${isMobile ? "Touch Runtime" : "Desktop Runtime"}</span>
+              <span class="settings-mode-pill" data-ui>${isMobile ? "Touch" : "Desktop"}</span>
             </div>
           </div>
           <div class="settings-panel-grid" data-ui>
             <section class="settings-card settings-card-runtime" data-ui>
               <div class="settings-card-head" data-ui>
                 <h2 data-ui>Session Controls</h2>
-                <p data-ui>Theme, quality, and movement context.</p>
+                <p data-ui>Theme, quality, and control hints.</p>
               </div>
               <label class="${themeHiddenClass}">
                 Theme
@@ -85,8 +85,8 @@ export function createOverlay({
             <section id="dev-panel" class="dev-panel settings-card ${devPanelHiddenClass}" data-ui>
               <div class="dev-panel-head">
                 <div data-ui>
-                  <h2>Config Console</h2>
-                  <p class="dev-panel-subtitle" data-ui>Local-only editing and runtime reload tools.</p>
+                  <h2>Scene Config</h2>
+                  <p class="dev-panel-subtitle" data-ui>Local configuration, reload, and editor tools.</p>
                 </div>
                 <span id="dev-mode-badge" class="dev-mode-badge">${devModeLabel}</span>
               </div>
@@ -99,7 +99,7 @@ export function createOverlay({
                 <select id="dev-config-source" data-ui>
                   <option value="effective">Effective</option>
                   <option value="local">Local Override</option>
-                  <option value="defaults">Deploy Defaults</option>
+                  <option value="defaults">Project Defaults</option>
                 </select>
               </label>
               <textarea
@@ -109,12 +109,12 @@ export function createOverlay({
                 data-ui
               ></textarea>
               <p id="dev-config-status" class="dev-config-status">
-                Local save writes to public/config. Deploy save writes to public/config.defaults.
+                Local save writes to public/config. Defaults save writes to public/config.defaults.
               </p>
               <div class="dev-actions">
                 <button id="dev-load-btn" type="button" data-ui>Reload</button>
                 <button id="dev-save-local-btn" type="button" data-ui>Set Local</button>
-                <button id="dev-save-defaults-btn" type="button" data-ui>Save Deploy</button>
+                <button id="dev-save-defaults-btn" type="button" data-ui>Save Defaults</button>
                 <button id="dev-delete-local-btn" type="button" data-ui>Clear Local</button>
                 <button id="dev-reload-runtime-btn" type="button" data-ui>Reload App</button>
                 <button
@@ -131,7 +131,7 @@ export function createOverlay({
           </div>
         </div>
 
-        <div id="portal-prompt" class="portal-prompt" role="status" aria-live="polite"></div>
+        <div id="portal-prompt" class="portal-prompt hidden" role="status" aria-live="polite"></div>
 
         <div
           id="inspect-panel"
@@ -189,14 +189,14 @@ export function createOverlay({
         <div id="loading-panel" class="loading-panel hidden" aria-live="polite" data-ui>
           <div class="loading-card">
             <h2 id="loading-title">Entering Lobby</h2>
-            <p id="loading-message">Preparing liminal architecture.</p>
+            <p id="loading-message">Preparing the scene.</p>
             <div
               id="loading-track"
               class="loading-track"
               role="progressbar"
               aria-valuemin="0"
               aria-valuemax="100"
-              aria-valuetext="Preparing liminal architecture."
+              aria-valuetext="Preparing the scene."
             >
               <span class="loading-pulse"></span>
             </div>
@@ -514,9 +514,9 @@ export function createOverlay({
       const active = Boolean(devMenu?.editorActive);
       devEditorNote.textContent = supported
         ? active
-          ? "Editor is active. RMB look plus Q/W/E/R editing is available, with create/duplicate/delete tools, local session saves, and scene override export."
-          : "Local editor is available here. It opens the current scene authoring shell for selecting, creating, moving, and exporting scene overrides."
-        : "Editor is local-only. Open this app on localhost or the Vite dev server to use it.";
+          ? "Editor is active. Use RMB look with Q/W/E/R tools to move and adjust scene items."
+          : "Scene editor is available while running locally."
+        : "Scene editor is available on local builds only.";
       devEditorNote.dataset.tone = supported ? "info" : "muted";
     }
   }
@@ -578,7 +578,7 @@ export function createOverlay({
       await loadDevConfig(target === "defaults" ? "defaults" : "local");
       setDevStatus(
         target === "defaults"
-          ? `${fileName} saved to deploy defaults. Push to publish it.`
+          ? `${fileName} saved to project defaults. Push to publish it.`
           : `${fileName} saved as a local override.`,
         "success"
       );
@@ -629,7 +629,7 @@ export function createOverlay({
       loadingTitle.textContent = readText(title, "Entering Lobby");
     }
     if (message !== undefined) {
-      const safeMessage = readText(message, "Preparing liminal architecture.");
+      const safeMessage = readText(message, "Preparing the scene.");
       loadingMessage.textContent = safeMessage;
       loadingTrack.setAttribute("aria-valuetext", safeMessage);
     }
@@ -933,7 +933,7 @@ export function createOverlay({
     setDevEditorState();
     setDevStatus(
       devMenu.writable
-        ? "Edit JSON here, then save locally or directly to deploy defaults."
+        ? "Edit JSON here, then save locally or to project defaults."
         : "Read-only mode. Open local dev to save config files from this panel.",
       "muted"
     );
@@ -1008,11 +1008,14 @@ export function createOverlay({
       qualitySelect.value = value;
     },
     setPortalPrompt(portal) {
-      if (!portal) {
+      const label = readText(portal?.label, "");
+      if (!label) {
         portalPrompt.textContent = "";
+        portalPrompt.classList.add("hidden");
         return;
       }
-      portalPrompt.textContent = readText(portal.label, "");
+      portalPrompt.textContent = label;
+      portalPrompt.classList.remove("hidden");
     },
     showInspectPanel(data) {
       return showInspectPanel(data);
