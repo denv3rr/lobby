@@ -1,5 +1,18 @@
 import * as THREE from "three";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
+import { resolvePublicPath } from "../utils/path.js";
+import { RUNTIME_PHASE_OPTIONS, normalizeRuntimePhase } from "../utils/runtimePhases.js";
+import {
+  buildEditorPresetFromLibraryEntry,
+  EFFECT_PRESETS,
+  getEffectPresetConfig,
+  getMotionPresetConfig,
+  MODEL_LIBRARY_MANIFEST_PATH,
+  MOTION_PRESETS,
+  normalizeModelLibraryManifest,
+  resolveEffectPresetId,
+  resolveMotionPresetId
+} from "./modelLibrary.js";
 
 const EDITOR_STATE_STORAGE_KEY = "lobby.editor.state.v1";
 const DEFAULT_TRANSLATE_SNAP = 0.25;
@@ -20,6 +33,10 @@ function cloneJson(value) {
   } catch {
     return null;
   }
+}
+
+function isObject(value) {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
 }
 
 function toRounded(value, digits = 4) {
@@ -208,7 +225,7 @@ export function createLocalSceneEditor({
       <div class="editor-section-head" data-ui>
         <div data-ui>
           <h3 data-ui>Asset Browser</h3>
-          <p data-ui>Filter primitives and discovered scene models before placing them.</p>
+          <p data-ui>Browse validated lowpoly props, drag them into the scene, or place them at the current anchor.</p>
         </div>
       </div>
       <div class="editor-panel-row editor-create-row" data-ui>
@@ -220,10 +237,15 @@ export function createLocalSceneEditor({
           autocomplete="off"
           data-ui
         />
-        <select id="editor-create-preset" data-ui></select>
         <button id="editor-create-btn" type="button" data-ui>Place Asset</button>
         <button id="editor-duplicate-btn" type="button" data-ui>Duplicate</button>
       </div>
+      <p id="editor-library-summary" class="editor-library-summary" data-ui>Loading model library manifest.</p>
+      <div id="editor-library-grid" class="editor-library-grid" data-ui></div>
+      <label class="editor-panel-label editor-library-select" data-ui>
+        Selected Asset
+        <select id="editor-create-preset" size="7" data-ui></select>
+      </label>
     </section>
     <div class="editor-panel-columns" data-ui>
       <section class="editor-panel-section editor-outliner-section" data-ui>
@@ -284,6 +306,50 @@ export function createLocalSceneEditor({
       <div class="editor-panel-row editor-placement-row" data-ui>
         <code id="editor-placement-readout" data-ui>Placement diagnostics unavailable.</code>
       </div>
+      <div class="editor-panel-section editor-behavior-section" data-ui>
+        <div class="editor-section-head" data-ui>
+          <div data-ui>
+            <h3 data-ui>Added Prop Behavior</h3>
+            <p data-ui>Reveal timing, motion, emissive glow, and local particles for exported editor props.</p>
+          </div>
+        </div>
+        <div class="editor-panel-columns editor-behavior-columns" data-ui>
+          <label class="editor-panel-label" data-ui>
+            Reveal Phase
+            <select id="editor-runtime-phase" data-ui></select>
+          </label>
+          <label class="editor-panel-label" data-ui>
+            Motion
+            <select id="editor-motion-preset" data-ui></select>
+          </label>
+          <label class="editor-panel-label" data-ui>
+            Particles
+            <select id="editor-effect-preset" data-ui></select>
+          </label>
+          <label class="editor-panel-label" data-ui>
+            Emissive Color
+            <input id="editor-emissive-color" class="editor-behavior-input" type="color" value="#000000" data-ui />
+          </label>
+          <label class="editor-panel-label" data-ui>
+            Emissive Intensity
+            <input
+              id="editor-emissive-intensity"
+              class="editor-behavior-input"
+              type="number"
+              min="0"
+              max="5"
+              step="0.05"
+              value="0"
+              data-ui
+            />
+          </label>
+          <label class="editor-panel-checkbox editor-behavior-checkbox" data-ui>
+            <input id="editor-glow-light-toggle" type="checkbox" data-ui />
+            Glow Light
+          </label>
+        </div>
+        <p id="editor-behavior-hint" class="editor-panel-hint" data-ui>Select an added prop to edit its exported behavior.</p>
+      </div>
       <div class="editor-panel-row editor-selection-actions-row" data-ui>
         <button id="editor-hide-selected-btn" type="button" data-ui>Delete / Hide Selected</button>
         <button id="editor-restore-selected-btn" type="button" data-ui>Restore Selected</button>
@@ -321,6 +387,8 @@ export function createLocalSceneEditor({
   const generatedList = root.querySelector("#editor-generated-list");
   const createPresetList = root.querySelector("#editor-create-preset");
   const presetFilterInput = root.querySelector("#editor-preset-filter");
+  const librarySummary = root.querySelector("#editor-library-summary");
+  const libraryGrid = root.querySelector("#editor-library-grid");
   const propFilterInput = root.querySelector("#editor-prop-filter");
   const generatedFilterInput = root.querySelector("#editor-generated-filter");
   const createButton = root.querySelector("#editor-create-btn");
@@ -343,6 +411,13 @@ export function createLocalSceneEditor({
   const sourceReadout = root.querySelector("#editor-source-readout");
   const placementReadout = root.querySelector("#editor-placement-readout");
   const selectionChips = root.querySelector("#editor-selection-chips");
+  const runtimePhaseSelect = root.querySelector("#editor-runtime-phase");
+  const motionPresetSelect = root.querySelector("#editor-motion-preset");
+  const effectPresetSelect = root.querySelector("#editor-effect-preset");
+  const emissiveColorInput = root.querySelector("#editor-emissive-color");
+  const emissiveIntensityInput = root.querySelector("#editor-emissive-intensity");
+  const glowLightToggle = root.querySelector("#editor-glow-light-toggle");
+  const behaviorHint = root.querySelector("#editor-behavior-hint");
   const modeBadge = root.querySelector("#editor-mode-badge");
   const modeButtons = [...root.querySelectorAll("[data-mode]")];
 
@@ -370,6 +445,18 @@ export function createLocalSceneEditor({
   let lastLookClientY = 0;
   const pickRaycaster = new THREE.Raycaster();
   const pickPointer = new THREE.Vector2();
+  const placementPlane = new THREE.Plane(
+    new THREE.Vector3(0, 1, 0),
+    -(Number(sceneContext?.floorY) || 0)
+  );
+  const dragDropPoint = new THREE.Vector3();
+  const modelLibrary = {
+    version: 1,
+    requirements: null,
+    entries: []
+  };
+  let modelLibraryLoadState = "idle";
+  let dragPresetId = "";
   const defaultCreatePresets = [
     {
       id: "primitive:box",
@@ -569,14 +656,61 @@ export function createLocalSceneEditor({
     return getGeneratedEntries().find((entry) => entry.id === selectedGeneratedNodeId) || null;
   }
 
+  function populateSelectOptions(select, options = [], selectedValue = "") {
+    if (!select) {
+      return;
+    }
+    select.innerHTML = "";
+    for (const optionConfig of options) {
+      const option = document.createElement("option");
+      option.value = readText(optionConfig?.id, "");
+      option.textContent = readText(optionConfig?.label, option.value || "Option");
+      select.appendChild(option);
+    }
+    select.value = selectedValue;
+  }
+
+  function ensureCustomSelectOption(select, label = "Custom") {
+    if (!select) {
+      return;
+    }
+    if ([...select.options].some((option) => option.value === "custom")) {
+      return;
+    }
+    const option = document.createElement("option");
+    option.value = "custom";
+    option.textContent = label;
+    select.appendChild(option);
+  }
+
+  function getModelLibraryPresets() {
+    return modelLibrary.entries
+      .map((entry) => buildEditorPresetFromLibraryEntry(entry))
+      .filter(Boolean);
+  }
+
   function getCreationPresets() {
     const presets = defaultCreatePresets.map((entry) => ({
       id: entry.id,
       label: entry.label,
       category: readText(entry.category, "Primitives"),
+      description: readText(entry.description, ""),
+      tags: normalizeStringList(entry.tags),
       config: cloneJson(entry.config) || {}
     }));
     const seenModels = new Set();
+
+    for (const preset of getModelLibraryPresets()) {
+      const modelPath = readText(preset?.config?.model, "");
+      if (modelPath) {
+        seenModels.add(modelPath);
+      }
+      presets.push({
+        ...preset,
+        description: readText(preset.description, ""),
+        tags: normalizeStringList(preset.tags)
+      });
+    }
 
     for (const propId of getEditableIds()) {
       const config = sceneContext.getEditablePropConfig?.(propId, { includeSource: false }) || null;
@@ -590,6 +724,8 @@ export function createLocalSceneEditor({
         id: `model:${modelPath}`,
         label: `Model: ${labelBase}`,
         category: "Scene Models",
+        description: "Discovered from the current scene config.",
+        tags: [],
         config: {
           type: "model",
           model: modelPath,
@@ -604,6 +740,131 @@ export function createLocalSceneEditor({
     }
 
     return presets;
+  }
+
+  function getLibraryBrowserPresets() {
+    const presets = getModelLibraryPresets();
+    if (presets.length) {
+      return presets;
+    }
+    return getCreationPresets().filter((entry) => entry?.config?.type === "model");
+  }
+
+  function selectCreationPreset(presetId) {
+    const nextId = readText(presetId, "");
+    if (!createPresetList) {
+      return false;
+    }
+    createPresetList.value = nextId;
+    for (const card of libraryGrid?.querySelectorAll?.("[data-preset-id]") || []) {
+      const selected = card.dataset.presetId === nextId;
+      card.classList.toggle("is-selected", selected);
+      card.setAttribute("aria-pressed", selected ? "true" : "false");
+    }
+    updateActionState();
+    return Boolean(nextId);
+  }
+
+  function renderLibraryCards() {
+    if (!libraryGrid || !librarySummary) {
+      return;
+    }
+
+    const filterQuery = readText(presetFilterInput?.value, "").toLowerCase();
+    const presets = getLibraryBrowserPresets().filter((preset) => {
+      if (!filterQuery) {
+        return true;
+      }
+      return [
+        preset.label,
+        preset.category,
+        preset.description,
+        ...(Array.isArray(preset.tags) ? preset.tags : [])
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(filterQuery);
+    });
+
+    libraryGrid.innerHTML = "";
+    for (const preset of presets) {
+      const card = document.createElement("button");
+      card.type = "button";
+      card.className = "editor-library-card";
+      card.dataset.presetId = preset.id;
+      card.draggable = true;
+      const metaParts = [readText(preset.category, "Library")];
+      if (Array.isArray(preset.tags) && preset.tags.length) {
+        metaParts.push(preset.tags.slice(0, 3).join(" • "));
+      }
+      card.innerHTML = `
+        <span class="editor-library-card-title">${preset.label}</span>
+        <span class="editor-library-card-meta">${metaParts.filter(Boolean).join(" | ")}</span>
+        <span class="editor-library-card-body">${readText(preset.description, "Drag onto the scene or place at the current anchor.")}</span>
+      `;
+      card.addEventListener("click", () => {
+        selectCreationPreset(preset.id);
+      });
+      card.addEventListener("dblclick", () => {
+        void createPropFromPreset({ presetId: preset.id });
+      });
+      card.addEventListener("dragstart", (event) => {
+        dragPresetId = preset.id;
+        event.dataTransfer?.setData("text/plain", preset.id);
+        event.dataTransfer?.setData("application/x-lobby-preset-id", preset.id);
+        event.dataTransfer?.setDragImage?.(card, 24, 24);
+        domElement.dataset.editorDropActive = "true";
+      });
+      card.addEventListener("dragend", () => {
+        dragPresetId = "";
+        delete domElement.dataset.editorDropActive;
+      });
+      libraryGrid.appendChild(card);
+    }
+
+    const requirements = modelLibrary.requirements;
+    if (modelLibraryLoadState === "ready" && requirements) {
+      librarySummary.textContent =
+        `Validated library: ${presets.length}/${modelLibrary.entries.length} models shown | ` +
+        `GLB only | <= ${Math.round(Number(requirements.maxFileBytes) / 1000)} KB | ` +
+        `<= ${requirements.maxTriangles} tris`;
+    } else if (modelLibraryLoadState === "loading") {
+      librarySummary.textContent = "Loading model library manifest.";
+    } else if (modelLibraryLoadState === "error") {
+      librarySummary.textContent =
+        "Model library manifest unavailable. Falling back to models already discovered in the scene.";
+    } else {
+      librarySummary.textContent = `${presets.length} model presets ready.`;
+    }
+
+    selectCreationPreset(readText(createPresetList?.value, presets[0]?.id || ""));
+  }
+
+  async function loadModelLibraryManifest() {
+    modelLibraryLoadState = "loading";
+    renderLibraryCards();
+    try {
+      const response = await fetch(resolvePublicPath(MODEL_LIBRARY_MANIFEST_PATH), {
+        cache: "no-store"
+      });
+      if (!response.ok) {
+        throw new Error(`Library manifest request failed: ${response.status}`);
+      }
+      const parsed = normalizeModelLibraryManifest(await response.json());
+      modelLibrary.version = parsed.version;
+      modelLibrary.requirements = parsed.requirements;
+      modelLibrary.entries = parsed.entries;
+      modelLibraryLoadState = "ready";
+      setStatus(`Loaded ${parsed.entries.length} validated library props.`, "muted");
+    } catch (error) {
+      modelLibrary.version = 1;
+      modelLibrary.requirements = null;
+      modelLibrary.entries = [];
+      modelLibraryLoadState = "error";
+      console.warn("[localSceneEditor] model library manifest unavailable", error);
+    }
+    refreshCreationPresets();
+    renderLibraryCards();
   }
 
   function refreshCreationPresets() {
@@ -643,6 +904,7 @@ export function createLocalSceneEditor({
     createPresetList.value = filteredPresets.some((entry) => entry.id === previous)
       ? previous
       : filteredPresets[0]?.id || "";
+    renderLibraryCards();
   }
 
   function getSelectedCreationPreset() {
@@ -682,6 +944,31 @@ export function createLocalSceneEditor({
       x: player.position.x + forward.x,
       y: Number.isFinite(floorY) ? floorY : Math.max(0, player.position.y - 1.7),
       z: player.position.z + forward.z
+    };
+  }
+
+  function getPlacementAtClientPosition(clientX, clientY) {
+    const rect = domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) {
+      return null;
+    }
+    const localX = clientX - rect.left;
+    const localY = clientY - rect.top;
+    if (localX < 0 || localX > rect.width || localY < 0 || localY > rect.height) {
+      return null;
+    }
+
+    pickPointer.x = (localX / rect.width) * 2 - 1;
+    pickPointer.y = -(localY / rect.height) * 2 + 1;
+    pickRaycaster.setFromCamera(pickPointer, camera);
+    if (!pickRaycaster.ray.intersectPlane(placementPlane, dragDropPoint)) {
+      return null;
+    }
+
+    return {
+      x: toRounded(dragDropPoint.x, 4),
+      y: Number(sceneContext?.floorY) || 0,
+      z: toRounded(dragDropPoint.z, 4)
     };
   }
 
@@ -855,6 +1142,99 @@ export function createLocalSceneEditor({
     }
   }
 
+  function setBehaviorControlsDisabled(disabled) {
+    for (const control of [
+      runtimePhaseSelect,
+      motionPresetSelect,
+      effectPresetSelect,
+      emissiveColorInput,
+      emissiveIntensityInput,
+      glowLightToggle
+    ]) {
+      if (control) {
+        control.disabled = disabled;
+      }
+    }
+  }
+
+  function refreshBehaviorControls() {
+    populateSelectOptions(runtimePhaseSelect, RUNTIME_PHASE_OPTIONS, "");
+    populateSelectOptions(motionPresetSelect, MOTION_PRESETS, "");
+    populateSelectOptions(effectPresetSelect, EFFECT_PRESETS, "");
+
+    const state = getSelectedPropState();
+    const config = getSelectedPropConfig({ includeSource: false });
+    if (!state?.editorCreated || !config) {
+      setBehaviorControlsDisabled(true);
+      if (emissiveColorInput) {
+        emissiveColorInput.value = "#000000";
+      }
+      if (emissiveIntensityInput) {
+        emissiveIntensityInput.value = "0";
+      }
+      if (glowLightToggle) {
+        glowLightToggle.checked = false;
+      }
+      if (behaviorHint) {
+        behaviorHint.textContent = "Select an added prop to edit its exported behavior.";
+      }
+      return;
+    }
+
+    const motionPresetId = resolveMotionPresetId(config);
+    if (motionPresetId === "custom") {
+      ensureCustomSelectOption(motionPresetSelect, "Custom Motion");
+    }
+    const effectPresetId = resolveEffectPresetId(config);
+    if (effectPresetId === "custom") {
+      ensureCustomSelectOption(effectPresetSelect, "Custom Effect");
+    }
+
+    runtimePhaseSelect.value = normalizeRuntimePhase(config.runtimePhase);
+    motionPresetSelect.value = motionPresetId || "";
+    effectPresetSelect.value = effectPresetId || "";
+    emissiveColorInput.value = /^#[0-9a-f]{6}$/i.test(readText(config?.material?.emissiveColor, ""))
+      ? readText(config.material.emissiveColor, "#000000")
+      : "#000000";
+    emissiveIntensityInput.value = String(
+      toRounded(Number(config?.material?.emissiveIntensity) || 0, 2)
+    );
+    glowLightToggle.checked = config?.material?.glowLight === true;
+    setBehaviorControlsDisabled(false);
+    if (behaviorHint) {
+      behaviorHint.textContent =
+        "These settings are saved with the added prop and export cleanly to scene.json for public builds.";
+    }
+  }
+
+  async function applySelectedCreatedPropConfigPatch(patch, successText) {
+    const state = getSelectedPropState();
+    if (!selectedPropId || state?.editorCreated !== true) {
+      setStatus("Select an added prop first.", "warn");
+      return false;
+    }
+
+    const updated = await sceneContext.updateEditorCreatedPropConfig?.(
+      selectedPropId,
+      patch,
+      {
+        markDirty: true,
+        resolvePlacement: false
+      }
+    );
+    if (!updated) {
+      setStatus(`Failed to update ${selectedPropId}.`, "warn");
+      refreshBehaviorControls();
+      return false;
+    }
+
+    onSceneMutated?.();
+    refreshOutliner();
+    selectProp(selectedPropId);
+    setStatus(successText, "success");
+    return true;
+  }
+
   function refreshReadout() {
     const selectedType = getSelectedType();
     if (!readout || !sourceReadout || !placementReadout) {
@@ -871,6 +1251,7 @@ export function createLocalSceneEditor({
         placementReadout.textContent = "Placement diagnostics unavailable.";
         renderSelectionChips([]);
         updateActionState();
+        refreshBehaviorControls();
         return;
       }
 
@@ -918,6 +1299,18 @@ export function createLocalSceneEditor({
           tone: "info"
         });
       }
+      if (state.runtimePhase) {
+        chips.push({
+          label: `Phase ${state.runtimePhase}`,
+          tone: "warn"
+        });
+      }
+      if (Array.isArray(state.effectTypes) && state.effectTypes.length) {
+        chips.push({
+          label: state.effectTypes.join(", "),
+          tone: "info"
+        });
+      }
       if (placementDiagnostics?.valid) {
         chips.push({
           label: "Placement Clear",
@@ -936,6 +1329,7 @@ export function createLocalSceneEditor({
           ? `Placement issues: ${placementDiagnostics.issues.map((issue) => `${issue.label} (${issue.id})`).join(" • ")}`
           : "Placement diagnostics unavailable.";
       updateActionState();
+      refreshBehaviorControls();
       return;
     }
 
@@ -976,6 +1370,7 @@ export function createLocalSceneEditor({
         }
       ]);
       updateActionState();
+      refreshBehaviorControls();
       return;
     }
 
@@ -984,6 +1379,7 @@ export function createLocalSceneEditor({
     placementReadout.textContent = "Placement diagnostics unavailable.";
     renderSelectionChips([]);
     updateActionState();
+    refreshBehaviorControls();
   }
 
   function clearSelection() {
@@ -1356,9 +1752,9 @@ export function createLocalSceneEditor({
     return false;
   }
 
-  function buildCreatedPropFromPreset(preset) {
+  function buildCreatedPropFromPreset(preset, options = {}) {
     const config = cloneJson(preset?.config) || {};
-    const anchor = getPlacementAnchor();
+    const anchor = isObject(options?.anchor) ? options.anchor : getPlacementAnchor();
     const offset = Array.isArray(config.position) ? config.position.slice(0, 3) : [0, 0, 0];
     const yaw = toRounded(THREE.MathUtils.radToDeg(sceneContext?.player?.rotation?.y || 0), 3);
     const baseName =
@@ -1397,14 +1793,18 @@ export function createLocalSceneEditor({
     return config;
   }
 
-  async function createPropFromPreset() {
-    const preset = getSelectedCreationPreset();
+  async function createPropFromPreset(options = {}) {
+    const preset =
+      readText(options?.presetId, "")
+        ? getCreationPresets().find((entry) => entry.id === readText(options.presetId, "")) || null
+        : getSelectedCreationPreset();
     if (!preset) {
       setStatus("Choose an asset preset first.", "warn");
       return false;
     }
 
-    const config = buildCreatedPropFromPreset(preset);
+    const anchor = isObject(options?.anchor) ? options.anchor : getPlacementAnchor();
+    const config = buildCreatedPropFromPreset(preset, { anchor });
     const created = await sceneContext.createEditorCreatedProp?.(config, { markDirty: true });
     if (!created) {
       setStatus("Failed to create the selected asset.", "warn");
@@ -1422,6 +1822,7 @@ export function createLocalSceneEditor({
       selectProp(config.id);
     }
     setMode("translate");
+    selectCreationPreset(preset.id);
     setStatus(
       placementResult?.moved
         ? `Placed ${config.id} and nudged it clear of nearby blocked lanes.`
@@ -1845,6 +2246,44 @@ export function createLocalSceneEditor({
     }
   }
 
+  function getDraggedPresetId(event) {
+    return readText(
+      event?.dataTransfer?.getData("application/x-lobby-preset-id"),
+      readText(event?.dataTransfer?.getData("text/plain"), dragPresetId)
+    );
+  }
+
+  function handleCanvasDragOver(event) {
+    const presetId = getDraggedPresetId(event);
+    if (!presetId) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    domElement.dataset.editorDropActive = "true";
+  }
+
+  function handleCanvasDragLeave() {
+    delete domElement.dataset.editorDropActive;
+  }
+
+  function handleCanvasDrop(event) {
+    const presetId = getDraggedPresetId(event);
+    if (!presetId) {
+      return;
+    }
+    event.preventDefault();
+    suppressPointerLock();
+    delete domElement.dataset.editorDropActive;
+    dragPresetId = "";
+    selectCreationPreset(presetId);
+    const anchor = getPlacementAtClientPosition(event.clientX, event.clientY) || getPlacementAnchor();
+    void createPropFromPreset({
+      presetId,
+      anchor
+    });
+  }
+
   transformControls.addEventListener("dragging-changed", (event) => {
     if (disposed) {
       return;
@@ -1902,7 +2341,7 @@ export function createLocalSceneEditor({
     setStatus("Outliners refreshed.", "muted");
   });
   createPresetList?.addEventListener("change", () => {
-    updateActionState();
+    selectCreationPreset(readText(createPresetList.value, ""));
   });
   presetFilterInput?.addEventListener("input", () => {
     refreshCreationPresets();
@@ -1919,6 +2358,82 @@ export function createLocalSceneEditor({
   });
   duplicateButton?.addEventListener("click", () => {
     void duplicateSelectedProp();
+  });
+  runtimePhaseSelect?.addEventListener("change", () => {
+    void applySelectedCreatedPropConfigPatch(
+      {
+        runtimePhase: normalizeRuntimePhase(runtimePhaseSelect.value)
+      },
+      `Updated reveal phase for ${selectedPropId}.`
+    );
+  });
+  motionPresetSelect?.addEventListener("change", () => {
+    const presetId = readText(motionPresetSelect.value, "");
+    if (presetId === "custom") {
+      return;
+    }
+    const presetConfig = getMotionPresetConfig(presetId);
+    void applySelectedCreatedPropConfigPatch(
+      presetConfig
+        ? {
+            animation: cloneJson(presetConfig.animation),
+            animations: null
+          }
+        : {
+            animation: null,
+            animations: null
+          },
+      `Updated motion for ${selectedPropId}.`
+    );
+  });
+  effectPresetSelect?.addEventListener("change", () => {
+    const presetId = readText(effectPresetSelect.value, "");
+    if (presetId === "custom") {
+      return;
+    }
+    const presetConfig = getEffectPresetConfig(presetId);
+    void applySelectedCreatedPropConfigPatch(
+      presetConfig
+        ? {
+            effect: cloneJson(presetConfig.effect),
+            effects: null
+          }
+        : {
+            effect: null,
+            effects: null
+          },
+      `Updated particles for ${selectedPropId}.`
+    );
+  });
+  emissiveColorInput?.addEventListener("change", () => {
+    void applySelectedCreatedPropConfigPatch(
+      {
+        material: {
+          emissiveColor: readText(emissiveColorInput.value, "#000000")
+        }
+      },
+      `Updated emissive color for ${selectedPropId}.`
+    );
+  });
+  emissiveIntensityInput?.addEventListener("change", () => {
+    void applySelectedCreatedPropConfigPatch(
+      {
+        material: {
+          emissiveIntensity: Math.max(0, Number(emissiveIntensityInput.value) || 0)
+        }
+      },
+      `Updated emissive intensity for ${selectedPropId}.`
+    );
+  });
+  glowLightToggle?.addEventListener("change", () => {
+    void applySelectedCreatedPropConfigPatch(
+      {
+        material: {
+          glowLight: Boolean(glowLightToggle.checked)
+        }
+      },
+      `Updated glow light for ${selectedPropId}.`
+    );
   });
   saveButton?.addEventListener("click", () => {
     saveState();
@@ -1954,6 +2469,10 @@ export function createLocalSceneEditor({
     restoreSelectedRoom();
   });
   domElement.addEventListener("mousedown", handleCanvasMouseDown);
+  domElement.addEventListener("dragover", handleCanvasDragOver);
+  domElement.addEventListener("dragenter", handleCanvasDragOver);
+  domElement.addEventListener("dragleave", handleCanvasDragLeave);
+  domElement.addEventListener("drop", handleCanvasDrop);
   domElement.addEventListener("contextmenu", handleCanvasContextMenu);
   domElement.addEventListener("click", handleCanvasClick);
   window.addEventListener("mousemove", handleWindowMouseMove, true);
@@ -1972,6 +2491,8 @@ export function createLocalSceneEditor({
   setSnapEnabled(true);
   setMode("select");
   refreshOutliner();
+  refreshBehaviorControls();
+  void loadModelLibraryManifest();
   setStatus(
     typeof readSceneConfig === "function" && typeof writeSceneConfig === "function"
       ? `Ready. ${getEditableIds().length} props and ${getGeneratedEntries().length} generated shell pieces available. Export writes scene.json editor overrides.`
@@ -2019,8 +2540,13 @@ export function createLocalSceneEditor({
       window.removeEventListener("keydown", handleWindowKeyDown, true);
       window.removeEventListener("keyup", handleWindowKeyUp, true);
       domElement.removeEventListener("mousedown", handleCanvasMouseDown);
+      domElement.removeEventListener("dragover", handleCanvasDragOver);
+      domElement.removeEventListener("dragenter", handleCanvasDragOver);
+      domElement.removeEventListener("dragleave", handleCanvasDragLeave);
+      domElement.removeEventListener("drop", handleCanvasDrop);
       domElement.removeEventListener("contextmenu", handleCanvasContextMenu);
       domElement.removeEventListener("click", handleCanvasClick);
+      delete domElement.dataset.editorDropActive;
       transformControls.detach();
       scene.remove(transformControls);
       transformControls.dispose();

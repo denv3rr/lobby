@@ -1,0 +1,497 @@
+{
+  "version": 1,
+  "requirements": {
+    "extensions": [
+      ".glb"
+    ],
+    "embeddedOnly": true,
+    "maxFileBytes": 1250000,
+    "maxTriangles": 12000,
+    "maxMaterials": 8,
+    "maxTextures": 8
+  },
+  "entries": [
+    {
+      "id": "backrooms_filing_cabinet",
+      "label": "Filing Cabinet",
+      "category": "Horror Reveal",
+      "description": "Rust-stained office storage for the fog transition layer.",
+      "tags": [
+        "backrooms",
+        "horror",
+        "office",
+        "ps1"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/8xZQEZL2w3",
+      "model": "/assets/models/props/backrooms_filing_cabinet.glb",
+      "defaults": {
+        "model": "/assets/models/props/backrooms_filing_cabinet.glb",
+        "scale": [
+          1.15,
+          1.15,
+          1.15
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "box",
+        "runtimePhase": "artifact-transition",
+        "deferLoad": true,
+        "effect": {
+          "type": "smoke",
+          "count": 16,
+          "size": 0.13,
+          "opacity": 0.12,
+          "color": "#c4c7c3",
+          "riseSpeed": 0.15,
+          "drift": 0.2
+        }
+      }
+    },
+    {
+      "id": "backrooms_office_chair",
+      "label": "Office Chair",
+      "category": "Horror Reveal",
+      "description": "Wheel it into the mist or let it creep-rotate in place once the fog hits.",
+      "tags": [
+        "backrooms",
+        "horror",
+        "office",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/UfKvrZBK6C",
+      "model": "/assets/models/props/backrooms_office_chair.glb",
+      "defaults": {
+        "model": "/assets/models/props/backrooms_office_chair.glb",
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "box",
+        "runtimePhase": "artifact-transition",
+        "deferLoad": true
+      }
+    },
+    {
+      "id": "inferno_chain_bundle",
+      "label": "Chain Bundle",
+      "category": "Horror Reveal",
+      "description": "A hanging industrial accent for the artifact fog pass.",
+      "tags": [
+        "chain",
+        "horror",
+        "industrial",
+        "ps1"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/ejWQny9Gcz",
+      "model": "/assets/models/props/inferno_chain_bundle.glb",
+      "defaults": {
+        "model": "/assets/models/props/inferno_chain_bundle.glb",
+        "scale": [
+          1.2,
+          1.2,
+          1.2
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder",
+        "runtimePhase": "artifact-transition",
+        "deferLoad": true,
+        "effect": {
+          "type": "mist",
+          "count": 12,
+          "size": 0.18,
+          "opacity": 0.1,
+          "color": "#d6d7d4",
+          "riseSpeed": 0.08,
+          "drift": 0.12
+        }
+      }
+    },
+    {
+      "id": "inferno_skull_pile",
+      "label": "Skull Pile",
+      "category": "Horror Reveal",
+      "description": "Dense floor clutter for the post-click horror version of the lobby.",
+      "tags": [
+        "bones",
+        "horror",
+        "creepy",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/ExZmhOIjka",
+      "model": "/assets/models/props/inferno_skull_pile.glb",
+      "defaults": {
+        "model": "/assets/models/props/inferno_skull_pile.glb",
+        "scale": [
+          1.1,
+          1.1,
+          1.1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder",
+        "runtimePhase": "artifact-transition",
+        "deferLoad": true,
+        "effect": {
+          "type": "mist",
+          "count": 10,
+          "size": 0.16,
+          "opacity": 0.08,
+          "color": "#d8dad7",
+          "riseSpeed": 0.06,
+          "drift": 0.1
+        }
+      }
+    },
+    {
+      "id": "purgatory_obelisk",
+      "label": "Obelisk",
+      "category": "Horror Reveal",
+      "description": "A ritual centerpiece with a subtle ember plume and weak glow.",
+      "tags": [
+        "obelisk",
+        "horror",
+        "ritual",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/dJLAD6p90F",
+      "model": "/assets/models/props/purgatory_obelisk.glb",
+      "defaults": {
+        "model": "/assets/models/props/purgatory_obelisk.glb",
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder",
+        "runtimePhase": "artifact-transition",
+        "deferLoad": true,
+        "material": {
+          "emissiveColor": "#ff9c6f",
+          "emissiveIntensity": 0.22,
+          "glowLight": true
+        },
+        "effect": {
+          "type": "embers",
+          "count": 18,
+          "size": 0.06,
+          "opacity": 0.72,
+          "color": "#ff9363",
+          "riseSpeed": 0.46,
+          "drift": 0.28,
+          "additive": true
+        }
+      }
+    },
+    {
+      "id": "lobby_planter",
+      "label": "Planter",
+      "category": "Elegant Foundation",
+      "description": "A calm lowpoly planter that keeps the pre-fog lobby feeling restrained.",
+      "tags": [
+        "planter",
+        "elegant",
+        "foundation",
+        "cc0"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/f6GPjbEgg0",
+      "model": "/assets/models/props/lobby_planter.glb",
+      "defaults": {
+        "model": "/assets/models/props/lobby_planter.glb",
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder"
+      }
+    },
+    {
+      "id": "roman_amphora",
+      "label": "Amphora",
+      "category": "Elegant Foundation",
+      "description": "Museum-style accent for keeping the lobby refined before the transition.",
+      "tags": [
+        "ceramic",
+        "museum",
+        "elegant",
+        "cc0"
+      ],
+      "author": "MilkAndBanana",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/fHMy0Xrb0V",
+      "model": "/assets/models/props/roman_amphora.glb",
+      "defaults": {
+        "model": "/assets/models/props/roman_amphora.glb",
+        "scale": [
+          1.1,
+          1.1,
+          1.1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder"
+      }
+    },
+    {
+      "id": "roman_topiary",
+      "label": "Topiary",
+      "category": "Elegant Foundation",
+      "description": "Useful for the clean, slightly formal lobby state before corruption rolls in.",
+      "tags": [
+        "garden",
+        "elegant",
+        "museum",
+        "cc0"
+      ],
+      "author": "Isa Lousberg",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/I5KhMKZKju",
+      "model": "/assets/models/props/roman_topiary.glb",
+      "defaults": {
+        "model": "/assets/models/props/roman_topiary.glb",
+        "scale": [
+          1.1,
+          1.1,
+          1.1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder"
+      }
+    },
+    {
+      "id": "roman_statue",
+      "label": "Horse Statue",
+      "category": "Grand Display",
+      "description": "Large lowpoly sculpture for the elegant side of the lobby.",
+      "tags": [
+        "statue",
+        "museum",
+        "elegant",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/AK9CmjFnL6",
+      "model": "/assets/models/props/roman_statue.glb",
+      "defaults": {
+        "model": "/assets/models/props/roman_statue.glb",
+        "scale": [
+          0.84,
+          0.84,
+          0.84
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder"
+      }
+    },
+    {
+      "id": "neon_server_rack",
+      "label": "Server Rack",
+      "category": "Tech Relics",
+      "description": "A colder techno accent that still fits the elegant half-lit lobby.",
+      "tags": [
+        "tech",
+        "neon",
+        "rack",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/TDgvIuorcX",
+      "model": "/assets/models/props/neon_server_rack.glb",
+      "defaults": {
+        "model": "/assets/models/props/neon_server_rack.glb",
+        "scale": [
+          1,
+          1,
+          1
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "box",
+        "material": {
+          "emissiveColor": "#80a8ff",
+          "emissiveIntensity": 0.12,
+          "glowLight": false
+        }
+      }
+    },
+    {
+      "id": "neon_holo_totem",
+      "label": "Holo Totem",
+      "category": "Tech Relics",
+      "description": "Useful for the more elegant, synthetic side of the lobby before the horror pass.",
+      "tags": [
+        "holo",
+        "tech",
+        "neon",
+        "cc0"
+      ],
+      "author": "Pichuliru",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/UHEJDoCrcf",
+      "model": "/assets/models/props/neon_holo_totem.glb",
+      "defaults": {
+        "model": "/assets/models/props/neon_holo_totem.glb",
+        "scale": [
+          0.8,
+          0.8,
+          0.8
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder",
+        "animation": {
+          "type": "spin-y",
+          "speed": 0.4
+        },
+        "material": {
+          "emissiveColor": "#ff8fd4",
+          "emissiveIntensity": 0.2,
+          "glowLight": false
+        }
+      }
+    },
+    {
+      "id": "spi_rifle",
+      "label": "Rifle",
+      "category": "Relic Display",
+      "description": "A lean display prop that can stay elegant or turn ominous with fog-reveal settings.",
+      "tags": [
+        "weapon",
+        "display",
+        "relic",
+        "ps2"
+      ],
+      "author": "Quaternius",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/cCAgiMOQow",
+      "model": "/assets/models/props/spi_rifle.glb",
+      "defaults": {
+        "model": "/assets/models/props/spi_rifle.glb",
+        "scale": [
+          0.14,
+          0.14,
+          0.14
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "center"
+        },
+        "modelFallback": "box"
+      }
+    },
+    {
+      "id": "christmas_tree",
+      "label": "Christmas Tree Character",
+      "category": "Oddities",
+      "description": "A big outlier prop that still passes the portability profile, useful for seasonal or surreal variants.",
+      "tags": [
+        "seasonal",
+        "oddity",
+        "character",
+        "cc0"
+      ],
+      "author": "Polygonal Mind",
+      "license": "CC0 1.0",
+      "source": "https://poly.pizza/m/JV3IxxmVlT",
+      "model": "/assets/models/props/christmas_tree.glb",
+      "defaults": {
+        "model": "/assets/models/props/christmas_tree.glb",
+        "scale": [
+          0.9,
+          0.9,
+          0.9
+        ],
+        "modelPlacement": {
+          "centerAxes": [
+            "x",
+            "z"
+          ],
+          "alignY": "base"
+        },
+        "modelFallback": "cylinder"
+      }
+    }
+  ]
+}

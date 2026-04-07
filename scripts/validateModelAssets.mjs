@@ -3,6 +3,12 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { normalizeModelLibraryManifest } from "../src/editor/modelLibrary.js";
+import {
+  analyzeModelFile,
+  evaluateModelPortability
+} from "./modelAssetAnalysis.mjs";
+
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
 const SOURCE_CONFIG_FILES = [
@@ -12,6 +18,7 @@ const SOURCE_CONFIG_FILES = [
   { path: "public/config.defaults/themes.json", required: true }
 ];
 
+const MODEL_LIBRARY_MANIFEST_FILE = "public/assets/models/props/library.json";
 const VALID_PRIMITIVES = new Set(["box", "sphere", "cylinder", "plane", "torus"]);
 
 function isObject(value) {
@@ -55,9 +62,10 @@ function asModelReference(prop, context) {
       propId: prop.id || "(unnamed)",
       modelPath: "",
       hasFallback: Boolean(prop.modelFallback),
-      fallbackPrimitive: typeof prop.modelFallback === "string"
-        ? prop.modelFallback
-        : prop.modelFallback?.primitive || null
+      fallbackPrimitive:
+        typeof prop.modelFallback === "string"
+          ? prop.modelFallback
+          : prop.modelFallback?.primitive || null
     };
   }
 
@@ -146,6 +154,85 @@ async function pathExists(targetPath) {
   }
 }
 
+async function analyzeModelAsset(modelPath) {
+  const resolvedPath = resolveModelPath(modelPath);
+  const analysis = await analyzeModelFile(resolvedPath);
+  return {
+    resolvedPath,
+    ...analysis
+  };
+}
+
+function validateManifestEntries(manifest, errors, warnings) {
+  const entries = Array.isArray(manifest?.entries) ? manifest.entries : [];
+  const seenIds = new Set();
+  const seenModels = new Set();
+  const requirementFailures = [];
+  const analyses = [];
+
+  return Promise.all(
+    entries.map(async (entry) => {
+      const entryLabel = `${entry.id} (${entry.label})`;
+      if (seenIds.has(entry.id)) {
+        errors.push(`Duplicate model library entry id: ${entry.id}`);
+        return;
+      }
+      seenIds.add(entry.id);
+
+      const modelPath = entry.defaults?.model;
+      if (!modelPath) {
+        errors.push(`Model library entry ${entryLabel} is missing defaults.model.`);
+        return;
+      }
+      if (seenModels.has(modelPath)) {
+        warnings.push(`Model library contains multiple entries for ${modelPath}.`);
+      } else {
+        seenModels.add(modelPath);
+      }
+      if (!manifest.requirements.extensions.includes(path.extname(modelPath).toLowerCase())) {
+        errors.push(`Model library entry ${entryLabel} must use one of: ${manifest.requirements.extensions.join(", ")}.`);
+        return;
+      }
+      const exists = await pathExists(resolveModelPath(modelPath));
+      if (!exists) {
+        errors.push(`Model library entry ${entryLabel} points to a missing model: ${modelPath}`);
+        return;
+      }
+      const fallback = entry.defaults?.modelFallback;
+      const fallbackPrimitive =
+        typeof fallback === "string" ? fallback : fallback?.primitive || null;
+      if (!fallbackPrimitive || !VALID_PRIMITIVES.has(fallbackPrimitive)) {
+        errors.push(
+          `Model library entry ${entryLabel} must define a supported modelFallback primitive. Supported: ${Array.from(VALID_PRIMITIVES).join(", ")}.`
+        );
+        return;
+      }
+
+      const analysis = await analyzeModelAsset(modelPath);
+      analyses.push({
+        id: entry.id,
+        label: entry.label,
+        modelPath,
+        ...analysis
+      });
+
+      const failures = evaluateModelPortability(
+        modelPath,
+        analysis,
+        manifest.requirements
+      ).failures;
+      if (failures.length) {
+        requirementFailures.push(
+          `Model library entry ${entryLabel} failed portability checks: ${failures.join("; ")}.`
+        );
+      }
+    })
+  ).then(() => {
+    errors.push(...requirementFailures);
+    return analyses.sort((a, b) => a.id.localeCompare(b.id));
+  });
+}
+
 async function main() {
   const args = new Set(process.argv.slice(2));
   const strict = args.has("--strict");
@@ -162,6 +249,9 @@ async function main() {
     }
     refs.push(...collectModelReferences(source.path, config));
   }
+
+  const manifestRaw = await readJsonConfig(MODEL_LIBRARY_MANIFEST_FILE, true, errors);
+  const manifest = manifestRaw ? normalizeModelLibraryManifest(manifestRaw) : null;
 
   const dedupedRefs = [];
   const seenRefKeys = new Set();
@@ -217,6 +307,11 @@ async function main() {
     }
   }
 
+  let manifestAnalyses = [];
+  if (manifest) {
+    manifestAnalyses = await validateManifestEntries(manifest, errors, warnings);
+  }
+
   if (errors.length) {
     console.error("Model asset validation failed:");
     for (const error of errors) {
@@ -232,6 +327,25 @@ async function main() {
       `| missing: ${missingCount} ` +
       `| missing without fallback: ${missingWithoutFallbackCount}`
   );
+
+  if (manifest) {
+    const maxBytes = Math.round(Number(manifest.requirements.maxFileBytes) / 1000);
+    console.log(
+      `Model library manifest entries: ${manifest.entries.length} ` +
+        `| portability budget: <= ${maxBytes} KB, ` +
+        `<= ${manifest.requirements.maxTriangles} tris, ` +
+        `<= ${manifest.requirements.maxMaterials} materials`
+    );
+    for (const analysis of manifestAnalyses) {
+      console.log(
+        `- ${analysis.id}: ${Math.round(analysis.fileBytes / 1000)} KB | ` +
+          `${analysis.triangleCount} tris | ` +
+          `${analysis.materialCount} mats | ` +
+          `${analysis.textureCount} tex | ` +
+          `${analysis.animationCount} anim`
+      );
+    }
+  }
 
   if (warnings.length) {
     console.warn("Model asset validation warnings:");

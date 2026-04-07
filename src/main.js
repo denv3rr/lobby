@@ -13,6 +13,12 @@ import { DriftEventsSystem } from "./systems/drift/driftEventsSystem.js";
 import { ScenePanelSystem } from "./systems/display/scenePanelSystem.js";
 import { StabilityObjectivesSystem } from "./systems/gameplay/stabilityObjectivesSystem.js";
 import { resolveInitialThemeName, ThemeSystem } from "./systems/theming/applyTheme.js";
+import {
+  buildDevModelShowroomLayout,
+  createIsolatedDevModelLabSceneConfig,
+  DEV_MODEL_SHOWROOM_TAG,
+  loadDevModelIntakeManifest
+} from "./editor/devModelShowroom.js";
 import { createOverlay } from "./ui/overlay.js";
 import { isFeedRuntimeConfigFile, selectPreferredFeedRuntimeSource } from "./utils/runtimeConfigFeeds.js";
 import { createPerfHud } from "./ui/perfHud.js";
@@ -23,6 +29,10 @@ import {
   shouldEnableLocalEditor,
   isLocalAuthoringHostName
 } from "./utils/runtimePolicy.js";
+import {
+  ARTIFACT_TRANSITION_RUNTIME_PHASE,
+  getRuntimePhaseModuleId
+} from "./utils/runtimePhases.js";
 
 const BUILD_ID = import.meta.env.VITE_BUILD_ID || "";
 const THEME_STORAGE_KEY = "lobby.theme.v1";
@@ -33,6 +43,9 @@ const LEGACY_DEV_QUALITY_STORAGE_KEY = "lobby.dev.quality";
 const VALID_QUALITY_VALUES = new Set(["low", "medium", "high"]);
 const MAIN_OBJECTIVE_ID = "brainstorm_main_task";
 const CENTER_ARTIFACT_TARGET_ID = "prop:center_hover_gif";
+const ARTIFACT_TRANSITION_MODULE_ID = getRuntimePhaseModuleId(
+  ARTIFACT_TRANSITION_RUNTIME_PHASE
+);
 const DEV_CONFIG_FILES = [
   {
     fileName: "scene.json",
@@ -973,16 +986,19 @@ async function boot() {
     hostname: window.location.hostname
   });
   const sceneUiEnabled = params.get("sceneui") !== "0";
-  const allowThemeSelector = sceneUiEnabled && localDebugUiEnabled;
+  const modelLabModeEnabled = isDev && params.get("modellab") === "1";
+  const allowThemeSelector = sceneUiEnabled && localDebugUiEnabled && !modelLabModeEnabled;
   const devMenuEnabled = localDebugUiEnabled;
-  const editorSupported = isDev || localAuthoringHost;
-  const editorModeEnabled = shouldEnableLocalEditor(params, {
+  const editorSupported = !modelLabModeEnabled && (isDev || localAuthoringHost);
+  const editorModeEnabled = !modelLabModeEnabled && shouldEnableLocalEditor(params, {
     isDev,
     hostname: window.location.hostname
   });
   const inspectUiEnabled = editorModeEnabled;
   const perfEnabled = localDebugUiEnabled && params.get("perf") === "1";
   const runtimeDebugApiEnabled = localDebugUiEnabled || editorModeEnabled;
+  const devModelShowroomSupported = isDev;
+  const devModelShowroomRequested = modelLabModeEnabled;
 
   let rendererContext = null;
   let controls = null;
@@ -1015,6 +1031,20 @@ async function boot() {
   let centerArtifactMoonDiscOwner = null;
   let centerArtifactMoonHaloOwner = null;
   let centerArtifactLight = null;
+  let devModelShowroomManifest = null;
+  let devModelShowroomLayout = null;
+  let devModelShowroomState = {
+    modelShowroomSupported: devModelShowroomSupported,
+    modelShowroomActive: false,
+    modelShowroomBusy: false,
+    modelShowroomIsolated: modelLabModeEnabled,
+    modelShowroomStatus: devModelShowroomSupported
+      ? modelLabModeEnabled
+        ? "Isolated model lab booting."
+        : "Model lab is ready. Open it to boot an isolated preview scene."
+      : "Model lab is available in local dev mode.",
+    modelShowroomTone: "muted"
+  };
   let detachAudioUnlock = () => {};
   const centerArtifactMaterials = [];
   const centerArtifactLinkedRifleMaterials = [];
@@ -1357,6 +1387,13 @@ async function boot() {
     collectLinkedRifleMaterials(findCenterArtifactLinkedRifleOwner());
     ensureCenterArtifactLight(centerArtifactOwner);
     centerArtifactActivated = true;
+    if (ARTIFACT_TRANSITION_MODULE_ID) {
+      const revealedModules =
+        sceneContext?.setPropModulesVisible?.([ARTIFACT_TRANSITION_MODULE_ID], true) || [];
+      if (revealedModules.length) {
+        refreshInteractiveSurfaces();
+      }
+    }
     stabilitySystem?.completeObjective(MAIN_OBJECTIVE_ID);
     applyCenterArtifactLightingDominance();
   }
@@ -1622,6 +1659,232 @@ async function boot() {
     scenePanelSystem?.update?.(rendererContext?.camera);
   }
 
+  function buildModelLabRuntimeUrl(enabled) {
+    const nextUrl = new URL(window.location.href);
+    nextUrl.searchParams.set("debugui", "1");
+    nextUrl.searchParams.set("sceneui", "1");
+    nextUrl.searchParams.delete("editor");
+    if (enabled) {
+      nextUrl.searchParams.set("modellab", "1");
+    } else {
+      nextUrl.searchParams.delete("modellab");
+    }
+    return nextUrl.toString();
+  }
+
+  function navigateToModelLabRuntime() {
+    window.location.assign(buildModelLabRuntimeUrl(true));
+    return true;
+  }
+
+  function navigateToLobbyRuntime() {
+    window.location.assign(buildModelLabRuntimeUrl(false));
+    return true;
+  }
+
+  function syncDevModelShowroomState(patch = null) {
+    if (isObject(patch)) {
+      devModelShowroomState = {
+        ...devModelShowroomState,
+        ...patch
+      };
+    }
+    ui?.setDevModelShowroomState?.(devModelShowroomState);
+    return {
+      ...devModelShowroomState
+    };
+  }
+
+  function createDevModelShowroomActionResult(message, tone = "success") {
+    return {
+      modelShowroomState: {
+        ...devModelShowroomState
+      },
+      devStatusMessage: readText(message, devModelShowroomState.modelShowroomStatus),
+      devStatusTone: readText(tone, devModelShowroomState.modelShowroomTone)
+    };
+  }
+
+  async function requestDevModelShowroomManifest(forceRefresh = false) {
+    const manifest = await loadDevModelIntakeManifest({ forceRefresh });
+    devModelShowroomManifest = manifest;
+    return manifest;
+  }
+
+  async function scanDevModelShowroomManifest({ forceRefresh = false } = {}) {
+    if (!devModelShowroomSupported) {
+      return createDevModelShowroomActionResult("Model lab is available in local dev mode.", "muted");
+    }
+
+    syncDevModelShowroomState({
+      modelShowroomBusy: true,
+      modelShowroomStatus: forceRefresh
+        ? "Refreshing local intake assets."
+        : "Scanning local intake assets.",
+      modelShowroomTone: "info"
+    });
+
+    try {
+      const manifest = await requestDevModelShowroomManifest(forceRefresh);
+      const portableCount = Number(manifest?.summary?.portableCount) || 0;
+      const totalCount = Number(manifest?.summary?.totalCount) || 0;
+      const nextStatus = totalCount
+        ? `${portableCount}/${totalCount} intake models passed portability checks.`
+        : "No intake models were found in the configured external folder.";
+      syncDevModelShowroomState({
+        modelShowroomBusy: false,
+        modelShowroomStatus: nextStatus,
+        modelShowroomTone: portableCount > 0 ? "success" : "muted"
+      });
+      return createDevModelShowroomActionResult(nextStatus, portableCount > 0 ? "success" : "muted");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Local intake scan failed.";
+      syncDevModelShowroomState({
+        modelShowroomBusy: false,
+        modelShowroomStatus: message,
+        modelShowroomTone: "error"
+      });
+      throw error;
+    }
+  }
+
+  function hideDevModelShowroom() {
+    sceneContext?.removePropsByTag?.(DEV_MODEL_SHOWROOM_TAG);
+    devModelShowroomLayout = null;
+    refreshInteractiveSurfaces();
+
+    const portableCount = Number(devModelShowroomManifest?.summary?.portableCount) || 0;
+    const nextStatus = modelLabModeEnabled
+      ? portableCount
+        ? `Model models cleared. ${portableCount} portable intake models remain ready to reload.`
+        : "Model models cleared from the isolated lab."
+      : portableCount
+        ? `Model lab hidden. ${portableCount} portable intake models remain ready.`
+        : "Model lab hidden.";
+    syncDevModelShowroomState({
+      modelShowroomActive: false,
+      modelShowroomBusy: false,
+      modelShowroomStatus: nextStatus,
+      modelShowroomTone: "muted"
+    });
+    return createDevModelShowroomActionResult(nextStatus, "muted");
+  }
+
+  function teleportToDevModelShowroom() {
+    if (!devModelShowroomLayout?.spawnPosition) {
+      return false;
+    }
+    return teleportPlayer(
+      devModelShowroomLayout.spawnPosition,
+      devModelShowroomLayout.spawnYaw,
+      0
+    );
+  }
+
+  async function openDevModelShowroom({ forceRefresh = false, teleport = true } = {}) {
+    if (!devModelShowroomSupported) {
+      return createDevModelShowroomActionResult("Model lab is available in local dev mode.", "muted");
+    }
+    if (!sceneContext?.addProps || !sceneContext?.removePropsByTag) {
+      return createDevModelShowroomActionResult("Scene is still booting. Try again in a moment.", "info");
+    }
+
+    syncDevModelShowroomState({
+      modelShowroomBusy: true,
+      modelShowroomStatus: forceRefresh
+        ? "Refreshing intake assets and rebuilding model lab."
+        : "Building model lab from local intake assets.",
+      modelShowroomTone: "info"
+    });
+
+    try {
+      const manifest =
+        forceRefresh || !devModelShowroomManifest
+          ? await requestDevModelShowroomManifest(forceRefresh)
+          : devModelShowroomManifest;
+      const layout = buildDevModelShowroomLayout(manifest, {
+        roomBounds: sceneContext?.getRoomBounds?.() || null,
+        floorY: Number(sceneContext?.floorY) || 0,
+        placementMode: modelLabModeEnabled ? "center" : "outside"
+      });
+
+      sceneContext.removePropsByTag(DEV_MODEL_SHOWROOM_TAG);
+      if (!layout.portableEntries.length) {
+        const nextStatus = Number(manifest?.summary?.totalCount) > 0
+          ? "Model lab could not load because no intake models passed portability checks."
+          : "No intake models were found in the configured external folder.";
+        devModelShowroomLayout = null;
+        syncDevModelShowroomState({
+          modelShowroomActive: false,
+          modelShowroomBusy: false,
+          modelShowroomStatus: nextStatus,
+          modelShowroomTone: "error"
+        });
+        return createDevModelShowroomActionResult(nextStatus, "error");
+      }
+
+      await sceneContext.addProps(layout.props, {
+        tag: DEV_MODEL_SHOWROOM_TAG
+      });
+      devModelShowroomLayout = layout;
+      refreshInteractiveSurfaces();
+      if (teleport) {
+        teleportToDevModelShowroom();
+      }
+
+      const nextStatus =
+        modelLabModeEnabled
+          ? `Isolated model lab loaded: ${layout.meta.portableCount}/${layout.meta.totalCount} portable models on dedicated preview pads.`
+          : `Model lab loaded: ${layout.meta.portableCount}/${layout.meta.totalCount} portable models on isolated preview pads.`;
+      syncDevModelShowroomState({
+        modelShowroomActive: true,
+        modelShowroomBusy: false,
+        modelShowroomStatus: nextStatus,
+        modelShowroomTone: "success"
+      });
+      return createDevModelShowroomActionResult(nextStatus, "success");
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Model lab failed to load.";
+      sceneContext?.removePropsByTag?.(DEV_MODEL_SHOWROOM_TAG);
+      devModelShowroomLayout = null;
+      refreshInteractiveSurfaces();
+      syncDevModelShowroomState({
+        modelShowroomActive: false,
+        modelShowroomBusy: false,
+        modelShowroomStatus: message,
+        modelShowroomTone: "error"
+      });
+      throw error;
+    }
+  }
+
+  function exitDevModelShowroomMode() {
+    navigateToLobbyRuntime();
+    return createDevModelShowroomActionResult("Returning to lobby runtime.", "info");
+  }
+
+  async function toggleDevModelShowroom() {
+    if (modelLabModeEnabled) {
+      return exitDevModelShowroomMode();
+    }
+    navigateToModelLabRuntime();
+    return createDevModelShowroomActionResult("Opening isolated model lab.", "info");
+  }
+
+  async function refreshDevModelShowroom() {
+    if (modelLabModeEnabled || devModelShowroomState.modelShowroomActive) {
+      return openDevModelShowroom({
+        forceRefresh: true,
+        teleport: false
+      });
+    }
+    return scanDevModelShowroomManifest({
+      forceRefresh: true
+    });
+  }
+
   async function applyThemeSelection(themeName, options = {}) {
     let appliedTheme = themeName;
     if (options.hideInspectPanel !== false) {
@@ -1758,11 +2021,19 @@ async function boot() {
       writable: isDev,
       editorSupported,
       editorActive: editorModeEnabled,
+      modelShowroomSupported: devModelShowroomSupported,
+      modelShowroomActive: devModelShowroomState.modelShowroomActive,
+      modelShowroomBusy: devModelShowroomState.modelShowroomBusy,
+      modelShowroomIsolated: modelLabModeEnabled,
+      modelShowroomStatus: devModelShowroomState.modelShowroomStatus,
+      modelShowroomTone: devModelShowroomState.modelShowroomTone,
       configFiles: DEV_CONFIG_FILES,
       loadConfig: (fileName, source) => readEditableRuntimeConfig(fileName, source),
       saveConfig: (fileName, target, text) => writeEditableRuntimeConfig(fileName, target, text),
       deleteConfig: (fileName, target) => deleteEditableRuntimeConfig(fileName, target),
       reloadRuntime: () => window.location.reload(),
+      toggleModelShowroom: () => toggleDevModelShowroom(),
+      refreshModelShowroom: () => refreshDevModelShowroom(),
       toggleEditor: () => {
         if (!editorSupported) {
           return false;
@@ -1811,6 +2082,7 @@ async function boot() {
       saveQualitySelection(quality, { mirrorLegacyDevKey: isDev });
     }
   });
+  syncDevModelShowroomState();
   mountRuntimeDebugApi();
   if (editorModeEnabled && !app.querySelector("#local-editor")) {
     const editorHost = app.querySelector(".ui-layer") || app;
@@ -1837,43 +2109,65 @@ async function boot() {
   }
   ui.hideFallback();
   ui.showLoading({
-    title: "Entering Lobby",
-    message: "Loading runtime configuration."
+    title: modelLabModeEnabled ? "Opening Model Lab" : "Entering Lobby",
+    message: modelLabModeEnabled
+      ? "Preparing isolated preview space."
+      : "Loading runtime configuration."
   });
 
-  const [
-    sceneConfig,
-    runtimeThemesConfig,
-    audioConfig,
-    driftEventsConfig,
-    objectivesConfig,
-    catalogConfig
-  ] = await Promise.all([
-    loadSceneConfig(),
-    loadRuntimeConfig("themes.json", { optional: true }),
-    loadRuntimeConfig("audio.json"),
-    loadRuntimeConfig("drift-events.json", { optional: true }),
-    loadRuntimeConfig("objectives.json", { optional: true }),
-    loadRuntimeConfig("catalog.json", { optional: true })
-  ]);
-  const catalogFeedDefinitions = getCatalogFeedDefinitions(catalogConfig);
-  const sceneEditorOverrides = normalizeEditorOverrides(sceneConfig?.editorOverrides);
-  ui.setDevConfigFiles?.(mergeDevConfigFiles(DEV_CONFIG_FILES, buildCatalogFeedDevConfigFiles(catalogConfig)));
-  const catalogFeedEntries = await Promise.all(
-    catalogFeedDefinitions.map(async (definition) => [
-      definition.feedSource,
-      (await loadRuntimeConfig(definition.fileName, { optional: true })) || { items: [] }
-    ])
-  );
-  const catalogFeeds = Object.fromEntries(catalogFeedEntries);
+  let sceneConfig = null;
+  let runtimeThemesConfig = null;
+  let audioConfig = null;
+  let driftEventsConfig = null;
+  let objectivesConfig = null;
+  let catalogConfig = null;
+  let sceneEditorOverrides = normalizeEditorOverrides(null);
+  let catalogFeeds = {};
+
+  if (modelLabModeEnabled) {
+    sceneConfig = createIsolatedDevModelLabSceneConfig();
+    runtimeThemesConfig = null;
+    audioConfig = { ambientLayers: [], sfx: {}, portalAudio: {}, themeStingers: {} };
+    driftEventsConfig = { enabled: false };
+    objectivesConfig = { enabled: false, objectives: [], ui: { showStabilityMeter: false, showObjectivesPanel: false } };
+    catalogConfig = { rooms: {} };
+    ui.setDevConfigFiles?.(DEV_CONFIG_FILES);
+  } else {
+    [
+      sceneConfig,
+      runtimeThemesConfig,
+      audioConfig,
+      driftEventsConfig,
+      objectivesConfig,
+      catalogConfig
+    ] = await Promise.all([
+      loadSceneConfig(),
+      loadRuntimeConfig("themes.json", { optional: true }),
+      loadRuntimeConfig("audio.json"),
+      loadRuntimeConfig("drift-events.json", { optional: true }),
+      loadRuntimeConfig("objectives.json", { optional: true }),
+      loadRuntimeConfig("catalog.json", { optional: true })
+    ]);
+    const catalogFeedDefinitions = getCatalogFeedDefinitions(catalogConfig);
+    sceneEditorOverrides = normalizeEditorOverrides(sceneConfig?.editorOverrides);
+    ui.setDevConfigFiles?.(mergeDevConfigFiles(DEV_CONFIG_FILES, buildCatalogFeedDevConfigFiles(catalogConfig)));
+    const catalogFeedEntries = await Promise.all(
+      catalogFeedDefinitions.map(async (definition) => [
+        definition.feedSource,
+        (await loadRuntimeConfig(definition.fileName, { optional: true })) || { items: [] }
+      ])
+    );
+    catalogFeeds = Object.fromEntries(catalogFeedEntries);
+  }
+
   ui.setLoadingState({
-    message: "Calibrating render pipeline."
+    message: modelLabModeEnabled ? "Calibrating model lab renderer." : "Calibrating render pipeline."
   });
   const emergencyThemesConfig = {
     defaultTheme: "lobby",
     themes: {
       lobby: {
-        label: "Lobby"
+        label: modelLabModeEnabled ? "Model Lab" : "Lobby"
       }
     }
   };
@@ -1914,7 +2208,7 @@ async function boot() {
     rendererContext?.renderer?.domElement?.removeEventListener?.("pointerdown", autoUnlockAudio);
   };
   ui.setLoadingState({
-    message: "Assembling scene geometry."
+    message: modelLabModeEnabled ? "Assembling model lab geometry." : "Assembling scene geometry."
   });
   if (perfEnabled) {
     perfHud = createPerfHud({ mount: app });
@@ -1931,15 +2225,22 @@ async function boot() {
     catalogConfig,
     catalogFeeds
   });
-  secretUnlocks = normalizeSecretUnlocks(
-    sceneConfig.secretUnlocks,
-    sceneContext?.zones || sceneConfig?.zones || [],
-    secretUnlockedIds
-  );
-  moduleTriggers = normalizeModuleTriggers(
-    sceneConfig.moduleTriggers,
-    sceneContext?.zones || sceneConfig?.zones || []
-  );
+  if (editorModeEnabled && ARTIFACT_TRANSITION_MODULE_ID) {
+    sceneContext?.setPropModulesVisible?.([ARTIFACT_TRANSITION_MODULE_ID], true);
+  }
+  secretUnlocks = modelLabModeEnabled
+    ? []
+    : normalizeSecretUnlocks(
+        sceneConfig.secretUnlocks,
+        sceneContext?.zones || sceneConfig?.zones || [],
+        secretUnlockedIds
+      );
+  moduleTriggers = modelLabModeEnabled
+    ? []
+    : normalizeModuleTriggers(
+        sceneConfig.moduleTriggers,
+        sceneContext?.zones || sceneConfig?.zones || []
+      );
   scenePanelSystem = new ScenePanelSystem({
     domElement: rendererContext.renderer.domElement,
     camera: rendererContext.camera,
@@ -1950,83 +2251,95 @@ async function boot() {
     updateIntervalMs: Math.round((qualityProfile?.visibilityUpdateInterval || 0.12) * 1000)
   });
   ui.setLoadingState({
-    message: "Linking portals and systems."
+    message: modelLabModeEnabled ? "Loading validated intake models." : "Linking portals and systems."
   });
 
-  audioSystem = new AudioSystem(audioConfig);
-  audioSystem.initialize();
-  audioSystem.setPortalTargets(sceneContext?.portals || []);
-  driftSystem = new DriftEventsSystem(driftEventsConfig || { enabled: false });
-  driftSnapshot = driftSystem.getSnapshot();
-  stabilitySystem = new StabilityObjectivesSystem({
-    config: objectivesConfig || { enabled: false },
-    ui
-  });
-  stabilitySystem.initialize();
-  ui.showSoundGate();
-
-  themeSystem = new ThemeSystem({
-    scene: rendererContext.scene,
-    sceneContext,
-    cache,
-    themesConfig: loadedThemesConfig,
-    audioSystem,
-    qualityProfile
-  });
-  applySecretFloorplanOverrides({ reapply: false });
-  const savedTheme = loadSavedThemeSelection();
-  let themeName = resolveInitialThemeName(loadedThemesConfig);
-  const themeEntries = normalizeThemeEntries(themeSystem.listThemes(), loadedThemesConfig);
-  availableThemeIds = themeEntries.map((entry) => entry.id);
-  if (
-    !hasThemeQuery &&
-    savedTheme &&
-    availableThemeIds.includes(savedTheme)
-  ) {
-    themeName = savedTheme;
-  }
-  if (!themeName || !availableThemeIds.includes(themeName)) {
-    themeName = availableThemeIds[0];
-  }
-
-  ui.setThemeOptions(themeEntries, themeName);
-  const appliedTheme = await applyThemeSelection(themeName, {
-    playStinger: false,
-    persist: false,
-    hideInspectPanel: true
-  });
-  if (appliedTheme) {
-    if (isDev) {
-      writeStorageString(LEGACY_DEV_THEME_STORAGE_KEY, appliedTheme);
-    }
-  } else {
-    themeSystem.resetToBaseState();
-    ui.setTheme(availableThemeIds[0] || "lobby");
-  }
-  const { CatalogRoomSystem } = await import("./systems/catalog/catalogRoomSystem.js");
-  catalogSystem = new CatalogRoomSystem({
-    scene: rendererContext.scene,
-    cache,
-    catalogConfig: catalogConfig || {},
-    catalogFeeds,
-    domElement: rendererContext.renderer.domElement,
-    qualityProfile,
-    wallMaterialSource: sceneContext.roomMaterials?.wall || null,
-    floorMaterialSource: sceneContext.roomMaterials?.floor || null
-  });
+  let appliedTheme = "lobby";
   let catalogReady = false;
-  const catalogInitPromise = catalogSystem
-    .initialize(appliedTheme || themeName)
-    .then(async () => {
-      catalogReady = true;
-      await applySceneEditorOverrides(sceneEditorOverrides, { markDirty: false });
-      await editorSystem?.loadSavedState?.({ silent: true });
-      editorSystem?.refreshOutliner?.();
-      refreshInteractiveSurfaces();
-    })
-    .catch((error) => {
-      console.error("Catalog failed to initialize", error);
+  let catalogInitPromise = Promise.resolve();
+
+  if (modelLabModeEnabled) {
+    availableThemeIds = ["lobby"];
+    currentThemeName = "lobby";
+    ui.setThemeOptions([{ id: "lobby", label: "Model Lab" }], "lobby");
+    ui.setTheme("lobby");
+    ui.hideSoundGate();
+    catalogReady = true;
+  } else {
+    audioSystem = new AudioSystem(audioConfig);
+    audioSystem.initialize();
+    audioSystem.setPortalTargets(sceneContext?.portals || []);
+    driftSystem = new DriftEventsSystem(driftEventsConfig || { enabled: false });
+    driftSnapshot = driftSystem.getSnapshot();
+    stabilitySystem = new StabilityObjectivesSystem({
+      config: objectivesConfig || { enabled: false },
+      ui
     });
+    stabilitySystem.initialize();
+    ui.showSoundGate();
+
+    themeSystem = new ThemeSystem({
+      scene: rendererContext.scene,
+      sceneContext,
+      cache,
+      themesConfig: loadedThemesConfig,
+      audioSystem,
+      qualityProfile
+    });
+    applySecretFloorplanOverrides({ reapply: false });
+    const savedTheme = loadSavedThemeSelection();
+    let themeName = resolveInitialThemeName(loadedThemesConfig);
+    const themeEntries = normalizeThemeEntries(themeSystem.listThemes(), loadedThemesConfig);
+    availableThemeIds = themeEntries.map((entry) => entry.id);
+    if (
+      !hasThemeQuery &&
+      savedTheme &&
+      availableThemeIds.includes(savedTheme)
+    ) {
+      themeName = savedTheme;
+    }
+    if (!themeName || !availableThemeIds.includes(themeName)) {
+      themeName = availableThemeIds[0];
+    }
+
+    ui.setThemeOptions(themeEntries, themeName);
+    appliedTheme = await applyThemeSelection(themeName, {
+      playStinger: false,
+      persist: false,
+      hideInspectPanel: true
+    });
+    if (appliedTheme) {
+      if (isDev) {
+        writeStorageString(LEGACY_DEV_THEME_STORAGE_KEY, appliedTheme);
+      }
+    } else {
+      themeSystem.resetToBaseState();
+      ui.setTheme(availableThemeIds[0] || "lobby");
+    }
+    const { CatalogRoomSystem } = await import("./systems/catalog/catalogRoomSystem.js");
+    catalogSystem = new CatalogRoomSystem({
+      scene: rendererContext.scene,
+      cache,
+      catalogConfig: catalogConfig || {},
+      catalogFeeds,
+      domElement: rendererContext.renderer.domElement,
+      qualityProfile,
+      wallMaterialSource: sceneContext.roomMaterials?.wall || null,
+      floorMaterialSource: sceneContext.roomMaterials?.floor || null
+    });
+    catalogInitPromise = catalogSystem
+      .initialize(appliedTheme || themeName)
+      .then(async () => {
+        catalogReady = true;
+        await applySceneEditorOverrides(sceneEditorOverrides, { markDirty: false });
+        await editorSystem?.loadSavedState?.({ silent: true });
+        editorSystem?.refreshOutliner?.();
+        refreshInteractiveSurfaces();
+      })
+      .catch((error) => {
+        console.error("Catalog failed to initialize", error);
+      });
+  }
 
   getInteractionTargets = () => [
     ...(sceneContext?.portals || []),
@@ -2190,6 +2503,14 @@ async function boot() {
     });
     refreshInteractiveSurfaces();
   }
+  if (devModelShowroomRequested) {
+    openDevModelShowroom({
+      forceRefresh: false,
+      teleport: true
+    }).catch((error) => {
+      console.warn("Model lab preload failed", error);
+    });
+  }
 
   const debugTargetBounds = new THREE.Box3();
   const debugTargetCenter = new THREE.Vector3();
@@ -2318,7 +2639,7 @@ async function boot() {
     const moduleStates = sceneContext?.getPropModuleStates?.() || [];
     const stabilityState = stabilitySystem?.getState?.() || null;
     return {
-      theme: themeSystem?.currentThemeName || null,
+      theme: themeSystem?.currentThemeName || currentThemeName || null,
       portalCount: (sceneContext?.portals || []).length,
       interactionTargetCount: getInteractionTargets().length,
       secretUnlocks: secretUnlocks
@@ -2467,6 +2788,27 @@ async function boot() {
       deleteSelectedEditorItem: () => editorSystem?.deleteSelected?.() || false,
       selectEditorProp: (propId) => Boolean(editorSystem?.selectProp?.(propId)),
       selectGeneratedShellNode: (shellNodeId) => Boolean(editorSystem?.selectGeneratedNode?.(shellNodeId)),
+      getDevModelShowroomState: () => ({
+        ...devModelShowroomState,
+        sourceDir: readText(devModelShowroomManifest?.sourceDir, ""),
+        summary: cloneJson(devModelShowroomManifest?.summary || null)
+      }),
+      scanDevModelShowroom: async (forceRefresh = false) =>
+        scanDevModelShowroomManifest({
+          forceRefresh: forceRefresh !== false
+        }),
+      loadDevModelShowroom: async (options = {}) =>
+        openDevModelShowroom({
+          forceRefresh: options?.forceRefresh === true,
+          teleport: options?.teleport !== false
+        }),
+      hideDevModelShowroom: () => hideDevModelShowroom(),
+      reloadDevModelShowroom: async () =>
+        openDevModelShowroom({
+          forceRefresh: true,
+          teleport: false
+        }),
+      teleportToDevModelShowroom: () => teleportToDevModelShowroom(),
       probeColliders: (position, radius) => probeColliders(position, radius),
       activateCenterArtifact: () => activateCenterArtifactTarget(),
       teleport: (position, yaw, pitch) => teleportPlayer(position, yaw, pitch),

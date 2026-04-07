@@ -1,5 +1,9 @@
 import * as THREE from "three";
 import { createProceduralTexture } from "./proceduralTextures.js";
+import {
+  getRuntimePhaseModuleIds,
+  normalizeRuntimePhase
+} from "../utils/runtimePhases.js";
 
 function degToRad(value = 0) {
   return THREE.MathUtils.degToRad(value);
@@ -113,13 +117,17 @@ function disposeManagedObjectResources(object) {
     if (!child?.userData?.disposeManagedResources) {
       return;
     }
-    child.geometry?.dispose?.();
-    if (Array.isArray(child.material)) {
-      for (const material of child.material) {
-        disposeManagedMaterial(material);
+    if (child.userData.disposeManagedGeometry !== false) {
+      child.geometry?.dispose?.();
+    }
+    if (child.userData.disposeManagedMaterial !== false) {
+      if (Array.isArray(child.material)) {
+        for (const material of child.material) {
+          disposeManagedMaterial(material);
+        }
+      } else {
+        disposeManagedMaterial(child.material);
       }
-    } else {
-      disposeManagedMaterial(child.material);
     }
   });
 }
@@ -212,6 +220,77 @@ async function applyPrimitiveMaterial(meshMaterial, materialConfig, cache, anima
   }
 
   meshMaterial.needsUpdate = true;
+}
+
+function applyModelMaterialConfig(material, config = {}) {
+  if (!material?.isMaterial || !isObject(config) || !Object.keys(config).length) {
+    return;
+  }
+
+  if (config.color && material.color?.isColor) {
+    material.color.set(config.color);
+  }
+  if (config.emissiveColor && material.emissive?.isColor) {
+    material.emissive.set(config.emissiveColor);
+  }
+  if (material.emissive?.isColor && config.emissiveColor == null && config.emissiveIntensity === 0) {
+    material.emissive.set("#000000");
+  }
+  if (Number.isFinite(Number(config.emissiveIntensity)) && material.emissive?.isColor) {
+    material.emissiveIntensity = Number(config.emissiveIntensity);
+  }
+  if (Number.isFinite(Number(config.roughness)) && "roughness" in material) {
+    material.roughness = Number(config.roughness);
+  }
+  if (Number.isFinite(Number(config.metalness)) && "metalness" in material) {
+    material.metalness = Number(config.metalness);
+  }
+  if (Number.isFinite(Number(config.opacity))) {
+    material.opacity = THREE.MathUtils.clamp(Number(config.opacity), 0, 1);
+    material.transparent = Boolean(config.transparent || material.opacity < 1);
+  } else if ("transparent" in config) {
+    material.transparent = Boolean(config.transparent);
+  }
+  if ("doubleSided" in config) {
+    material.side = config.doubleSided ? THREE.DoubleSide : THREE.FrontSide;
+  }
+  if ("flatShading" in config && "flatShading" in material) {
+    material.flatShading = Boolean(config.flatShading);
+  }
+  material.needsUpdate = true;
+}
+
+function cloneModelScene(modelRoot, materialConfig = null) {
+  const clone = modelRoot?.clone?.(true) || null;
+  if (!clone) {
+    return null;
+  }
+
+  clone.traverse((child) => {
+    if (!child?.isMesh) {
+      return;
+    }
+    if (Array.isArray(child.material)) {
+      child.material = child.material.map((entry) => {
+        const nextMaterial = entry?.clone?.() || entry;
+        applyModelMaterialConfig(nextMaterial, materialConfig || {});
+        return nextMaterial;
+      });
+    } else if (child.material?.clone) {
+      child.material = child.material.clone();
+      applyModelMaterialConfig(child.material, materialConfig || {});
+    }
+    child.userData = {
+      ...child.userData,
+      disposeManagedResources: true,
+      disposeManagedGeometry: false,
+      disposeManagedMaterial: true
+    };
+    child.castShadow = true;
+    child.receiveShadow = true;
+  });
+
+  return clone;
 }
 
 function makeLabelSprite(text) {
@@ -512,6 +591,101 @@ function normalizePropAnimations(prop = {}) {
         phase: Number(entry.phase) || 0
       });
     }
+  }
+
+  return normalized;
+}
+
+function normalizePropEffects(prop = {}) {
+  const source = Array.isArray(prop?.effects)
+    ? prop.effects
+    : isObject(prop?.effect)
+      ? [prop.effect]
+      : [];
+  const normalized = [];
+
+  for (const entry of source) {
+    if (!isObject(entry)) {
+      continue;
+    }
+
+    const rawType = readText(entry.type, "").toLowerCase();
+    const type =
+      rawType === "fog"
+        ? "mist"
+        : rawType === "ember"
+          ? "embers"
+          : rawType === "spark"
+            ? "sparks"
+            : rawType;
+    if (!type || !["smoke", "mist", "embers", "sparks"].includes(type)) {
+      continue;
+    }
+
+    const defaults =
+      type === "mist"
+        ? {
+            count: 14,
+            size: 0.2,
+            opacity: 0.11,
+            color: "#d7dad8",
+            riseSpeed: 0.08,
+            drift: 0.14,
+            additive: false
+          }
+        : type === "embers"
+          ? {
+              count: 16,
+              size: 0.07,
+              opacity: 0.72,
+              color: "#ff9363",
+              riseSpeed: 0.46,
+              drift: 0.3,
+              additive: true
+            }
+          : type === "sparks"
+            ? {
+                count: 12,
+                size: 0.05,
+                opacity: 0.76,
+                color: "#ffd59c",
+                riseSpeed: 0.62,
+                drift: 0.34,
+                additive: true
+              }
+            : {
+                count: 18,
+                size: 0.12,
+                opacity: 0.16,
+                color: "#c9ccc7",
+                riseSpeed: 0.18,
+                drift: 0.26,
+                additive: false
+              };
+
+    normalized.push({
+      type,
+      count: Math.max(4, Number(entry.count) || defaults.count),
+      size: Math.max(0.01, Number(entry.size) || defaults.size),
+      opacity: THREE.MathUtils.clamp(
+        Number.isFinite(Number(entry.opacity)) ? Number(entry.opacity) : defaults.opacity,
+        0.01,
+        1
+      ),
+      color: readText(entry.color, defaults.color),
+      riseSpeed: Math.max(0.01, Number(entry.riseSpeed) || defaults.riseSpeed),
+      drift: Math.max(0, Number(entry.drift) || defaults.drift),
+      additive: entry.additive == null ? defaults.additive : Boolean(entry.additive),
+      area: Array.isArray(entry.area)
+        ? entry.area.slice(0, 3).map((value, index) => {
+            const fallback = index === 1 ? 1.25 : 1;
+            return Math.max(0.1, Math.abs(Number(value) || fallback));
+          })
+        : null,
+      offset: Array.isArray(entry.offset)
+        ? entry.offset.slice(0, 3).map((value) => Number(value) || 0)
+        : null
+    });
   }
 
   return normalized;
@@ -2537,6 +2711,108 @@ export async function loadScene({
   const tempPanelChildBounds = new THREE.Box3();
   const tempPanelLocalSize = new THREE.Vector3();
 
+  function buildPropEffectRuntime(wrapper, prop, effectConfig) {
+    if (!wrapper || !effectConfig) {
+      return null;
+    }
+
+    tempPropBox.setFromObject(wrapper);
+    if (tempPropBox.isEmpty()) {
+      tempPropSize.set(1, 1, 1);
+    } else {
+      tempPropBox.getSize(tempPropSize);
+    }
+
+    const area = Array.isArray(effectConfig.area) ? effectConfig.area : null;
+    const width = Math.max(0.24, Number(area?.[0]) || Math.max(tempPropSize.x * 0.72, 0.6));
+    const height = Math.max(0.36, Number(area?.[1]) || Math.max(tempPropSize.y + 0.8, 1.2));
+    const depth = Math.max(0.24, Number(area?.[2]) || Math.max(tempPropSize.z * 0.72, 0.6));
+    const count = Math.max(4, Math.floor(Number(effectConfig.count) || 12));
+    const halfX = width * 0.5;
+    const halfZ = depth * 0.5;
+    const minY = 0;
+    const maxY = height;
+    const heightSpan = Math.max(0.2, maxY - minY);
+    const offset = Array.isArray(effectConfig.offset) ? effectConfig.offset : [0, 0, 0];
+    const effectAnchorY =
+      prop?.type === "model" || readText(prop?.modelPlacement?.alignY, "").toLowerCase() === "base"
+        ? 0.04
+        : -Math.max(tempPropSize.y * 0.5, 0.05) + 0.04;
+    const effectOrigin = new THREE.Vector3(
+      Number(offset[0]) || 0,
+      Number.isFinite(Number(offset[1])) ? Number(offset[1]) : effectAnchorY,
+      Number(offset[2]) || 0
+    );
+    const positions = new Float32Array(count * 3);
+    const baseX = new Float32Array(count);
+    const baseZ = new Float32Array(count);
+    const offsetsY = new Float32Array(count);
+    const phases = new Float32Array(count);
+    const speeds = new Float32Array(count);
+    const speedBase = Math.max(0.01, Number(effectConfig.riseSpeed) || 0.2);
+
+    for (let index = 0; index < count; index += 1) {
+      baseX[index] = THREE.MathUtils.randFloat(-halfX, halfX);
+      baseZ[index] = THREE.MathUtils.randFloat(-halfZ, halfZ);
+      offsetsY[index] = Math.random() * heightSpan;
+      phases[index] = Math.random() * Math.PI * 2;
+      speeds[index] = THREE.MathUtils.randFloat(speedBase * 0.65, speedBase * 1.15);
+      positions[index * 3] = baseX[index];
+      positions[index * 3 + 1] = minY + offsetsY[index];
+      positions[index * 3 + 2] = baseZ[index];
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    const material = new THREE.PointsMaterial({
+      color: effectConfig.color || "#ffffff",
+      size: Math.max(0.01, Number(effectConfig.size) || 0.08),
+      transparent: true,
+      opacity: THREE.MathUtils.clamp(Number(effectConfig.opacity) || 0.2, 0.01, 1),
+      depthWrite: false,
+      blending: effectConfig.additive ? THREE.AdditiveBlending : THREE.NormalBlending
+    });
+    const points = new THREE.Points(geometry, material);
+    points.position.copy(effectOrigin);
+    points.renderOrder = 6;
+    points.userData.disposeManagedResources = true;
+    points.userData.disposeManagedGeometry = true;
+    points.userData.disposeManagedMaterial = true;
+    wrapper.add(points);
+
+    return {
+      type: effectConfig.type,
+      points,
+      positions,
+      baseX,
+      baseZ,
+      offsetsY,
+      phases,
+      speeds,
+      minY,
+      heightSpan,
+      halfX,
+      halfZ,
+      drift: Math.max(0, Number(effectConfig.drift) || 0.2)
+    };
+  }
+
+  function attachPropEffects(wrapper, prop) {
+    const effects = normalizePropEffects(prop);
+    if (!effects.length) {
+      return [];
+    }
+
+    const runtimes = [];
+    for (const effectConfig of effects) {
+      const runtime = buildPropEffectRuntime(wrapper, prop, effectConfig);
+      if (runtime) {
+        runtimes.push(runtime);
+      }
+    }
+    return runtimes;
+  }
+
   function applyModelPlacement(modelRoot, placement = null) {
     if (!modelRoot || !isObject(placement)) {
       return;
@@ -2861,6 +3137,29 @@ export async function loadScene({
       }
     }
     return true;
+  }
+
+  function resolveInitialModuleVisibility(moduleIds = [], initiallyHidden = false) {
+    const ids = normalizeModuleIds(moduleIds);
+    if (!ids.length) {
+      return !initiallyHidden;
+    }
+    if (!initiallyHidden) {
+      return resolveModuleVisibility(ids);
+    }
+
+    let hasKnownModule = false;
+    for (const moduleId of ids) {
+      const record = propModules.get(moduleId);
+      if (!record) {
+        continue;
+      }
+      hasKnownModule = true;
+      if (record.visible === false) {
+        return false;
+      }
+    }
+    return hasKnownModule;
   }
 
   function getOrCreateModuleRecord(moduleId, initialVisible = true) {
@@ -3376,12 +3675,19 @@ export async function loadScene({
     const resolvePlacement = options.resolvePlacement === true;
     const enforcePlacement =
       resolvePlacement || prop?.editorCreated === true || isObject(prop?.placement);
+    const runtimePhase = normalizeRuntimePhase(prop?.runtimePhase);
+    const moduleIds = normalizeModuleIds([
+      ...(normalizeModuleIds(prop?.moduleIds || prop?.moduleId || prop?.modules) || []),
+      ...getRuntimePhaseModuleIds(runtimePhase)
+    ]);
+    const initiallyHidden = prop?.initiallyHidden === true || Boolean(runtimePhase);
+    const runtimeProp =
+      initiallyHidden === Boolean(prop?.initiallyHidden) ? prop : { ...prop, initiallyHidden };
     if (shouldCancel()) {
       return null;
     }
 
-    const moduleIds = normalizeModuleIds(prop.moduleIds || prop.moduleId || prop.modules);
-    if (!skipDeferred && moduleIds.length && prop.initiallyHidden && prop.deferLoad === true) {
+    if (!skipDeferred && moduleIds.length && initiallyHidden && prop.deferLoad === true) {
       registerDeferredModuleProp(moduleIds, {
         prop: cloneConfig(prop),
         tag,
@@ -3401,6 +3707,8 @@ export async function loadScene({
     wrapper.userData.sourceGroupId = readText(prop.sourceGroupId, "");
     wrapper.userData.editorCreated = prop.editorCreated === true;
     wrapper.userData.editorSerializableConfig = cloneConfig(prop) || {};
+    wrapper.userData.runtimePhase = runtimePhase;
+    wrapper.userData.moduleIds = moduleIds;
     wrapper.userData.baseMaterialConfig = cloneConfig(prop.material || {});
     wrapper.userData.materialManaged = prop.type !== "model" && prop.type !== "composite";
     wrapper.position.copy(toVector3(prop.position || [0, 0, 0]));
@@ -3418,13 +3726,7 @@ export async function loadScene({
         return null;
       }
       if (gltf?.scene) {
-        const model = gltf.scene.clone(true);
-        model.traverse((child) => {
-          if (child.isMesh) {
-            child.castShadow = true;
-            child.receiveShadow = true;
-          }
-        });
+        const model = cloneModelScene(gltf.scene, prop.material);
         applyModelPlacement(model, prop.modelPlacement);
         wrapper.add(model);
       } else {
@@ -3472,15 +3774,14 @@ export async function loadScene({
     }
 
     attachGlowLight(wrapper, prop);
+    const effects = attachPropEffects(wrapper, prop);
     scene.add(wrapper);
     wrapper.updateMatrixWorld(true);
     propRecords.push(wrapper);
     if (wrapper.userData.propId) {
       propRecordsById.set(wrapper.userData.propId, wrapper);
     }
-    const initialModuleVisible = moduleIds.length
-      ? resolveModuleVisibility(moduleIds)
-      : !prop.initiallyHidden;
+    const initialModuleVisible = resolveInitialModuleVisibility(moduleIds, initiallyHidden);
     applyPropRenderVisibilityFlags(wrapper, prop, moduleIds);
     registerPropCollider(wrapper, prop, tag, moduleIds);
     const interactionTarget = createPropInteractionTarget(wrapper, prop, tag);
@@ -3493,7 +3794,13 @@ export async function loadScene({
       displayPanels.push(displayPanelEntry);
       wrapper.userData.displayPanelEntry = displayPanelEntry;
     }
-    const visibilityEntry = registerVisibilityEntry(wrapper, prop, tag, interactionTarget, moduleIds);
+    const visibilityEntry = registerVisibilityEntry(
+      wrapper,
+      runtimeProp,
+      tag,
+      interactionTarget,
+      moduleIds
+    );
     if (moduleIds.length) {
       registerModuleMember(
         moduleIds,
@@ -3504,7 +3811,7 @@ export async function loadScene({
         },
         initialModuleVisible
       );
-    } else if (prop.initiallyHidden) {
+    } else if (initiallyHidden) {
       wrapper.visible = false;
       if (interactionTarget?.hitbox) {
         interactionTarget.hitbox.visible = false;
@@ -3516,7 +3823,8 @@ export async function loadScene({
 
     const hover = prop.hoverMotion;
     const animations = normalizePropAnimations(prop);
-    if (wrapper.userData.billboard || hover || animations.length) {
+    wrapper.userData.effectTypes = effects.map((entry) => entry.type);
+    if (wrapper.userData.billboard || hover || animations.length || effects.length) {
       dynamicProps.push({
         object: wrapper,
         basePosition: wrapper.position.clone(),
@@ -3530,7 +3838,8 @@ export async function loadScene({
               phase: hover.phase ?? Math.random() * Math.PI * 2
             }
           : null,
-        animations
+        animations,
+        effects
       });
     }
     markSceneDirty();
@@ -3782,6 +4091,29 @@ export async function loadScene({
         }
         object.lookAt(lookTarget);
       }
+
+      if (Array.isArray(item.effects) && item.effects.length) {
+        for (const effect of item.effects) {
+          const points = effect?.points;
+          const positions = effect?.positions;
+          if (!points || !positions) {
+            continue;
+          }
+          const heightSpan = Math.max(0.2, effect.heightSpan || 1);
+          for (let index = 0; index < effect.speeds.length; index += 1) {
+            const base = index * 3;
+            const phase = effect.phases[index];
+            positions[base] =
+              effect.baseX[index] + Math.sin(elapsedTime * 0.7 + phase) * effect.drift;
+            positions[base + 1] =
+              effect.minY +
+              ((effect.offsetsY[index] + elapsedTime * effect.speeds[index]) % heightSpan);
+            positions[base + 2] =
+              effect.baseZ[index] + Math.cos(elapsedTime * 0.52 + phase * 1.4) * effect.drift;
+          }
+          points.geometry.attributes.position.needsUpdate = true;
+        }
+      }
     }
 
     updateManagedVisibility(elapsedTime, activeCamera);
@@ -3927,16 +4259,14 @@ export async function loadScene({
     return [...editorHiddenPropIds].sort((a, b) => a.localeCompare(b));
   }
 
-  async function createEditorCreatedProp(prop, { markDirty = true } = {}) {
-    const baseConfig = sanitizeEditablePropConfig(prop, { includeSource: false });
-    const propId = readText(baseConfig?.id, "");
-    if (!propId || propRecordsById.has(propId) || editorCreatedPropConfigsById.has(propId)) {
-      return null;
-    }
-
-    const annotated = annotateEditorCreatedPropSource(baseConfig, editorCreatedPropOrder.length);
+  async function instantiateEditorCreatedPropRecord(
+    baseConfig,
+    index,
+    { resolvePlacement = true } = {}
+  ) {
+    const annotated = annotateEditorCreatedPropSource(baseConfig, index);
     const created = await instantiateProp(annotated, editorCreatedPropTag, {
-      resolvePlacement: true
+      resolvePlacement
     });
     if (!created) {
       return null;
@@ -3955,12 +4285,32 @@ export async function loadScene({
     }
     created.userData.editorCreated = true;
     created.userData.editorSerializableConfig = serializedConfig;
-    editorCreatedPropConfigsById.set(propId, persistedConfig);
+    return {
+      created,
+      persistedConfig
+    };
+  }
+
+  async function createEditorCreatedProp(prop, { markDirty = true } = {}) {
+    const baseConfig = sanitizeEditablePropConfig(prop, { includeSource: false });
+    const propId = readText(baseConfig?.id, "");
+    if (!propId || propRecordsById.has(propId) || editorCreatedPropConfigsById.has(propId)) {
+      return null;
+    }
+
+    const record = await instantiateEditorCreatedPropRecord(baseConfig, editorCreatedPropOrder.length, {
+      resolvePlacement: true
+    });
+    if (!record?.created) {
+      return null;
+    }
+
+    editorCreatedPropConfigsById.set(propId, record.persistedConfig);
     editorCreatedPropOrder.push(propId);
     if (markDirty) {
       markSceneDirty();
     }
-    return created;
+    return record.created;
   }
 
   async function duplicateEditableProp(sourcePropId, duplicateProp = null, options = {}) {
@@ -3992,6 +4342,58 @@ export async function loadScene({
     return removePropObject(object, { markDirty });
   }
 
+  async function updateEditorCreatedPropConfig(
+    propId,
+    nextConfig = {},
+    { markDirty = true, resolvePlacement = false } = {}
+  ) {
+    const id = readText(propId, "");
+    if (!id) {
+      return null;
+    }
+
+    const object = getEditablePropObject(id);
+    if (!object || object.userData?.editorCreated !== true) {
+      return null;
+    }
+
+    const currentConfig =
+      cloneConfig(editorCreatedPropConfigsById.get(id)) ||
+      getEditablePropConfig(id, { includeSource: false });
+    if (!currentConfig) {
+      return null;
+    }
+
+    const patchConfig =
+      isObject(nextConfig) ? sanitizeEditablePropConfig(nextConfig, { includeSource: false }) : {};
+    const mergedConfig = mergeConfigObjects(currentConfig, patchConfig) || {};
+    mergedConfig.id = id;
+    const createdIndex = Math.max(0, editorCreatedPropOrder.indexOf(id));
+
+    removePropObject(object, { markDirty: false });
+
+    const record = await instantiateEditorCreatedPropRecord(mergedConfig, createdIndex, {
+      resolvePlacement
+    });
+    if (!record?.created) {
+      const restored = await instantiateEditorCreatedPropRecord(currentConfig, createdIndex, {
+        resolvePlacement: false
+      });
+      if (restored?.created) {
+        editorCreatedPropConfigsById.set(id, restored.persistedConfig);
+        editorCreatedPropOrder.splice(createdIndex, 0, id);
+      }
+      return null;
+    }
+
+    editorCreatedPropConfigsById.set(id, record.persistedConfig);
+    editorCreatedPropOrder.splice(createdIndex, 0, id);
+    if (markDirty) {
+      markSceneDirty();
+    }
+    return record.created;
+  }
+
   async function setEditorCreatedProps(props = [], { markDirty = true } = {}) {
     const nextProps = Array.isArray(props) ? props : [];
     let updatedCount = 0;
@@ -4017,28 +4419,14 @@ export async function loadScene({
         continue;
       }
 
-      const annotated = annotateEditorCreatedPropSource(baseConfig, createdIndex);
-      const created = await instantiateProp(annotated, editorCreatedPropTag, {
+      const record = await instantiateEditorCreatedPropRecord(baseConfig, createdIndex, {
         resolvePlacement: true
       });
-      if (!created) {
+      if (!record?.created) {
         continue;
       }
 
-      const transform = serializeEditableTransform(created);
-      const persistedConfig = sanitizeEditablePropConfig(baseConfig, { includeSource: false });
-      const serializedConfig = cloneConfig(annotated) || {};
-      if (transform) {
-        persistedConfig.position = transform.position;
-        persistedConfig.rotation = transform.rotation;
-        persistedConfig.scale = transform.scale;
-        serializedConfig.position = transform.position;
-        serializedConfig.rotation = transform.rotation;
-        serializedConfig.scale = transform.scale;
-      }
-      created.userData.editorCreated = true;
-      created.userData.editorSerializableConfig = serializedConfig;
-      editorCreatedPropConfigsById.set(propId, persistedConfig);
+      editorCreatedPropConfigsById.set(propId, record.persistedConfig);
       editorCreatedPropOrder.push(propId);
       createdIndex += 1;
       updatedCount += 1;
@@ -4300,6 +4688,10 @@ export async function loadScene({
       editorHidden: editorHiddenPropIds.has(id),
       editorCreated: object.userData?.editorCreated === true,
       moduleIds,
+      runtimePhase: normalizeRuntimePhase(object.userData?.runtimePhase),
+      effectTypes: Array.isArray(object.userData?.effectTypes)
+        ? [...object.userData.effectTypes]
+        : [],
       sourceConfigFile: readText(object.userData?.sourceConfigFile, ""),
       sourcePath: readText(object.userData?.sourcePath, ""),
       sourceGroupId: readText(object.userData?.sourceGroupId, ""),
@@ -4414,6 +4806,7 @@ export async function loadScene({
     getEditorCreatedProps,
     setEditorCreatedProps,
     createEditorCreatedProp,
+    updateEditorCreatedPropConfig,
     duplicateEditableProp,
     removeEditorCreatedProp,
     getPropState,

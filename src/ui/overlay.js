@@ -44,6 +44,26 @@ export function createOverlay({
       ? "Editor is active. Use RMB look with Q/W/E/R tools to move and adjust scene items."
       : "Scene editor is available while running locally."
     : "Scene editor is available on local builds only.";
+  const modelShowroomSupported = Boolean(devMenu?.modelShowroomSupported);
+  const modelShowroomActive = Boolean(devMenu?.modelShowroomActive);
+  const modelShowroomBusy = Boolean(devMenu?.modelShowroomBusy);
+  const modelShowroomIsolated = Boolean(devMenu?.modelShowroomIsolated);
+  const modelShowroomButtonLabel = modelShowroomBusy
+    ? "Loading Model Lab"
+    : modelShowroomIsolated
+      ? "Return to Lobby"
+      : modelShowroomActive
+      ? "Hide Model Lab"
+      : "Open Model Lab";
+  const modelShowroomStatus = readText(
+    devMenu?.modelShowroomStatus,
+    modelShowroomSupported
+      ? modelShowroomIsolated
+        ? "Isolated model lab is active."
+        : "Model lab is ready. Open it to boot an isolated preview scene."
+      : "Model lab is available in local dev mode."
+  );
+  const modelShowroomTone = readText(devMenu?.modelShowroomTone, "muted");
 
   mount.innerHTML = `
     <div class="lobby-root">
@@ -123,9 +143,24 @@ export function createOverlay({
                   data-ui
                   ${editorSupported ? "" : "disabled"}
                 >${editorButtonLabel}</button>
+                <button
+                  id="dev-model-showroom-toggle-btn"
+                  type="button"
+                  data-ui
+                  ${modelShowroomSupported && !modelShowroomBusy ? "" : "disabled"}
+                >${modelShowroomButtonLabel}</button>
+                <button
+                  id="dev-model-showroom-refresh-btn"
+                  type="button"
+                  data-ui
+                  ${modelShowroomSupported && !modelShowroomBusy ? "" : "disabled"}
+                >Refresh Model Lab</button>
               </div>
               <p id="dev-editor-note" class="dev-config-status" data-tone="${editorSupported ? "info" : "muted"}">
                 ${editorNote}
+              </p>
+              <p id="dev-model-showroom-note" class="dev-config-status" data-tone="${modelShowroomTone}">
+                ${modelShowroomStatus}
               </p>
             </section>
           </div>
@@ -248,6 +283,9 @@ export function createOverlay({
   const devReloadRuntimeButton = mount.querySelector("#dev-reload-runtime-btn");
   const devEditorToggleButton = mount.querySelector("#dev-editor-toggle-btn");
   const devEditorNote = mount.querySelector("#dev-editor-note");
+  const devModelShowroomToggleButton = mount.querySelector("#dev-model-showroom-toggle-btn");
+  const devModelShowroomRefreshButton = mount.querySelector("#dev-model-showroom-refresh-btn");
+  const devModelShowroomNote = mount.querySelector("#dev-model-showroom-note");
 
   if (showDevPanel) {
     controlHint.textContent = isMobile
@@ -479,6 +517,8 @@ export function createOverlay({
       devSaveDefaultsButton,
       devDeleteLocalButton,
       devReloadRuntimeButton,
+      devModelShowroomToggleButton,
+      devModelShowroomRefreshButton,
       devConfigFile,
       devConfigSource
     ]) {
@@ -518,6 +558,78 @@ export function createOverlay({
           : "Scene editor is available while running locally."
         : "Scene editor is available on local builds only.";
       devEditorNote.dataset.tone = supported ? "info" : "muted";
+    }
+  }
+
+  function setDevModelShowroomState(state = null) {
+    if (state && typeof state === "object" && devMenu) {
+      Object.assign(devMenu, state);
+    }
+
+    const supported = Boolean(devMenu?.modelShowroomSupported);
+    const active = Boolean(devMenu?.modelShowroomActive);
+    const busy = Boolean(devMenu?.modelShowroomBusy);
+    const isolated = Boolean(devMenu?.modelShowroomIsolated);
+    const note = readText(
+      devMenu?.modelShowroomStatus,
+      supported
+        ? isolated
+          ? "Isolated model lab is active."
+          : "Model lab is ready. Open it to boot an isolated preview scene."
+        : "Model lab is available in local dev mode."
+    );
+    const tone = readText(devMenu?.modelShowroomTone, supported ? "muted" : "muted");
+
+    if (devModelShowroomToggleButton) {
+      devModelShowroomToggleButton.textContent = busy
+        ? "Loading Model Lab"
+        : isolated
+          ? "Return to Lobby"
+          : active
+          ? "Hide Model Lab"
+          : "Open Model Lab";
+      devModelShowroomToggleButton.disabled = !supported || devBusy || busy;
+    }
+    if (devModelShowroomRefreshButton) {
+      devModelShowroomRefreshButton.disabled = !supported || devBusy || busy;
+    }
+    if (devModelShowroomNote) {
+      devModelShowroomNote.textContent = note;
+      devModelShowroomNote.dataset.tone = tone;
+    }
+  }
+
+  async function runDevMenuAction(statusMessage, callback) {
+    if (devBusy || typeof callback !== "function") {
+      return false;
+    }
+
+    devBusy = true;
+    setDevButtonsDisabled(true);
+    setDevStatus(statusMessage, "info");
+
+    try {
+      const result = await callback();
+      if (result && typeof result === "object") {
+        if (result.modelShowroomState) {
+          setDevModelShowroomState(result.modelShowroomState);
+        } else {
+          setDevModelShowroomState(result);
+        }
+        if (typeof result.devStatusMessage === "string" && result.devStatusMessage.trim()) {
+          setDevStatus(result.devStatusMessage, readText(result.devStatusTone, "success"));
+        }
+      }
+      return true;
+    } catch (error) {
+      setDevStatus(error instanceof Error ? error.message : "Dev action failed.", "error");
+      return false;
+    } finally {
+      devBusy = false;
+      setDevButtonsDisabled(false);
+      setDevWriteButtonsEnabled(Boolean(devMenu?.writable));
+      setDevEditorState();
+      setDevModelShowroomState();
     }
   }
 
@@ -931,6 +1043,7 @@ export function createOverlay({
 
     setDevWriteButtonsEnabled(Boolean(devMenu.writable));
     setDevEditorState();
+    setDevModelShowroomState(devMenu);
     setDevStatus(
       devMenu.writable
         ? "Edit JSON here, then save locally or to project defaults."
@@ -961,6 +1074,16 @@ export function createOverlay({
     });
     devEditorToggleButton?.addEventListener("click", () => {
       devMenu.toggleEditor?.();
+    });
+    devModelShowroomToggleButton?.addEventListener("click", () => {
+      runDevMenuAction("Updating model lab...", () => devMenu.toggleModelShowroom?.()).catch(
+        () => {}
+      );
+    });
+    devModelShowroomRefreshButton?.addEventListener("click", () => {
+      runDevMenuAction("Refreshing model lab intake...", () =>
+        devMenu.refreshModelShowroom?.()
+      ).catch(() => {});
     });
 
     loadDevConfig().catch(() => {});
@@ -1091,6 +1214,9 @@ export function createOverlay({
     },
     setDevConfigFiles(entries) {
       setDevConfigFiles(entries);
+    },
+    setDevModelShowroomState(state) {
+      setDevModelShowroomState(state);
     },
     setObjectivesPanel(panelState) {
       setObjectivesPanel(panelState);

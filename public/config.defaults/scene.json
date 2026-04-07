@@ -1532,6 +1532,203 @@
       "modelFallback": "cylinder"
     },
     {
+      "id": "fog_reveal_filing_cabinet_left",
+      "type": "model",
+      "model": "/assets/models/props/backrooms_filing_cabinet.glb",
+      "position": [
+        4.4,
+        0,
+        -29.6
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        1.15,
+        1.15,
+        1.15
+      ],
+      "collider": false,
+      "runtimePhase": "artifact-transition",
+      "deferLoad": true,
+      "modelPlacement": {
+        "centerAxes": [
+          "x",
+          "z"
+        ],
+        "alignY": "base"
+      },
+      "modelFallback": "box",
+      "effect": {
+        "type": "smoke",
+        "count": 16,
+        "size": 0.13,
+        "opacity": 0.12,
+        "color": "#c4c7c3",
+        "riseSpeed": 0.15,
+        "drift": 0.2
+      }
+    },
+    {
+      "id": "fog_reveal_office_chair_right",
+      "type": "model",
+      "model": "/assets/models/props/backrooms_office_chair.glb",
+      "position": [
+        -3.3,
+        0,
+        -28.8
+      ],
+      "rotation": [
+        0,
+        148,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "collider": false,
+      "runtimePhase": "artifact-transition",
+      "deferLoad": true,
+      "modelPlacement": {
+        "centerAxes": [
+          "x",
+          "z"
+        ],
+        "alignY": "base"
+      },
+      "modelFallback": "box"
+    },
+    {
+      "id": "fog_reveal_chain_bundle_corner",
+      "type": "model",
+      "model": "/assets/models/props/inferno_chain_bundle.glb",
+      "position": [
+        4.7,
+        0,
+        -20.4
+      ],
+      "rotation": [
+        0,
+        24,
+        0
+      ],
+      "scale": [
+        1.24,
+        1.24,
+        1.24
+      ],
+      "collider": false,
+      "runtimePhase": "artifact-transition",
+      "deferLoad": true,
+      "modelPlacement": {
+        "centerAxes": [
+          "x",
+          "z"
+        ],
+        "alignY": "base"
+      },
+      "modelFallback": "cylinder",
+      "effect": {
+        "type": "mist",
+        "count": 12,
+        "size": 0.18,
+        "opacity": 0.1,
+        "color": "#d6d7d4",
+        "riseSpeed": 0.08,
+        "drift": 0.12
+      }
+    },
+    {
+      "id": "fog_reveal_skull_pile_corner",
+      "type": "model",
+      "model": "/assets/models/props/inferno_skull_pile.glb",
+      "position": [
+        -4.6,
+        0,
+        -20.8
+      ],
+      "rotation": [
+        0,
+        -32,
+        0
+      ],
+      "scale": [
+        1.08,
+        1.08,
+        1.08
+      ],
+      "collider": false,
+      "runtimePhase": "artifact-transition",
+      "deferLoad": true,
+      "modelPlacement": {
+        "centerAxes": [
+          "x",
+          "z"
+        ],
+        "alignY": "base"
+      },
+      "modelFallback": "cylinder",
+      "effect": {
+        "type": "mist",
+        "count": 10,
+        "size": 0.16,
+        "opacity": 0.08,
+        "color": "#d8dad7",
+        "riseSpeed": 0.06,
+        "drift": 0.1
+      }
+    },
+    {
+      "id": "fog_reveal_obelisk_north",
+      "type": "model",
+      "model": "/assets/models/props/purgatory_obelisk.glb",
+      "position": [
+        0,
+        0,
+        -31.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.96,
+        0.96,
+        0.96
+      ],
+      "collider": false,
+      "runtimePhase": "artifact-transition",
+      "deferLoad": true,
+      "modelPlacement": {
+        "centerAxes": [
+          "x",
+          "z"
+        ],
+        "alignY": "base"
+      },
+      "modelFallback": "cylinder",
+      "material": {
+        "emissiveColor": "#ff9c6f",
+        "emissiveIntensity": 0.22,
+        "glowLight": true
+      },
+      "effect": {
+        "type": "embers",
+        "count": 18,
+        "size": 0.06,
+        "opacity": 0.72,
+        "color": "#ff9363",
+        "riseSpeed": 0.46,
+        "drift": 0.28,
+        "additive": true
+      }
+    },
+    {
       "id": "courtyard_marker_post_left",
       "type": "primitive",
       "primitive": "box",

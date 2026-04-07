@@ -914,6 +914,76 @@ a:focus-visible {
   min-width: 11rem;
 }
 
+.editor-library-summary {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.69rem;
+  line-height: 1.4;
+}
+
+.editor-library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11.5rem, 1fr));
+  gap: 0.55rem;
+  max-height: 16rem;
+  overflow-y: auto;
+  padding-right: 0.12rem;
+}
+
+.editor-library-card {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  gap: 0.34rem;
+  text-align: left;
+  padding: 0.72rem;
+  border: 1px solid rgba(157, 205, 226, 0.18);
+  border-radius: 0.88rem;
+  background: linear-gradient(180deg, rgba(12, 20, 27, 0.92) 0%, rgba(8, 14, 19, 0.9) 100%);
+  color: var(--text);
+  cursor: grab;
+}
+
+.editor-library-card:hover,
+.editor-library-card:focus-visible,
+.editor-library-card.is-selected {
+  border-color: rgba(178, 230, 252, 0.4);
+  background: linear-gradient(180deg, rgba(18, 31, 42, 0.96) 0%, rgba(10, 19, 25, 0.94) 100%);
+  transform: translateY(-1px);
+  outline: none;
+}
+
+.editor-library-card.is-selected {
+  box-shadow: 0 0 0 1px rgba(255, 188, 120, 0.2);
+}
+
+.editor-library-card-title {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-library-card-meta {
+  display: block;
+  color: var(--accent-strong);
+  font-size: 0.58rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.editor-library-card-body {
+  display: block;
+  color: #bdd2df;
+  font-size: 0.68rem;
+  line-height: 1.42;
+}
+
+.editor-library-select select {
+  min-height: 10rem;
+}
+
 .editor-create-row select {
   flex: 1 1 12rem;
   width: auto;
@@ -944,6 +1014,39 @@ a:focus-visible {
   min-height: 12.5rem;
   font: 0.68rem/1.45 "Consolas", "Courier New", monospace;
   padding: 0.58rem;
+}
+
+.editor-behavior-columns {
+  align-items: end;
+}
+
+.editor-behavior-columns select,
+.editor-behavior-input {
+  width: 100%;
+  min-height: auto;
+  height: 2.35rem;
+  margin-top: 0.42rem;
+  padding: 0 0.72rem;
+  color: var(--text);
+  border: 1px solid rgba(157, 205, 226, 0.22);
+  border-radius: 0.75rem;
+  background: rgba(7, 12, 17, 0.92);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  font: inherit;
+}
+
+.editor-behavior-columns select {
+  font: 0.68rem/1.45 "Consolas", "Courier New", monospace;
+}
+
+.editor-behavior-input[type="color"] {
+  padding: 0.16rem;
+}
+
+.editor-behavior-checkbox {
+  margin-left: 0;
+  min-height: 2.35rem;
+  align-self: end;
 }
 
 .editor-chip-row {
@@ -1044,6 +1147,12 @@ a:focus-visible {
   text-align: center;
   text-transform: uppercase;
   box-shadow: var(--shadow-md);
+}
+
+.viewport canvas[data-editor-drop-active="true"] {
+  outline: 2px solid rgba(255, 188, 120, 0.58);
+  outline-offset: -4px;
+  box-shadow: inset 0 0 0 1px rgba(255, 188, 120, 0.18);
 }
 
 .inspect-panel {
@@ -1501,8 +1610,14 @@ a:focus-visible {
   }
 
   .editor-create-row select,
-  .editor-search-input {
+  .editor-search-input,
+  .editor-library-grid {
     min-width: 0;
+  }
+
+  .editor-library-grid {
+    grid-template-columns: minmax(0, 1fr);
+    max-height: 12rem;
   }
 
   .sound-gate {
