@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-07T19:31:46.425Z",
+    "fetchedAt": "2026-04-08T03:32:18.723Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "mgQWVuvi3O0",
+      "title": "i didnt need to see anyway 😔 #armareforger #fps #gaming #arma",
+      "url": "https://www.youtube.com/watch?v=mgQWVuvi3O0",
+      "image": "https://i2.ytimg.com/vi/mgQWVuvi3O0/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-04-07T19:57:50+00:00"
+    },
     {
       "id": "O0fFYOsTK0w",
       "title": "ejecto…you know the rest #arma #armareforger #explosion #conflict #fps #funnymoments #gaming",
@@ -218,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-21T05:39:58+00:00"
-    },
-    {
-      "id": "lmKTvfFGHoY",
-      "title": "Sleep paralysis demon raid #readyornot #raid",
-      "url": "https://www.youtube.com/watch?v=lmKTvfFGHoY",
-      "image": "https://i1.ytimg.com/vi/lmKTvfFGHoY/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-20T03:50:36+00:00"
     }
   ]
 }
