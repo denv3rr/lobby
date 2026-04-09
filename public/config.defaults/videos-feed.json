@@ -3,12 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-09T14:13:50.995Z",
+    "fetchedAt": "2026-04-09T19:36:22.202Z",
     "count": 15,
     "usedFallback": false,
     "errors": []
   },
   "items": [
+    {
+      "id": "xVAnQYIMETY",
+      "title": "ragequit material #arma #armareforger #funnymoments #conflict #fps #fail",
+      "url": "https://www.youtube.com/watch?v=xVAnQYIMETY",
+      "image": "https://i1.ytimg.com/vi/xVAnQYIMETY/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-04-09T18:08:30+00:00"
+    },
     {
       "id": "mgQWVuvi3O0",
       "title": "i didnt need to see anyway 😔 #armareforger #fps #gaming #arma",
@@ -218,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-21T22:08:30+00:00"
-    },
-    {
-      "id": "29i132bodZ0",
-      "title": "jumpscare #conflict #armareforger #arma #m4",
-      "url": "https://www.youtube.com/watch?v=29i132bodZ0",
-      "image": "https://i3.ytimg.com/vi/29i132bodZ0/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-21T05:39:58+00:00"
     }
   ]
 }
