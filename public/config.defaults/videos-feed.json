@@ -3,17 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-20T03:51:37.180Z",
+    "fetchedAt": "2026-04-20T08:27:03.334Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 404 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "mHKPdrezquY",
+      "title": "Gameplay Test #armareforger #map #mod #update #arma #gaming",
+      "url": "https://www.youtube.com/watch?v=mHKPdrezquY",
+      "image": "https://i2.ytimg.com/vi/mHKPdrezquY/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-04-20T08:22:22+00:00"
+    },
     {
       "id": "xVAnQYIMETY",
       "title": "ragequit material #arma #armareforger #funnymoments #conflict #fps #fail",
@@ -223,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-23T01:07:07+00:00"
-    },
-    {
-      "id": "RXuZi3xc8mU",
-      "title": "Fellas what would you have done #armareforger #conflict #arma #funnymoments #fails",
-      "url": "https://www.youtube.com/watch?v=RXuZi3xc8mU",
-      "image": "https://i3.ytimg.com/vi/RXuZi3xc8mU/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-21T22:08:30+00:00"
     }
   ]
 }
