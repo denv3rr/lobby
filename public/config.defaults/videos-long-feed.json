@@ -4,10 +4,15 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-20T19:33:04.439Z",
+    "fetchedAt": "2026-04-21T03:45:38.437Z",
     "count": 26,
     "usedFallback": false,
-    "errors": []
+    "errors": [
+      {
+        "url": "https://www.youtube.com/feeds/videos.xml",
+        "message": "HTTP 404 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
+      }
+    ]
   },
   "items": [
     {
@@ -25,8 +30,8 @@
       ],
       "durationText": "1:24",
       "durationSeconds": 84,
-      "publishedText": "1 month ago",
-      "viewCountText": "21 views"
+      "publishedText": "1mo ago",
+      "viewCountText": "22 views"
     },
     {
       "id": "y-WRjMd8xgE",
@@ -43,7 +48,7 @@
       ],
       "durationText": "22:07",
       "durationSeconds": 1327,
-      "publishedText": "2 months ago",
+      "publishedText": "2mo ago",
       "viewCountText": "36 views"
     },
     {
@@ -61,7 +66,7 @@
       ],
       "durationText": "3:00",
       "durationSeconds": 180,
-      "publishedText": "2 months ago",
+      "publishedText": "3mo ago",
       "viewCountText": "8 views"
     },
     {
@@ -79,7 +84,7 @@
       ],
       "durationText": "10:39",
       "durationSeconds": 639,
-      "publishedText": "3 months ago",
+      "publishedText": "3mo ago",
       "viewCountText": "12 views"
     },
     {
@@ -97,7 +102,7 @@
       ],
       "durationText": "1:04",
       "durationSeconds": 64,
-      "publishedText": "3 months ago",
+      "publishedText": "3mo ago",
       "viewCountText": "42 views"
     },
     {
@@ -115,7 +120,7 @@
       ],
       "durationText": "2:29",
       "durationSeconds": 149,
-      "publishedText": "3 months ago",
+      "publishedText": "3mo ago",
       "viewCountText": "14 views"
     },
     {
@@ -133,7 +138,7 @@
       ],
       "durationText": "4:05",
       "durationSeconds": 245,
-      "publishedText": "6 months ago",
+      "publishedText": "6mo ago",
       "viewCountText": "22 views"
     },
     {
@@ -151,7 +156,7 @@
       ],
       "durationText": "7:01",
       "durationSeconds": 421,
-      "publishedText": "1 year ago",
+      "publishedText": "1y ago",
       "viewCountText": "1,020 views"
     },
     {
@@ -169,7 +174,7 @@
       ],
       "durationText": "2:25",
       "durationSeconds": 145,
-      "publishedText": "1 year ago",
+      "publishedText": "1y ago",
       "viewCountText": "67 views"
     },
     {
@@ -187,7 +192,7 @@
       ],
       "durationText": "36:47",
       "durationSeconds": 2207,
-      "publishedText": "1 year ago",
+      "publishedText": "1y ago",
       "viewCountText": "313 views"
     },
     {
@@ -205,7 +210,7 @@
       ],
       "durationText": "3:40",
       "durationSeconds": 220,
-      "publishedText": "1 year ago",
+      "publishedText": "1y ago",
       "viewCountText": "216 views"
     },
     {
@@ -223,7 +228,7 @@
       ],
       "durationText": "9:33",
       "durationSeconds": 573,
-      "publishedText": "1 year ago",
+      "publishedText": "1y ago",
       "viewCountText": "49 views"
     },
     {
@@ -241,7 +246,7 @@
       ],
       "durationText": "6:25",
       "durationSeconds": 385,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "47 views"
     },
     {
@@ -259,7 +264,7 @@
       ],
       "durationText": "7:08",
       "durationSeconds": 428,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "46 views"
     },
     {
@@ -277,7 +282,7 @@
       ],
       "durationText": "19:23",
       "durationSeconds": 1163,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "24 views"
     },
     {
@@ -295,7 +300,7 @@
       ],
       "durationText": "3:09",
       "durationSeconds": 189,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "33 views"
     },
     {
@@ -313,7 +318,7 @@
       ],
       "durationText": "4:01",
       "durationSeconds": 241,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "70 views"
     },
     {
@@ -331,7 +336,7 @@
       ],
       "durationText": "3:57",
       "durationSeconds": 237,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "287 views"
     },
     {
@@ -349,7 +354,7 @@
       ],
       "durationText": "2:10",
       "durationSeconds": 130,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "81 views"
     },
     {
@@ -367,7 +372,7 @@
       ],
       "durationText": "1:26",
       "durationSeconds": 86,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "801 views"
     },
     {
@@ -385,7 +390,7 @@
       ],
       "durationText": "6:00",
       "durationSeconds": 360,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "139 views"
     },
     {
@@ -403,7 +408,7 @@
       ],
       "durationText": "19:01",
       "durationSeconds": 1141,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "692 views"
     },
     {
@@ -421,7 +426,7 @@
       ],
       "durationText": "1:31",
       "durationSeconds": 91,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "14 views"
     },
     {
@@ -439,7 +444,7 @@
       ],
       "durationText": "2:44",
       "durationSeconds": 164,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "1,061 views"
     },
     {
@@ -457,7 +462,7 @@
       ],
       "durationText": "2:31",
       "durationSeconds": 151,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "308 views"
     },
     {
@@ -475,7 +480,7 @@
       ],
       "durationText": "10:18",
       "durationSeconds": 618,
-      "publishedText": "2 years ago",
+      "publishedText": "2y ago",
       "viewCountText": "141 views"
     }
   ]
