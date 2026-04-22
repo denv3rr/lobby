@@ -3,15 +3,10 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-22T03:42:14.894Z",
+    "fetchedAt": "2026-04-22T08:05:20.276Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 404 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
     {
