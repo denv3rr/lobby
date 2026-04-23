@@ -4,10 +4,15 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-22T19:38:01.499Z",
+    "fetchedAt": "2026-04-23T03:46:19.686Z",
     "count": 26,
     "usedFallback": false,
-    "errors": []
+    "errors": [
+      {
+        "url": "https://www.youtube.com/feeds/videos.xml",
+        "message": "HTTP 404 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
+      }
+    ]
   },
   "items": [
     {
@@ -152,7 +157,7 @@
       "durationText": "7:01",
       "durationSeconds": 421,
       "publishedText": "1 year ago",
-      "viewCountText": "1,020 views"
+      "viewCountText": "1,021 views"
     },
     {
       "id": "eke__HvSFHM",
