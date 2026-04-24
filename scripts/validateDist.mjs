@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
@@ -39,8 +39,44 @@ function validateFeedPayload(fileName, payload, errors) {
   }
 }
 
+function collectReferencedAssetPaths(value, referencedAssets = new Set()) {
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (/^\/assets\/.+/.test(trimmed)) {
+      referencedAssets.add(trimmed.replace(/^\/+/, ""));
+    }
+    return referencedAssets;
+  }
+
+  if (Array.isArray(value)) {
+    for (const entry of value) {
+      collectReferencedAssetPaths(entry, referencedAssets);
+    }
+    return referencedAssets;
+  }
+
+  if (value && typeof value === "object") {
+    for (const entry of Object.values(value)) {
+      collectReferencedAssetPaths(entry, referencedAssets);
+    }
+  }
+
+  return referencedAssets;
+}
+
+async function ensureDistAssetExists(relativeAssetPath, errors) {
+  const normalizedPath = path.posix.normalize(relativeAssetPath).replace(/^\/+/, "");
+  const assetPath = path.join(DIST_DIR, normalizedPath);
+  try {
+    await access(assetPath);
+  } catch {
+    errors.push(`Referenced dist asset is missing: ${normalizedPath}`);
+  }
+}
+
 async function main() {
   const errors = [];
+  const referencedAssets = new Set();
   const runtimeFiles = await listRuntimeConfigFiles("defaults");
   const requiredFeeds = runtimeFiles.filter((fileName) => /-feed\.json$/i.test(fileName));
   const htmlPath = path.join(DIST_DIR, "index.html");
@@ -60,11 +96,17 @@ async function main() {
   for (const fileName of runtimeFiles) {
     const defaultsPayload = await ensureJsonFileExists(defaultsDir, fileName, errors);
     const compatPayload = await ensureJsonFileExists(compatDir, fileName, errors);
+    collectReferencedAssetPaths(defaultsPayload, referencedAssets);
+    collectReferencedAssetPaths(compatPayload, referencedAssets);
 
     if (requiredFeeds.includes(fileName)) {
       validateFeedPayload(fileName, defaultsPayload, errors);
       validateFeedPayload(fileName, compatPayload, errors);
     }
+  }
+
+  for (const assetPath of referencedAssets) {
+    await ensureDistAssetExists(assetPath, errors);
   }
 
   if (errors.length) {

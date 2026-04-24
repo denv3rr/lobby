@@ -11,7 +11,7 @@
     "floorY": 0,
     "navigationBounds": {
       "minX": -27,
-      "maxX": 27,
+      "maxX": 34,
       "minZ": -60,
       "maxZ": 58
     },
@@ -589,25 +589,25 @@
       }
     },
     {
-      "id": "east_media_planter_corner",
+      "id": "east_media_topiary_corner",
       "type": "model",
-      "model": "/assets/models/props/lobby_planter.glb",
+      "model": "/assets/models/props/roman_topiary.glb",
       "allowCatalogOverlap": true,
-      "allowDoorwayBlock": true,
+      "allowDoorwayBlock": false,
       "position": [
-        -16.5,
+        -21.9,
         0,
-        -7.6
+        -8.15
       ],
       "rotation": [
         0,
-        -45,
+        18,
         0
       ],
       "scale": [
-        0.95,
-        0.95,
-        0.95
+        0.9,
+        0.9,
+        0.9
       ],
       "modelFallback": "cylinder"
     },
@@ -798,6 +798,36 @@
       }
     },
     {
+      "id": "rear_hall_bridge",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        0,
+        0.025,
+        -16.3
+      ],
+      "rotation": [
+        -90,
+        0,
+        0
+      ],
+      "scale": [
+        11.2,
+        2.8,
+        1
+      ],
+      "material": {
+        "color": "#5f5f56",
+        "roughness": 0.92,
+        "metalness": 0.03,
+        "procedural": "concrete",
+        "textureRepeat": [
+          2,
+          1
+        ]
+      }
+    },
+    {
       "id": "outdoor_ground",
       "type": "primitive",
       "primitive": "plane",
@@ -853,6 +883,36 @@
         "procedural": "concrete",
         "textureRepeat": [
           2,
+          8
+        ]
+      }
+    },
+    {
+      "id": "outdoor_entry_apron",
+      "type": "primitive",
+      "primitive": "plane",
+      "position": [
+        0,
+        0.025,
+        20.1
+      ],
+      "rotation": [
+        -90,
+        0,
+        0
+      ],
+      "scale": [
+        8.2,
+        10.2,
+        1
+      ],
+      "material": {
+        "color": "#2f363e",
+        "roughness": 0.94,
+        "metalness": 0.04,
+        "procedural": "concrete",
+        "textureRepeat": [
+          3,
           8
         ]
       }
@@ -1511,23 +1571,23 @@
       "modelFallback": "cylinder"
     },
     {
-      "id": "courtyard_planter_right",
+      "id": "courtyard_amphora_right",
       "type": "model",
-      "model": "/assets/models/props/lobby_planter.glb",
+      "model": "/assets/models/props/roman_amphora.glb",
       "position": [
-        7.2,
+        7.4,
         0,
-        29.2
+        29.1
       ],
       "rotation": [
         0,
-        -18,
+        -24,
         0
       ],
       "scale": [
-        1.1,
-        1.1,
-        1.1
+        1.25,
+        1.25,
+        1.25
       ],
       "modelFallback": "cylinder"
     },
@@ -2351,27 +2411,27 @@
         {
           "id": "outdoor_frontier_rifle_column",
           "type": "primitive",
-          "primitive": "cylinder",
+          "primitive": "box",
           "position": [
             0,
-            0.68,
+            0.62,
             -5.7
           ],
           "scale": [
-            0.92,
-            1.36,
-            0.92
+            1.74,
+            1.24,
+            1.96
           ],
           "collider": false,
           "material": {
-            "color": "#4e463d",
-            "procedural": "marble",
+            "color": "#5c564e",
+            "procedural": "concrete",
             "textureRepeat": [
-              1,
+              2,
               2
             ],
-            "roughness": 0.82,
-            "metalness": 0.08
+            "roughness": 0.9,
+            "metalness": 0.04
           }
         },
         {
@@ -2380,19 +2440,19 @@
           "primitive": "box",
           "position": [
             0,
-            1.42,
+            1.28,
             -5.7
           ],
           "scale": [
-            1.32,
-            0.12,
-            1.32
+            2.08,
+            0.16,
+            2.26
           ],
           "collider": false,
           "material": {
-            "color": "#6b6257",
-            "roughness": 0.74,
-            "metalness": 0.08
+            "color": "#746d64",
+            "roughness": 0.82,
+            "metalness": 0.06
           }
         },
         {
@@ -2401,24 +2461,29 @@
           "primitive": "box",
           "position": [
             0,
-            2.02,
-            -5.7
+            0.94,
+            -6.46
+          ],
+          "rotation": [
+            0,
+            0,
+            0
           ],
           "scale": [
-            1.22,
-            1.18,
-            1.22
+            1.36,
+            1.88,
+            0.14
           ],
           "collider": false,
           "material": {
-            "color": "#8cb4c7",
-            "emissiveColor": "#8cb4c7",
-            "emissiveIntensity": 0.05,
-            "opacity": 0.12,
+            "color": "#b8a37a",
+            "emissiveColor": "#c6af82",
+            "emissiveIntensity": 0.08,
+            "opacity": 0.18,
             "transparent": true,
             "doubleSided": true,
-            "roughness": 0.16,
-            "metalness": 0.08
+            "roughness": 0.24,
+            "metalness": 0.04
           }
         },
         {

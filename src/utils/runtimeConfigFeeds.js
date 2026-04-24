@@ -40,7 +40,7 @@ export function getFeedPayloadFreshness(payload) {
     parseTimestamp(meta.updatedAt)
   );
   const itemFreshness = readItemFreshness(payload.items);
-  return Math.max(metaFreshness, itemFreshness);
+  return metaFreshness >= 0 ? metaFreshness : itemFreshness;
 }
 
 export function selectPreferredFeedRuntimeSource(

@@ -36,7 +36,9 @@ export class DesktopControls {
     this.worldUp = new THREE.Vector3(0, 1, 0);
     this.beforeMovePosition = new THREE.Vector3();
     this.collisionRadius = 0.42;
-    this.collisionSampleHeightOffset = 0.9;
+    this.collisionBodyHeight = 1.46;
+    this.collisionStepHeight = 0.24;
+    this.collisionHeadClearance = 0.1;
 
     this.boundKeyDown = (event) => this.onKeyDown(event);
     this.boundKeyUp = (event) => this.onKeyUp(event);
@@ -175,6 +177,15 @@ export class DesktopControls {
     this.clearKeys();
   }
 
+  getCollisionRange() {
+    const maxY = this.player.position.y - this.collisionHeadClearance;
+    const minY = Math.min(maxY, this.player.position.y - this.collisionBodyHeight);
+    return {
+      minY: minY + this.collisionStepHeight,
+      maxY
+    };
+  }
+
   update(deltaTime) {
     let axisForward = 0;
     let axisRight = 0;
@@ -229,7 +240,7 @@ export class DesktopControls {
       position: this.player.position,
       colliders: this.getColliders?.(),
       radius: this.collisionRadius,
-      sampleY: this.player.position.y - this.collisionSampleHeightOffset
+      ...this.getCollisionRange()
     });
 
     const moved = this.beforeMovePosition.distanceTo(this.player.position);

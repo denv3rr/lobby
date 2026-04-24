@@ -635,7 +635,26 @@ export class CatalogRoomSystem {
     if (!id) {
       return null;
     }
-    return this.generatedShellObjects.get(id) || null;
+    const cached = this.generatedShellObjects.get(id) || null;
+    if (cached) {
+      return cached;
+    }
+
+    for (const roomId of this.roomNodes.keys()) {
+      for (const node of this.getRoomNodes(roomId)) {
+        const shellNodes = Array.isArray(node.generatedShellNodes) ? node.generatedShellNodes : [];
+        for (const object of shellNodes) {
+          const objectId = readText(object?.userData?.generatedShellNodeId, "");
+          if (!objectId || objectId !== id) {
+            continue;
+          }
+          this.generatedShellObjects.set(id, object);
+          return object;
+        }
+      }
+    }
+
+    return null;
   }
 
   getHiddenGeneratedShellNodeIds() {
@@ -731,7 +750,7 @@ export class CatalogRoomSystem {
       this.hiddenShellNodeIds.add(id);
     }
 
-    const object = this.generatedShellObjects.get(id) || null;
+    const object = this.getGeneratedShellObject(id);
     if (object) {
       object.visible = resolved;
     }
@@ -911,6 +930,30 @@ export class CatalogRoomSystem {
         wall: playlistWall.wall,
         min: playlistWall.center - playlistWall.width * 0.5 - blockerPadding,
         max: playlistWall.center + playlistWall.width * 0.5 + blockerPadding
+      });
+    }
+    const connectorPadding =
+      roomId === SCREENING_ROOM_ID
+        ? cardWidth * 0.48 + horizontalGap * 0.24
+        : cardWidth * 0.6 + horizontalGap * 0.34;
+    const frontConnector = isObject(roomConfig?._derived?.frontConnector)
+      ? roomConfig._derived.frontConnector
+      : null;
+    if (frontConnector) {
+      blockers.push({
+        wall: "front",
+        min: -frontConnector.width * 0.5 - connectorPadding,
+        max: frontConnector.width * 0.5 + connectorPadding
+      });
+    }
+    const backConnector = isObject(roomConfig?._derived?.backConnector)
+      ? roomConfig._derived.backConnector
+      : null;
+    if (backConnector) {
+      blockers.push({
+        wall: "back",
+        min: -backConnector.width * 0.5 - connectorPadding,
+        max: backConnector.width * 0.5 + connectorPadding
       });
     }
     return blockers;
@@ -2246,7 +2289,9 @@ export class CatalogRoomSystem {
         ...config,
         size,
         _derived: {
-          cardOffset: config.layout?.cardOffset ?? 0.08
+          cardOffset: config.layout?.cardOffset ?? 0.08,
+          frontConnector: frontConnector ? { ...frontConnector } : null,
+          backConnector: backConnector ? { ...backConnector } : null
         }
       }
     };
@@ -2747,18 +2792,7 @@ export class CatalogRoomSystem {
   async buildRoomCards(roomId, themeSpec, token) {
     this.clearRoomCards(roomId);
 
-    const sourceItems = this.getRoomItems(roomId);
-    const roomConfig = this.catalogConfig.rooms?.[roomId] || {};
-    const roomFilter = {
-      ...(themeSpec?.[roomId] || {}),
-      ...(isObject(roomConfig.filter) ? roomConfig.filter : {})
-    };
-    if (roomConfig.allowEmpty === true) {
-      roomFilter.allowEmpty = true;
-    }
-    const maxItems = roomConfig.layout?.maxItems || sourceItems.length || 1;
-    const filtered = filterItems(sourceItems, roomFilter, maxItems);
-    const items = filtered;
+    const { roomConfig, items } = this.resolveRoomItems(roomId, themeSpec);
 
     if (!items.length) {
       // Keep a single room shell, but render no fallback cards when feed is empty.
@@ -2802,6 +2836,23 @@ export class CatalogRoomSystem {
     this.syncPlaylistWall(roomId);
   }
 
+  resolveRoomItems(roomId, themeSpec) {
+    const sourceItems = this.getRoomItems(roomId);
+    const roomConfig = this.catalogConfig.rooms?.[roomId] || {};
+    const roomFilter = {
+      ...(themeSpec?.[roomId] || {}),
+      ...(isObject(roomConfig.filter) ? roomConfig.filter : {})
+    };
+    if (roomConfig.allowEmpty === true) {
+      roomFilter.allowEmpty = true;
+    }
+    const maxItems = roomConfig.layout?.maxItems || sourceItems.length || 1;
+    return {
+      roomConfig,
+      items: filterItems(sourceItems, roomFilter, maxItems)
+    };
+  }
+
   async initialize(themeName) {
     if (!this.enabled) {
       return;
@@ -2831,6 +2882,20 @@ export class CatalogRoomSystem {
       if (!activeRoomIds.has(existingRoomId)) {
         this.removeRoom(existingRoomId);
       }
+    }
+    const roomPlans = roomIds.map((roomId) => {
+      const { roomConfig, items } = this.resolveRoomItems(roomId, themeSpec);
+      const required = items.length
+        ? this.computeRequiredRoomCount(roomId, roomConfig, items.length)
+        : 1;
+      return {
+        roomId,
+        roomConfig,
+        required
+      };
+    });
+    for (const roomPlan of roomPlans) {
+      this.reconcileRoomCount(roomPlan.roomId, roomPlan.roomConfig, roomPlan.required);
     }
     for (const roomId of roomIds) {
       await this.buildRoomCards(roomId, themeSpec, token);

@@ -72,6 +72,16 @@ jobs:
           npx playwright test --config=playwright.config.mjs tests/e2e/modular-showcase.spec.mjs
           -g "south padre room is a static lobby annex with linked gallery screens and a new-tab portal|south padre rifle stays centered, rotates in place, and links to center-artifact emissive pulse|south padre gallery panels stay hidden behind neighboring room walls and appear inside SPI|screening hall keeps overflow in a single widened room instead of cloning south|hidden screening shell walls stay collider-disabled after a catalog rebuild"
 
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-pages
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:

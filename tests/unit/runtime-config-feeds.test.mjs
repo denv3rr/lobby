@@ -42,6 +42,22 @@ test("getFeedPayloadFreshness falls back to item publish times", () => {
   );
 });
 
+test("getFeedPayloadFreshness prefers feed metadata over item publish times when both exist", () => {
+  const freshness = getFeedPayloadFreshness({
+    meta: {
+      fetchedAt: "2026-03-10T10:50:13.411Z"
+    },
+    items: [
+      { publishedAt: "2026-03-12T18:30:00.000Z" }
+    ]
+  });
+
+  assert.equal(
+    freshness,
+    Date.parse("2026-03-10T10:50:13.411Z")
+  );
+});
+
 test("selectPreferredFeedRuntimeSource picks defaults when defaults are fresher", () => {
   const preferred = selectPreferredFeedRuntimeSource("videos-feed.json", {
     localPayload: {

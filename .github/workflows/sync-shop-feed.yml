@@ -34,6 +34,40 @@ jobs:
       - name: Validate config defaults
         run: npm run validate:configs
 
+      - name: Unit tests
+        run: npm run test:unit
+
+      - name: Build
+        run: npm run build
+
+      - name: Validate dist artifact
+        run: npm run validate:dist
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke tests
+        env:
+          PLAYWRIGHT_SERVER_MODE: preview
+        run: npm run test:e2e:smoke
+
+      - name: Modular room regression tests
+        env:
+          PLAYWRIGHT_SERVER_MODE: preview
+        run: >
+          npx playwright test --config=playwright.config.mjs tests/e2e/modular-showcase.spec.mjs
+          -g "south padre room is a static lobby annex with linked gallery screens and a new-tab portal|south padre rifle stays centered, rotates in place, and links to center-artifact emissive pulse|south padre gallery panels stay hidden behind neighboring room walls and appear inside SPI|screening hall keeps overflow in a single widened room instead of cloning south|hidden screening shell walls stay collider-disabled after a catalog rebuild"
+
+      - name: Upload Playwright artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-artifacts-sync-content-feeds
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+
       - name: Detect changes
         id: changes
         run: |

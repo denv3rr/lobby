@@ -3,6 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 
+import { normalizeRuntimePhase } from "../src/utils/runtimePhases.js";
 import { CORE_RUNTIME_CONFIG_FILES, listRuntimeConfigFiles } from "./configWorkspace.mjs";
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -11,6 +12,233 @@ const REQUIRED_FILES = [...CORE_RUNTIME_CONFIG_FILES];
 
 function isObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function isFiniteNumber(value) {
+  return Number.isFinite(Number(value));
+}
+
+function validateVector(pathPrefix, value, errors, { positive = false } = {}) {
+  if (value == null) {
+    return;
+  }
+
+  if (!Array.isArray(value) || value.length < 3 || !value.slice(0, 3).every(isFiniteNumber)) {
+    errors.push(`${pathPrefix} must be an array of 3 finite numbers.`);
+    return;
+  }
+
+  if (positive && value.slice(0, 3).some((entry) => Number(entry) <= 0)) {
+    errors.push(`${pathPrefix} must contain positive numbers.`);
+  }
+}
+
+function validateBounds(pathPrefix, bounds, errors) {
+  if (bounds == null) {
+    return;
+  }
+
+  if (!isObject(bounds)) {
+    errors.push(`${pathPrefix} must be an object.`);
+    return;
+  }
+
+  const axes = ["X", "Z"];
+  for (const axis of axes) {
+    const minKey = `min${axis}`;
+    const maxKey = `max${axis}`;
+    if (!isFiniteNumber(bounds[minKey]) || !isFiniteNumber(bounds[maxKey])) {
+      errors.push(`${pathPrefix}.${minKey} and ${pathPrefix}.${maxKey} must be finite numbers.`);
+      continue;
+    }
+    if (Number(bounds[minKey]) >= Number(bounds[maxKey])) {
+      errors.push(`${pathPrefix}.${minKey} must be less than ${pathPrefix}.${maxKey}.`);
+    }
+  }
+}
+
+function validateUniqueId(pathPrefix, value, errors, seenIds, collectionLabel) {
+  const normalizedId = typeof value === "string" ? value.trim() : "";
+  if (!normalizedId) {
+    errors.push(`${pathPrefix} is missing required string: id.`);
+    return "";
+  }
+
+  if (seenIds.has(normalizedId)) {
+    errors.push(`${collectionLabel} must have unique ids. Duplicate id: "${normalizedId}".`);
+    return normalizedId;
+  }
+
+  seenIds.add(normalizedId);
+  return normalizedId;
+}
+
+function validateModuleIds(pathPrefix, value, errors) {
+  if (value == null) {
+    return;
+  }
+
+  const moduleIds = Array.isArray(value) ? value : [value];
+  for (let index = 0; index < moduleIds.length; index += 1) {
+    if (typeof moduleIds[index] !== "string" || !moduleIds[index].trim()) {
+      errors.push(`${pathPrefix}[${index}] must be a non-empty string.`);
+    }
+  }
+}
+
+function validateRuntimePhase(pathPrefix, value, errors) {
+  if (value == null) {
+    return;
+  }
+
+  if (typeof value !== "string") {
+    errors.push(`${pathPrefix} must be a string when provided.`);
+    return;
+  }
+
+  const rawValue = value.trim().toLowerCase();
+  if (rawValue && !normalizeRuntimePhase(rawValue) && rawValue !== "always") {
+    errors.push(`${pathPrefix} references unknown runtimePhase "${value}".`);
+  }
+}
+
+function validatePropConfig(pathPrefix, prop, errors, seenPropIds, { allowInheritedType = false } = {}) {
+  if (!isObject(prop)) {
+    errors.push(`${pathPrefix} must be an object.`);
+    return;
+  }
+
+  validateUniqueId(pathPrefix, prop.id, errors, seenPropIds, "scene.json props");
+
+  const propType = typeof prop.type === "string" ? prop.type.trim() : "";
+  if (!propType && !allowInheritedType) {
+    errors.push(`${pathPrefix} is missing required string: type.`);
+  } else if (prop.type != null && !propType) {
+    errors.push(`${pathPrefix}.type must be a non-empty string when provided.`);
+  }
+
+  validateVector(`${pathPrefix}.position`, prop.position, errors);
+  validateVector(`${pathPrefix}.rotation`, prop.rotation, errors);
+  validateVector(`${pathPrefix}.scale`, prop.scale, errors, {
+    positive: true
+  });
+  validateRuntimePhase(`${pathPrefix}.runtimePhase`, prop.runtimePhase, errors);
+  validateModuleIds(
+    `${pathPrefix}.moduleIds`,
+    prop.moduleIds ?? prop.moduleId ?? prop.modules,
+    errors
+  );
+}
+
+function validatePropGroups(propGroups, errors, seenPropIds = new Set()) {
+  if (propGroups == null) {
+    return;
+  }
+
+  if (!Array.isArray(propGroups)) {
+    errors.push("scene.json propGroups must be an array when provided.");
+    return;
+  }
+
+  const seenGroupIds = new Set();
+  for (let index = 0; index < propGroups.length; index += 1) {
+    const group = propGroups[index];
+    const pathPrefix = `scene.json propGroups[${index}]`;
+    if (!isObject(group)) {
+      errors.push(`${pathPrefix} must be an object.`);
+      continue;
+    }
+
+    validateUniqueId(pathPrefix, group.id, errors, seenGroupIds, "scene.json propGroups");
+    validateVector(`${pathPrefix}.position`, group.position, errors);
+    validateVector(`${pathPrefix}.rotation`, group.rotation, errors);
+    validateVector(`${pathPrefix}.scale`, group.scale, errors, {
+      positive: true
+    });
+
+    if (group.defaults != null && !isObject(group.defaults)) {
+      errors.push(`${pathPrefix}.defaults must be an object when provided.`);
+    }
+
+    if (!Array.isArray(group.props) || !group.props.length) {
+      errors.push(`${pathPrefix} is missing required non-empty array: props.`);
+      continue;
+    }
+
+    for (let propIndex = 0; propIndex < group.props.length; propIndex += 1) {
+      validatePropConfig(`${pathPrefix}.props[${propIndex}]`, group.props[propIndex], errors, seenPropIds, {
+        allowInheritedType: true
+      });
+    }
+  }
+}
+
+function validateProps(props, errors, seenPropIds = new Set()) {
+  if (props == null) {
+    return;
+  }
+
+  if (!Array.isArray(props)) {
+    errors.push("scene.json props must be an array when provided.");
+    return;
+  }
+
+  for (let index = 0; index < props.length; index += 1) {
+    validatePropConfig(`scene.json props[${index}]`, props[index], errors, seenPropIds);
+  }
+}
+
+function validateZonesConfig(zones, errors) {
+  if (zones == null) {
+    return;
+  }
+
+  if (!Array.isArray(zones)) {
+    errors.push("scene.json zones must be an array when provided.");
+    return;
+  }
+
+  const seenZoneIds = new Set();
+  for (let index = 0; index < zones.length; index += 1) {
+    const zone = zones[index];
+    const pathPrefix = `scene.json zones[${index}]`;
+    if (!isObject(zone)) {
+      errors.push(`${pathPrefix} must be an object.`);
+      continue;
+    }
+
+    validateUniqueId(pathPrefix, zone.id, errors, seenZoneIds, "scene.json zones");
+    validateVector(`${pathPrefix}.position`, zone.position, errors);
+    validateVector(`${pathPrefix}.size`, zone.size, errors, {
+      positive: true
+    });
+  }
+}
+
+function validateSecretUnlocksConfig(secretUnlocks, errors) {
+  if (secretUnlocks == null) {
+    return;
+  }
+
+  if (!Array.isArray(secretUnlocks)) {
+    errors.push("scene.json secretUnlocks must be an array when provided.");
+    return;
+  }
+
+  const seenUnlockIds = new Set();
+  for (let index = 0; index < secretUnlocks.length; index += 1) {
+    const unlock = secretUnlocks[index];
+    const pathPrefix = `scene.json secretUnlocks[${index}]`;
+    if (!isObject(unlock)) {
+      errors.push(`${pathPrefix} must be an object.`);
+      continue;
+    }
+
+    validateUniqueId(pathPrefix, unlock.id, errors, seenUnlockIds, "scene.json secretUnlocks");
+    if (typeof unlock.zoneId !== "string" || !unlock.zoneId.trim()) {
+      errors.push(`${pathPrefix} is missing required string: zoneId.`);
+    }
+  }
 }
 
 async function readJson(fileName, errors) {
@@ -42,44 +270,58 @@ function validateSceneConfig(sceneConfig, errors) {
 
   if (!isObject(sceneConfig.room)) {
     errors.push("scene.json is missing required object: room.");
+  } else {
+    validateVector("scene.json room.size", sceneConfig.room.size, errors, {
+      positive: true
+    });
+    if (sceneConfig.room.floorY != null && !isFiniteNumber(sceneConfig.room.floorY)) {
+      errors.push("scene.json room.floorY must be a finite number when provided.");
+    }
+    validateBounds("scene.json room.navigationBounds", sceneConfig.room.navigationBounds, errors);
   }
 
   if (!isObject(sceneConfig.spawn)) {
     errors.push("scene.json is missing required object: spawn.");
+  } else {
+    validateVector("scene.json spawn.position", sceneConfig.spawn.position, errors);
   }
 
   if (!Array.isArray(sceneConfig.portals)) {
     errors.push("scene.json is missing required array: portals.");
-    return;
-  }
+  } else {
+    const seenPortalIds = new Set();
+    for (let index = 0; index < sceneConfig.portals.length; index += 1) {
+      const portal = sceneConfig.portals[index];
+      const pathPrefix = `scene.json portals[${index}]`;
 
-  const seenPortalIds = new Set();
-  for (let index = 0; index < sceneConfig.portals.length; index += 1) {
-    const portal = sceneConfig.portals[index];
-    const pathPrefix = `scene.json portals[${index}]`;
+      if (!isObject(portal)) {
+        errors.push(`${pathPrefix} must be an object.`);
+        continue;
+      }
 
-    if (!isObject(portal)) {
-      errors.push(`${pathPrefix} must be an object.`);
-      continue;
-    }
+      validateUniqueId(pathPrefix, portal.id, errors, seenPortalIds, "scene.json portals");
 
-    const portalId = typeof portal.id === "string" ? portal.id.trim() : "";
-    if (!portalId) {
-      errors.push(`${pathPrefix} is missing required string: id.`);
-    } else if (seenPortalIds.has(portalId)) {
-      errors.push(`scene.json portals must have unique ids. Duplicate id: "${portalId}".`);
-    } else {
-      seenPortalIds.add(portalId);
-    }
+      if (typeof portal.label !== "string" || !portal.label.trim()) {
+        errors.push(`${pathPrefix} is missing required string: label.`);
+      }
 
-    if (typeof portal.label !== "string" || !portal.label.trim()) {
-      errors.push(`${pathPrefix} is missing required string: label.`);
-    }
+      if (typeof portal.url !== "string" || !portal.url.trim()) {
+        errors.push(`${pathPrefix} is missing required string: url.`);
+      }
 
-    if (typeof portal.url !== "string" || !portal.url.trim()) {
-      errors.push(`${pathPrefix} is missing required string: url.`);
+      validateVector(`${pathPrefix}.position`, portal.position, errors);
+      validateVector(`${pathPrefix}.rotation`, portal.rotation, errors);
+      validateVector(`${pathPrefix}.size`, portal.size, errors, {
+        positive: true
+      });
     }
   }
+
+  const seenPropIds = new Set();
+  validateProps(sceneConfig.props, errors, seenPropIds);
+  validatePropGroups(sceneConfig.propGroups, errors, seenPropIds);
+  validateSecretUnlocksConfig(sceneConfig.secretUnlocks, errors);
+  validateZonesConfig(sceneConfig.zones, errors);
 }
 
 function validateThemesConfig(themesConfig, errors) {

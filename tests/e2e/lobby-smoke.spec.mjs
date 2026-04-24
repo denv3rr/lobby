@@ -213,13 +213,20 @@ test("boots lobby in WebGL mode and supports a basic theme switch", async ({ pag
             if (!api || typeof api.getCatalogRoomIds !== "function") {
               continue;
             }
-            return api.getCatalogRoomIds().includes("atelier");
+            const roomIds = api.getCatalogRoomIds();
+            return (
+              Array.isArray(roomIds) &&
+              roomIds.includes("shop") &&
+              roomIds.includes("projects") &&
+              roomIds.includes("videos") &&
+              !roomIds.includes("atelier")
+            );
           }
           return false;
         }, DEBUG_HOOK_NAMES),
       { timeout: 25_000 }
     )
-    .toBe(false);
+    .toBe(true);
 
   await expect
     .poll(

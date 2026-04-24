@@ -9,8 +9,6 @@ agents.md
 AGENTS.md
 _agents/
 .agents/
-docs/
-doc/
 planning/
 planning-*/
 private-*/
@@ -24,10 +22,6 @@ scratch-private/
 *.private.md
 FEATURE-PASS-NOTES.md
 DESIGN-REFERENCE-LIBRARY.md
-README.md
-public/config/README.md
-public/assets/manifest/README.md
-public/assets/**/README.*
 
 # Local runtime config overrides (dev-only)
 public/config/*.json

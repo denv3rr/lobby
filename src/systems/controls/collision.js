@@ -35,11 +35,37 @@ function resolveOne(position, radius, collider) {
   }
 }
 
+function overlapsVerticalRange(collider, minY, maxY, sampleY) {
+  const colliderMinY = Number.isFinite(collider.minY) ? collider.minY : -Infinity;
+  const colliderMaxY = Number.isFinite(collider.maxY) ? collider.maxY : Infinity;
+
+  const hasRange = Number.isFinite(minY) || Number.isFinite(maxY);
+  if (hasRange) {
+    const rangeMin = Number.isFinite(minY)
+      ? minY
+      : Number.isFinite(sampleY)
+        ? sampleY
+        : -Infinity;
+    const rangeMax = Number.isFinite(maxY)
+      ? maxY
+      : Number.isFinite(sampleY)
+        ? sampleY
+        : Infinity;
+    const resolvedMinY = Math.min(rangeMin, rangeMax);
+    const resolvedMaxY = Math.max(rangeMin, rangeMax);
+    return resolvedMaxY >= colliderMinY && resolvedMinY <= colliderMaxY;
+  }
+
+  return sampleY >= colliderMinY && sampleY <= colliderMaxY;
+}
+
 export function resolvePositionAgainstColliders({
   position,
   colliders,
   radius = 0.38,
-  sampleY = 0
+  sampleY = 0,
+  minY = null,
+  maxY = null
 }) {
   if (!Array.isArray(colliders) || !colliders.length) {
     return 0;
@@ -53,9 +79,7 @@ export function resolvePositionAgainstColliders({
         continue;
       }
 
-      const minY = Number.isFinite(collider.minY) ? collider.minY : -Infinity;
-      const maxY = Number.isFinite(collider.maxY) ? collider.maxY : Infinity;
-      if (sampleY < minY || sampleY > maxY) {
+      if (!overlapsVerticalRange(collider, minY, maxY, sampleY)) {
         continue;
       }
 

@@ -2083,6 +2083,8 @@ async function boot() {
     }
   });
   syncDevModelShowroomState();
+  const debugRuntimeStartedAtMs = performance.now();
+  let lastRuntimeElapsed = 0;
   mountRuntimeDebugApi();
   if (editorModeEnabled && !app.querySelector("#local-editor")) {
     const editorHost = app.querySelector(".ui-layer") || app;
@@ -2346,10 +2348,21 @@ async function boot() {
     ...(sceneContext?.getInteractionTargets?.() || []),
     ...(catalogSystem?.getTargets() || [])
   ];
-  const getPlayerColliders = () => [
-    ...(sceneContext?.getColliders?.() || []),
-    ...(catalogSystem?.getColliders?.() || [])
-  ];
+
+  function getPlayerColliders() {
+    const colliders = [];
+    const sceneColliders = sceneContext?.getColliders?.();
+    const catalogColliders = catalogSystem?.getColliders?.();
+
+    if (Array.isArray(sceneColliders) && sceneColliders.length) {
+      colliders.push(...sceneColliders);
+    }
+    if (Array.isArray(catalogColliders) && catalogColliders.length) {
+      colliders.push(...catalogColliders);
+    }
+
+    return colliders;
+  }
 
   async function applySceneEditorOverrides(overrides = sceneEditorOverrides, { markDirty = false } = {}) {
     const normalized = normalizeEditorOverrides(overrides);
@@ -2518,6 +2531,28 @@ async function boot() {
   let lastSceneRevision =
     typeof sceneContext?.getSceneRevision === "function" ? sceneContext.getSceneRevision() : -1;
 
+  function syncDebugRuntimeState({ forceScenePanels = false } = {}) {
+    const activeCamera = rendererContext?.camera || null;
+    const activeScene = rendererContext?.scene || null;
+    const previousElapsed = Number.isFinite(lastRuntimeElapsed) ? lastRuntimeElapsed : 0;
+    const wallClockElapsed = Math.max(0, performance.now() - debugRuntimeStartedAtMs) / 1000;
+    const elapsed = Math.max(previousElapsed, wallClockElapsed);
+    const delta = Math.min(Math.max(elapsed - previousElapsed, 0), 0.05);
+    lastRuntimeElapsed = elapsed;
+
+    sceneContext?.updateDynamicProps?.(elapsed, activeCamera);
+    catalogSystem?.update?.(delta, elapsed, activeCamera);
+    updateCenterArtifact(delta, elapsed);
+    updateModuleTriggers();
+    activeCamera?.updateMatrixWorld?.(true);
+    activeScene?.updateMatrixWorld?.(true);
+
+    if (forceScenePanels && scenePanelSystem && activeCamera) {
+      scenePanelSystem.lastUpdateAt = -Infinity;
+      scenePanelSystem.update(activeCamera);
+    }
+  }
+
   function getInteractionTargetById(targetId) {
     const normalizedTargetId = typeof targetId === "string" ? targetId.trim() : "";
     if (!normalizedTargetId) {
@@ -2590,8 +2625,13 @@ async function boot() {
     }
 
     const [x, y, z] = point;
+    const colliders = typeof getPlayerColliders === "function" ? getPlayerColliders() : [];
+    const roundColliderValue = (value) => {
+      const numeric = Number(value);
+      return Number.isFinite(numeric) ? Number(numeric.toFixed(4)) : 0;
+    };
     const blockers = [];
-    for (const collider of getPlayerColliders?.() || []) {
+    for (const collider of colliders) {
       if (!collider || collider.enabled === false) {
         continue;
       }
@@ -2612,10 +2652,10 @@ async function boot() {
         tag: collider.tag || null,
         roomId: collider.roomId || null,
         roomIndex: Number.isFinite(collider.roomIndex) ? collider.roomIndex : null,
-        minX: Number((collider.minX ?? 0).toFixed?.(4) || 0),
-        maxX: Number((collider.maxX ?? 0).toFixed?.(4) || 0),
-        minZ: Number((collider.minZ ?? 0).toFixed?.(4) || 0),
-        maxZ: Number((collider.maxZ ?? 0).toFixed?.(4) || 0)
+        minX: roundColliderValue(collider.minX),
+        maxX: roundColliderValue(collider.maxX),
+        minZ: roundColliderValue(collider.minZ),
+        maxZ: roundColliderValue(collider.maxZ)
       });
       if (blockers.length >= 12) {
         break;
@@ -2734,7 +2774,10 @@ async function boot() {
         catalogSystem?.playScreenVideo?.({ roomId, itemId }) || false,
       getScreeningState: () => catalogSystem?.getScreeningState?.() || null,
       getCatalogRoomIds: () => catalogSystem?.getConfiguredRoomIds?.() || [],
-      getCatalogRoomSnapshot: (roomId) => catalogSystem?.getRoomSnapshot?.(roomId) || null,
+      getCatalogRoomSnapshot: (roomId) => {
+        syncDebugRuntimeState();
+        return catalogSystem?.getRoomSnapshot?.(roomId) || null;
+      },
       estimateCatalogRoomCount: (roomId, itemCount) =>
         catalogSystem?.estimateRoomCount?.(roomId, itemCount) ?? null,
       getScenePanelIds: () => {
@@ -2749,6 +2792,9 @@ async function boot() {
           .filter(Boolean);
       },
       getScenePanels: () => {
+        syncDebugRuntimeState({
+          forceScenePanels: true
+        });
         const runtimePanels = scenePanelSystem?.getPanelSnapshots?.() || [];
         if (runtimePanels.length) {
           return runtimePanels;
@@ -2762,16 +2808,27 @@ async function boot() {
         }));
       },
       activateScenePanelCta: (panelId) => scenePanelSystem?.activatePanelCta?.(panelId) || false,
-      debugProjectScenePanel: (panelId) => scenePanelSystem?.debugProjectPanel?.(panelId) || null,
+      debugProjectScenePanel: (panelId) => {
+        syncDebugRuntimeState({
+          forceScenePanels: true
+        });
+        return scenePanelSystem?.debugProjectPanel?.(panelId) || null;
+      },
       getScenePanelPerf: () => scenePanelSystem?.getDebugStats?.() || null,
-      getPropState: (propId) => sceneContext?.getPropState?.(propId) || null,
+      getPropState: (propId) => {
+        syncDebugRuntimeState();
+        return sceneContext?.getPropState?.(propId) || null;
+      },
       getPropPlacementDiagnostics: (propId) =>
         sceneContext?.getEditablePropPlacementDiagnostics?.(propId) || null,
       resolvePropPlacement: (propId, markDirty = true) =>
         sceneContext?.resolveEditablePropPlacement?.(propId, {
           markDirty: markDirty !== false
         }) || null,
-      getGeneratedShellEntries: (roomId) => catalogSystem?.getGeneratedShellEntries?.(roomId) || [],
+      getGeneratedShellEntries: (roomId) => {
+        syncDebugRuntimeState();
+        return catalogSystem?.getGeneratedShellEntries?.(roomId) || [];
+      },
       setGeneratedShellVisible: (shellNodeId, visible) =>
         catalogSystem?.setGeneratedShellNodeVisible?.(shellNodeId, visible) || false,
       restoreGeneratedShellRoom: (roomId) => catalogSystem?.restoreGeneratedShellRoom?.(roomId) || 0,
@@ -2862,6 +2919,7 @@ async function boot() {
   rendererContext.renderer.setAnimationLoop(() => {
     const delta = Math.min(clock.getDelta(), 0.05);
     const elapsed = clock.elapsedTime;
+    lastRuntimeElapsed = elapsed;
     controls?.update(delta);
     for (const portal of sceneContext.portals || []) {
       portal.update?.(delta, elapsed);

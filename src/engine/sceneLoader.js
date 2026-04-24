@@ -1318,6 +1318,60 @@ function feedItemCount(feed) {
   return Array.isArray(feed?.items) ? feed.items.length : 0;
 }
 
+function computeCatalogRoomCount(roomId, config = {}, catalogFeeds = {}) {
+  const feedSource =
+    typeof config.feedSource === "string" && config.feedSource.trim()
+      ? config.feedSource.trim()
+      : roomId;
+  const itemCount = feedItemCount(catalogFeeds?.[feedSource]);
+  const maxItems =
+    Number.isFinite(config.layout?.maxItems) && config.layout.maxItems > 0
+      ? Math.floor(config.layout.maxItems)
+      : itemCount;
+  const boundedItems = Math.max(0, Math.min(itemCount, maxItems));
+  const capacity = Math.max(1, computeCatalogRoomCapacity(config));
+  return Math.max(1, Math.ceil(Math.max(1, boundedItems) / capacity));
+}
+
+export function mergeCatalogNavigationBounds(
+  baseBounds,
+  catalogConfig = null,
+  catalogFeeds = {}
+) {
+  const mergedBounds = baseBounds ? { ...baseBounds } : null;
+  const catalogRooms = isObject(catalogConfig?.rooms) ? catalogConfig.rooms : {};
+
+  for (const [roomId, rawConfig] of Object.entries(catalogRooms)) {
+    const config = isObject(rawConfig) ? rawConfig : null;
+    if (!config || config.enabled === false) {
+      continue;
+    }
+
+    const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
+    const roomWidth = Math.max(1, Number(size[0]) || 8.6);
+    const roomDepth = Math.max(1, Number(size[2]) || 9.6);
+    const defaultOriginX = roomId === "shop" ? -19.3 : 19.3;
+    const origin = Array.isArray(config.origin) ? config.origin : [defaultOriginX, 0, 0];
+    const expansionStep = Array.isArray(config.expansion?.step)
+      ? config.expansion.step
+      : [0, 0, -(roomDepth + 2.2)];
+    const roomCount = computeCatalogRoomCount(roomId, config, catalogFeeds);
+
+    for (let index = 0; index < roomCount; index += 1) {
+      const centerX = (origin[0] || 0) + (expansionStep[0] || 0) * index;
+      const centerZ = (origin[2] || 0) + (expansionStep[2] || 0) * index;
+      mergeBounds(mergedBounds, {
+        minX: centerX - roomWidth * 0.5,
+        maxX: centerX + roomWidth * 0.5,
+        minZ: centerZ - roomDepth * 0.5,
+        maxZ: centerZ + roomDepth * 0.5
+      });
+    }
+  }
+
+  return mergedBounds;
+}
+
 function createProtectedFloorplanZones({
   roomConfig = {},
   roomSize = [30, 8, 30],
@@ -1437,12 +1491,6 @@ function createProtectedFloorplanZones({
     if (!config || config.enabled === false) {
       continue;
     }
-
-    const feedSource =
-      typeof config.feedSource === "string" && config.feedSource.trim()
-        ? config.feedSource.trim()
-        : roomId;
-    const itemCount = feedItemCount(catalogFeeds?.[feedSource]);
     const size = Array.isArray(config.size) ? config.size : [8.6, 4.6, 9.6];
     const roomWidth = Math.max(1, Number(size[0]) || 8.6);
     const roomDepth = Math.max(1, Number(size[2]) || 9.6);
@@ -1451,12 +1499,7 @@ function createProtectedFloorplanZones({
     const expansionStep = Array.isArray(config.expansion?.step)
       ? config.expansion.step
       : [0, 0, -(roomDepth + 2.2)];
-    const maxItems = Number.isFinite(config.layout?.maxItems) && config.layout.maxItems > 0
-      ? Math.floor(config.layout.maxItems)
-      : itemCount;
-    const boundedItems = Math.max(0, Math.min(itemCount, maxItems));
-    const capacity = Math.max(1, computeCatalogRoomCapacity(config));
-    const roomCount = Math.max(1, Math.ceil(Math.max(1, boundedItems) / capacity));
+    const roomCount = computeCatalogRoomCount(roomId, config, catalogFeeds);
     const padX = Math.max(0.35, Number(config.protectionPaddingX) || 0.8);
     const padZ = Math.max(0.35, Number(config.protectionPaddingZ) || 0.8);
 
@@ -1685,7 +1728,11 @@ export async function loadScene({
   roomConfig.sideDoorways = deriveCatalogSideDoorways(roomConfig, catalogConfig);
   const roomSize = roomConfig.size || [30, 8, 30];
   const floorY = roomConfig.floorY || 0;
-  const baseRoomBounds = getRoomBounds(roomSize, 1.4, roomConfig.navigationBounds);
+  const baseRoomBounds = mergeCatalogNavigationBounds(
+    getRoomBounds(roomSize, 1.4, roomConfig.navigationBounds),
+    catalogConfig,
+    catalogFeeds
+  );
   const roomBounds = { ...baseRoomBounds };
 
   const roomGroup = new THREE.Group();
@@ -1750,7 +1797,11 @@ export async function loadScene({
   }
 
   function setRoomBounds(nextBounds = null) {
-    const resolved = getRoomBounds(roomSize, 1.4, nextBounds);
+    const resolved = mergeCatalogNavigationBounds(
+      getRoomBounds(roomSize, 1.4, nextBounds),
+      catalogConfig,
+      catalogFeeds
+    );
     roomBounds.minX = resolved.minX;
     roomBounds.maxX = resolved.maxX;
     roomBounds.minZ = resolved.minZ;
@@ -1779,6 +1830,130 @@ export async function loadScene({
     applyMaterialConfig(floorMaterial, roomConfig.floorMaterial || {}, cache),
     applyMaterialConfig(ceilingMaterial, roomConfig.ceilingMaterial || {}, cache)
   ]);
+
+  const doorwayTrimBaseColor = roomConfig.doorwayTrimColor || "#424851";
+
+  function addDoorwayTrimSet({
+    centerX = 0,
+    centerZ = 0,
+    openingWidth = 3,
+    openingHeight = 3,
+    normalX = 0,
+    normalZ = 0,
+    accentColor = "#d7dee4",
+    idPrefix = "doorway"
+  } = {}) {
+    const trimDepth = 0.24;
+    const pillarThickness = 0.18;
+    const topThickness = 0.2;
+    const accentThickness = 0.05;
+    const depthOffset = 0.08;
+    const thresholdHeight = 0.08;
+    const accent = toColor(accentColor, "#d7dee4");
+    const trimMaterial = new THREE.MeshStandardMaterial({
+      color: doorwayTrimBaseColor,
+      roughness: 0.44,
+      metalness: 0.56
+    });
+    const accentMaterial = new THREE.MeshStandardMaterial({
+      color: accent.clone().offsetHSL(0, 0.04, 0.08),
+      roughness: 0.18,
+      metalness: 0.08,
+      emissive: accent,
+      emissiveIntensity: 0.28
+    });
+    const spansX = Math.abs(normalZ) > 0.5;
+
+    function addTrimMesh(geometry, x, y, z, material) {
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.position.set(x, y, z);
+      roomGroup.add(mesh);
+      return mesh;
+    }
+
+    if (spansX) {
+      const trimZ = centerZ + normalZ * depthOffset;
+      const leftX = centerX - openingWidth * 0.5;
+      const rightX = centerX + openingWidth * 0.5;
+      addTrimMesh(
+        new THREE.BoxGeometry(pillarThickness, openingHeight, trimDepth),
+        leftX,
+        floorY + openingHeight * 0.5,
+        trimZ,
+        trimMaterial
+      );
+      addTrimMesh(
+        new THREE.BoxGeometry(pillarThickness, openingHeight, trimDepth),
+        rightX,
+        floorY + openingHeight * 0.5,
+        trimZ,
+        trimMaterial
+      );
+      addTrimMesh(
+        new THREE.BoxGeometry(openingWidth + pillarThickness, topThickness, trimDepth),
+        centerX,
+        floorY + openingHeight + topThickness * 0.5,
+        trimZ,
+        trimMaterial
+      );
+      addTrimMesh(
+        new THREE.BoxGeometry(Math.max(1.4, openingWidth - 0.34), thresholdHeight, trimDepth + 0.04),
+        centerX,
+        floorY + thresholdHeight * 0.5,
+        trimZ,
+        trimMaterial
+      );
+      addTrimMesh(
+        new THREE.BoxGeometry(Math.max(1.4, openingWidth - 0.44), 0.06, accentThickness),
+        centerX,
+        floorY + openingHeight - 0.16,
+        trimZ + normalZ * 0.05,
+        accentMaterial
+      );
+      return;
+    }
+
+    const trimX = centerX + normalX * depthOffset;
+    const leftZ = centerZ - openingWidth * 0.5;
+    const rightZ = centerZ + openingWidth * 0.5;
+    addTrimMesh(
+      new THREE.BoxGeometry(trimDepth, openingHeight, pillarThickness),
+      trimX,
+      floorY + openingHeight * 0.5,
+      leftZ,
+      trimMaterial
+    );
+    addTrimMesh(
+      new THREE.BoxGeometry(trimDepth, openingHeight, pillarThickness),
+      trimX,
+      floorY + openingHeight * 0.5,
+      rightZ,
+      trimMaterial
+    );
+    addTrimMesh(
+      new THREE.BoxGeometry(trimDepth, topThickness, openingWidth + pillarThickness),
+      trimX,
+      floorY + openingHeight + topThickness * 0.5,
+      centerZ,
+      trimMaterial
+    );
+    addTrimMesh(
+      new THREE.BoxGeometry(trimDepth + 0.04, thresholdHeight, Math.max(1.4, openingWidth - 0.34)),
+      trimX,
+      floorY + thresholdHeight * 0.5,
+      centerZ,
+      trimMaterial
+    );
+    addTrimMesh(
+      new THREE.BoxGeometry(accentThickness, 0.06, Math.max(1.4, openingWidth - 0.44)),
+      trimX + normalX * 0.05,
+      floorY + openingHeight - 0.16,
+      centerZ,
+      accentMaterial
+    );
+  }
 
   const [width, height, depth] = roomSize;
   const floorplanProtectedZones = createProtectedFloorplanZones({
@@ -1906,6 +2081,16 @@ export async function loadScene({
       maxY: floorY + rearDoorHeight - 0.02,
       id: "north_wall_right"
     });
+
+    addDoorwayTrimSet({
+      centerX: rearDoorCenterX,
+      centerZ: -depth * 0.5,
+      openingWidth: rearDoorWidth,
+      openingHeight: rearDoorHeight,
+      normalX: 0,
+      normalZ: 1,
+      accentColor: "#dcc8ba"
+    });
   }
 
   const frontEntrance = roomConfig.frontEntrance || {};
@@ -2001,6 +2186,16 @@ export async function loadScene({
       maxY: floorY + frontDoorHeight - 0.02,
       id: "south_wall_right"
     });
+
+    addDoorwayTrimSet({
+      centerX: frontDoorCenterX,
+      centerZ: depth * 0.5,
+      openingWidth: frontDoorWidth,
+      openingHeight: frontDoorHeight,
+      normalX: 0,
+      normalZ: -1,
+      accentColor: "#c8d8df"
+    });
   }
 
   const sideDoorways = roomConfig.sideDoorways || {};
@@ -2090,6 +2285,15 @@ export async function loadScene({
           id: `${side}_wall_segment_${index}`
         });
       }
+      addDoorwayTrimSet({
+        centerX: x,
+        centerZ,
+        openingWidth: doorwayWidth,
+        openingHeight: doorwayHeight,
+        normalX: isEast ? -1 : 1,
+        normalZ: 0,
+        accentColor: sideDoorways.glassColor || "#a9cfdc"
+      });
       spanStart = openingEnd;
     }
 
@@ -4017,9 +4221,6 @@ export async function loadScene({
       if (!object?.parent) {
         continue;
       }
-      if (object.visible === false) {
-        continue;
-      }
 
       object.position.copy(item.basePosition);
       object.rotation.copy(item.baseRotation);
@@ -4656,6 +4857,7 @@ export async function loadScene({
     let emissiveMaterialCount = 0;
     let emissiveIntensityTotal = 0;
     let emissiveIntensityMax = 0;
+    object.updateWorldMatrix?.(true, true);
     object.getWorldPosition(worldPosition);
     object.getWorldQuaternion(worldQuaternion);
     worldEuler.setFromQuaternion(worldQuaternion, "YXZ");

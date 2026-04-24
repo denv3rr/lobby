@@ -38,6 +38,39 @@ async function getModelLabState(page) {
 test("modellab boots an isolated preview scene without lobby portals or panels", async ({
   page
 }) => {
+  await page.route(/\/__dev\/model-intake(?:\?|$)/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        ok: true,
+        sourceDir: "fixture://model-intake",
+        summary: {
+          totalCount: 1,
+          portableCount: 1,
+          rejectedCount: 0
+        },
+        entries: [
+          {
+            id: "fixture-lowpoly-crate",
+            portable: true,
+            defaults: {
+              type: "primitive",
+              primitive: "box",
+              model: "/__fixture__/crate.glb",
+              scale: [1.2, 1.2, 1.2],
+              material: {
+                color: "#7d8b94",
+                roughness: 0.82,
+                metalness: 0.08
+              }
+            }
+          }
+        ]
+      })
+    });
+  });
+
   await page.goto(`${LOBBY_PATH}?debugui=1&sceneui=1&modellab=1`);
 
   await expect

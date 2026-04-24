@@ -8,6 +8,26 @@ function angleLerp(from, to, t) {
   return from + delta * t;
 }
 
+export function clientPointToViewportNdc(domElement, clientX, clientY) {
+  const bounds = domElement?.getBoundingClientRect?.();
+  const width =
+    Number(bounds?.width) > 0 ? Number(bounds.width) : Number(window.innerWidth) || 0;
+  const height =
+    Number(bounds?.height) > 0 ? Number(bounds.height) : Number(window.innerHeight) || 0;
+  if (width <= 0 || height <= 0) {
+    return null;
+  }
+
+  const left = Number.isFinite(bounds?.left) ? Number(bounds.left) : 0;
+  const top = Number.isFinite(bounds?.top) ? Number(bounds.top) : 0;
+  const normalizedX = (clientX - left) / width;
+  const normalizedY = (clientY - top) / height;
+  return {
+    x: normalizedX * 2 - 1,
+    y: -(normalizedY * 2 - 1)
+  };
+}
+
 export class MobileControls {
   constructor({
     domElement,
@@ -36,7 +56,12 @@ export class MobileControls {
     this.lastPoint = { x: 0, y: 0 };
     this.dragDistance = 0;
     this.collisionRadius = 0.42;
-    this.collisionSampleHeightOffset = 0.9;
+    this.collisionBodyHeight = 1.46;
+    this.collisionStepHeight = 0.24;
+    this.collisionHeadClearance = 0.1;
+    this.stuckFrames = 0;
+    this.maxStuckFrames = 8;
+    this.minimumProgressDistance = 0.008;
 
     this.raycaster = new THREE.Raycaster();
     this.floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -this.floorY);
@@ -113,11 +138,14 @@ export class MobileControls {
   }
 
   setTapTarget(clientX, clientY) {
-    const x = (clientX / window.innerWidth) * 2 - 1;
-    const y = -(clientY / window.innerHeight) * 2 + 1;
-    this.raycaster.setFromCamera({ x, y }, this.camera);
+    const point = clientPointToViewportNdc(this.domElement, clientX, clientY);
+    if (!point) {
+      return;
+    }
+    this.raycaster.setFromCamera(point, this.camera);
     if (this.raycaster.ray.intersectPlane(this.floorPlane, this.tmpHit)) {
       this.targetPosition = this.tmpHit.clone();
+      this.stuckFrames = 0;
     }
   }
 
@@ -149,6 +177,16 @@ export class MobileControls {
     this.targetPosition = null;
     this.activePointerId = null;
     this.dragDistance = 0;
+    this.stuckFrames = 0;
+  }
+
+  getCollisionRange() {
+    const maxY = this.player.position.y - this.collisionHeadClearance;
+    const minY = Math.min(maxY, this.player.position.y - this.collisionBodyHeight);
+    return {
+      minY: minY + this.collisionStepHeight,
+      maxY
+    };
   }
 
   update(deltaTime) {
@@ -190,13 +228,22 @@ export class MobileControls {
       position: this.player.position,
       colliders: this.getColliders?.(),
       radius: this.collisionRadius,
-      sampleY: this.player.position.y - this.collisionSampleHeightOffset
+      ...this.getCollisionRange()
     });
 
     const targetYaw = Math.atan2(toTarget.x, -toTarget.z);
     this.player.rotation.y = angleLerp(this.player.rotation.y, targetYaw, 0.1);
 
     const moved = this.beforeMovePosition.distanceTo(this.player.position);
+    if (moved <= this.minimumProgressDistance) {
+      this.stuckFrames += 1;
+      if (this.stuckFrames >= this.maxStuckFrames) {
+        this.targetPosition = null;
+        this.stuckFrames = 0;
+      }
+    } else {
+      this.stuckFrames = 0;
+    }
     if (moved > 0 && this.onMoveDistance) {
       this.onMoveDistance(moved);
     }
