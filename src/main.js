@@ -986,7 +986,7 @@ async function boot() {
     hostname: window.location.hostname
   });
   const sceneUiEnabled = params.get("sceneui") !== "0";
-  const modelLabModeEnabled = isDev && params.get("modellab") === "1";
+  const modelLabModeEnabled = localAuthoringHost && params.get("modellab") === "1";
   const allowThemeSelector = sceneUiEnabled && localDebugUiEnabled && !modelLabModeEnabled;
   const devMenuEnabled = localDebugUiEnabled;
   const editorSupported = !modelLabModeEnabled && (isDev || localAuthoringHost);
@@ -997,7 +997,7 @@ async function boot() {
   const inspectUiEnabled = editorModeEnabled;
   const perfEnabled = localDebugUiEnabled && params.get("perf") === "1";
   const runtimeDebugApiEnabled = localDebugUiEnabled || editorModeEnabled;
-  const devModelShowroomSupported = isDev;
+  const devModelShowroomSupported = isDev || localAuthoringHost;
   const devModelShowroomRequested = modelLabModeEnabled;
 
   let rendererContext = null;
@@ -1042,7 +1042,7 @@ async function boot() {
       ? modelLabModeEnabled
         ? "Isolated model lab booting."
         : "Model lab is ready. Open it to boot an isolated preview scene."
-      : "Model lab is available in local dev mode.",
+      : "Model lab is available while running locally.",
     modelShowroomTone: "muted"
   };
   let detachAudioUnlock = () => {};
@@ -1163,14 +1163,22 @@ async function boot() {
     }
   }
 
-  function findCenterArtifactOwner() {
-    if (centerArtifactOwner?.parent) {
-      return centerArtifactOwner;
+  function findPropOwner(propId, cachedOwner = null) {
+    if (cachedOwner?.parent) {
+      return cachedOwner;
+    }
+    const resolvedById = sceneContext?.getEditablePropObject?.(propId) || null;
+    if (resolvedById) {
+      return resolvedById;
     }
     if (!rendererContext?.scene) {
       return null;
     }
-    const owner = rendererContext.scene.getObjectByName("center_hover_gif");
+    return rendererContext.scene.getObjectByName(propId) || null;
+  }
+
+  function findCenterArtifactOwner() {
+    const owner = findPropOwner("center_hover_gif", centerArtifactOwner);
     if (!owner) {
       return null;
     }
@@ -1248,13 +1256,7 @@ async function boot() {
   }
 
   function findCenterArtifactLinkedRifleOwner() {
-    if (centerArtifactLinkedRifleOwner?.parent) {
-      return centerArtifactLinkedRifleOwner;
-    }
-    if (!rendererContext?.scene) {
-      return null;
-    }
-    const owner = rendererContext.scene.getObjectByName("east_media_project_rifle");
+    const owner = findPropOwner("east_media_project_rifle", centerArtifactLinkedRifleOwner);
     if (!owner) {
       return null;
     }
@@ -1437,12 +1439,12 @@ async function boot() {
     if (!owner) {
       return;
     }
-    if (!centerArtifactMaterials.length) {
-      collectCenterArtifactMaterials(owner);
-    }
+    collectCenterArtifactMaterials(owner);
     const linkedRifleOwner = findCenterArtifactLinkedRifleOwner();
-    if (linkedRifleOwner && !centerArtifactLinkedRifleMaterials.length) {
+    if (linkedRifleOwner) {
       collectLinkedRifleMaterials(linkedRifleOwner);
+    } else {
+      centerArtifactLinkedRifleMaterials.length = 0;
     }
     const light = ensureCenterArtifactLight(owner);
     if (!light) {
@@ -1713,7 +1715,7 @@ async function boot() {
 
   async function scanDevModelShowroomManifest({ forceRefresh = false } = {}) {
     if (!devModelShowroomSupported) {
-      return createDevModelShowroomActionResult("Model lab is available in local dev mode.", "muted");
+      return createDevModelShowroomActionResult("Model lab is available while running locally.", "muted");
     }
 
     syncDevModelShowroomState({
@@ -1784,7 +1786,7 @@ async function boot() {
 
   async function openDevModelShowroom({ forceRefresh = false, teleport = true } = {}) {
     if (!devModelShowroomSupported) {
-      return createDevModelShowroomActionResult("Model lab is available in local dev mode.", "muted");
+      return createDevModelShowroomActionResult("Model lab is available while running locally.", "muted");
     }
     if (!sceneContext?.addProps || !sceneContext?.removePropsByTag) {
       return createDevModelShowroomActionResult("Scene is still booting. Try again in a moment.", "info");

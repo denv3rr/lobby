@@ -61,7 +61,7 @@ export function createOverlay({
       ? modelShowroomIsolated
         ? "Isolated model lab is active."
         : "Model lab is ready. Open it to boot an isolated preview scene."
-      : "Model lab is available in local dev mode."
+      : "Model lab is available while running locally."
   );
   const modelShowroomTone = readText(devMenu?.modelShowroomTone, "muted");
 
@@ -576,7 +576,7 @@ export function createOverlay({
         ? isolated
           ? "Isolated model lab is active."
           : "Model lab is ready. Open it to boot an isolated preview scene."
-        : "Model lab is available in local dev mode."
+        : "Model lab is available while running locally."
     );
     const tone = readText(devMenu?.modelShowroomTone, supported ? "muted" : "muted");
 
