@@ -3,17 +3,27 @@
     "source": "youtube-rss",
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-27T03:59:27.423Z",
+    "fetchedAt": "2026-04-27T08:40:38.562Z",
     "count": 15,
-    "usedFallback": true,
-    "errors": [
-      {
-        "url": "https://www.youtube.com/feeds/videos.xml",
-        "message": "HTTP 500 for https://www.youtube.com/feeds/videos.xml?channel_id=UCATB-IqmpAn-2XHu6lxTVwg"
-      }
-    ]
+    "usedFallback": false,
+    "errors": []
   },
   "items": [
+    {
+      "id": "zWVvJEyk3zI",
+      "title": "Trench areas preferred? 🤔 Look this mod up and lmk #armareforger #mods #update #map #arma #gaming",
+      "url": "https://www.youtube.com/watch?v=zWVvJEyk3zI",
+      "image": "https://i3.ytimg.com/vi/zWVvJEyk3zI/hqdefault.jpg",
+      "price": null,
+      "currency": null,
+      "tags": [
+        "youtube",
+        "video",
+        "seperet",
+        "recent"
+      ],
+      "publishedAt": "2026-04-27T04:30:02+00:00"
+    },
     {
       "id": "mHKPdrezquY",
       "title": "Gameplay Test #armareforger #map #mod #update #arma #gaming",
@@ -223,21 +233,6 @@
         "recent"
       ],
       "publishedAt": "2026-03-23T05:00:33+00:00"
-    },
-    {
-      "id": "EdpFtgRNcc0",
-      "title": "Medevac or super mega terror pilot? 🤔 #arma #armareforger #mystery #warcrimes #funnymoments #fps",
-      "url": "https://www.youtube.com/watch?v=EdpFtgRNcc0",
-      "image": "https://i2.ytimg.com/vi/EdpFtgRNcc0/hqdefault.jpg",
-      "price": null,
-      "currency": null,
-      "tags": [
-        "youtube",
-        "video",
-        "seperet",
-        "recent"
-      ],
-      "publishedAt": "2026-03-23T01:07:07+00:00"
     }
   ]
 }
