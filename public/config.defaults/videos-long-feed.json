@@ -4,9 +4,9 @@
     "channelUrl": "https://www.youtube.com/@seperet",
     "channelVideosUrl": "https://www.youtube.com/@seperet/videos",
     "channelId": "UCATB-IqmpAn-2XHu6lxTVwg",
-    "fetchedAt": "2026-04-27T14:25:58.055Z",
+    "fetchedAt": "2026-04-27T19:48:34.480Z",
     "count": 26,
-    "usedFallback": false,
+    "usedFallback": true,
     "errors": []
   },
   "items": [
